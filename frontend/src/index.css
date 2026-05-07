@@ -1,0 +1,17 @@
+@import './styles/theme.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply m-0 min-h-screen bg-pitch-950 font-body text-slate-100 antialiased;
+}
+
+#root {
+  @apply min-h-screen;
+}

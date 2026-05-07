@@ -1,0 +1,19 @@
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# .NET / backend
+backend/**/bin/
+backend/**/obj/
+backend/**/TestResults/
+*.csproj.user
+
+# Local config
+.env
+.env.local
+
+# OS / editors
+.vs/
+backend/.vs/
+.DS_Store
+Thumbs.db

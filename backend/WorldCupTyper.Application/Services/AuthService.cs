@@ -1,0 +1,72 @@
+using Microsoft.EntityFrameworkCore;
+using WorldCupTyper.Application.Abstractions;
+using WorldCupTyper.Application.DTOs;
+using WorldCupTyper.Application.Exceptions;
+using WorldCupTyper.Application.Services.Interfaces;
+
+namespace WorldCupTyper.Application.Services;
+
+public sealed class AuthService : IAuthService
+{
+    private readonly IAppDbContext _dbContext;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly IJwtTokenService _jwtTokenService;
+    private readonly IDateTimeProvider _dateTimeProvider;
+
+    public AuthService(
+        IAppDbContext dbContext,
+        IPasswordHasher passwordHasher,
+        IJwtTokenService jwtTokenService,
+        IDateTimeProvider dateTimeProvider)
+    {
+        _dbContext = dbContext;
+        _passwordHasher = passwordHasher;
+        _jwtTokenService = jwtTokenService;
+        _dateTimeProvider = dateTimeProvider;
+    }
+
+    public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Login) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            throw new UnauthorizedAppException("Nieprawidłowy login lub hasło.");
+        }
+
+        var normalizedLogin = request.Login.Trim().ToLowerInvariant();
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(
+                candidate => candidate.Email == normalizedLogin || candidate.DisplayName.ToLower() == normalizedLogin,
+                cancellationToken);
+
+        if (user is null || !user.IsActive || !_passwordHasher.Verify(user.PasswordHash, request.Password))
+        {
+            throw new UnauthorizedAppException("Nieprawidłowy login lub hasło.");
+        }
+
+        user.LastLoginAtUtc = _dateTimeProvider.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new AuthResponse(
+            _jwtTokenService.GenerateToken(user),
+            new CurrentUserDto(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive));
+    }
+
+    public async Task<CurrentUserDto> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(candidate => candidate.Id == userId && candidate.IsActive, cancellationToken);
+
+        if (user is null)
+        {
+            throw new UnauthorizedAppException("Użytkownik nie istnieje lub jest nieaktywny.");
+        }
+
+        return new CurrentUserDto(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive);
+    }
+
+    public Task LogoutAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+}
