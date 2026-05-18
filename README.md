@@ -67,6 +67,37 @@ Uruchomione testy obejmują:
 - reguły `PredictionService`
 - sortowanie `RankingService`
 
+## CI
+Repo jest przygotowane pod GitHub Actions przez workflow `.github/workflows/ci.yml`.
+
+Pipeline uruchamia:
+- build i test backendu `.NET 8`,
+- build frontendu `Vite`,
+- build obrazu Docker dla `WorldCupTyper.Api`.
+
+## Deploy preparation
+
+### Backend environment variables
+Docelowy backend powinien dostać co najmniej:
+- `ConnectionStrings__DefaultConnection`
+- `Jwt__Key`
+- `Jwt__Issuer`
+- `Jwt__Audience`
+- `Jwt__ExpiryMinutes`
+- `Cors__AllowedOrigins__0=https://typer.marekwozniak.me`
+- `Seed__Enabled=false`
+
+### Frontend environment variables
+Docelowy frontend powinien dostać:
+- `VITE_API_BASE_URL=https://api-typer.marekwozniak.me`
+
+### Docker build for API
+Obraz API da sie zbudowac z katalogu repo:
+
+```bash
+docker build -f backend/WorldCupTyper.Api/Dockerfile -t world-cup-typer-api .
+```
+
 ## Migracje
 Narzędzie EF jest dodane lokalnie przez manifest `dotnet-tools.json`.
 
@@ -82,4 +113,4 @@ dotnet tool run dotnet-ef database update --project WorldCupTyper.Infrastructure
 - import terminarza i wyników,
 - smart knockout resolver,
 - wykres progresu punktów na bazie `LeaderboardSnapshot`,
-- CI/CD przez GitHub Actions i deploy na subdomeny `typer.marekwozniak.me` oraz `api-typer.marekwozniak.me`.
+- deploy na subdomeny `typer.marekwozniak.me` oraz `api-typer.marekwozniak.me`.

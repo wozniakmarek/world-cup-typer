@@ -10,6 +10,19 @@ using WorldCupTyper.Infrastructure.Options;
 using WorldCupTyper.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?.Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
+if (allowedOrigins is null || allowedOrigins.Length == 0)
+{
+    allowedOrigins =
+    [
+        "http://localhost:5173",
+        "https://typer.marekwozniak.me",
+    ];
+}
 
 builder.Services
     .AddControllers()
@@ -75,7 +88,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://typer.marekwozniak.me")
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

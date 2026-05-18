@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+.env.local
+.vs
+backend/.vs
+backend/**/bin
+backend/**/obj
+backend/**/TestResults
+frontend/node_modules
+frontend/dist
