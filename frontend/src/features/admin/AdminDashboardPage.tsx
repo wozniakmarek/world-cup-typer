@@ -11,25 +11,25 @@ import { StatCard } from '../../components/StatCard'
 const adminAreas = [
   {
     to: '/admin/players',
-    title: 'Zarzadzanie graczami',
-    description: 'Dodawaj nowe konta, edytuj role i szybko resetuj hasla tymczasowe dla organizatorow oraz uczestnikow.',
+    title: 'Zarządzanie graczami',
+    description: 'Dodawaj nowe konta, edytuj role i szybko resetuj hasła tymczasowe dla organizatorów oraz uczestników.',
     hint: 'Najlepszy start przed otwarciem typowania',
     icon: Users,
     accent: 'emerald',
   },
   {
     to: '/admin/teams',
-    title: 'Zarzadzanie druzynami',
-    description: 'Pilnuj nazw, skrotow, kodow kraju i grup turniejowych, zanim zaczniesz budowac terminarz.',
+    title: 'Zarządzanie drużynami',
+    description: 'Pilnuj nazw, skrótów, kodów kraju i grup turniejowych, zanim zaczniesz budować terminarz.',
     hint: 'Fundament dla terminarza',
     icon: Flag,
     accent: 'slate',
   },
   {
     to: '/admin/matches',
-    title: 'Zarzadzanie meczami',
-    description: 'Tworz terminarz, wpisuj wynik po 90 minutach i uruchamiaj rozliczenie, kiedy spotkanie jest gotowe.',
-    hint: 'Najczesciej odwiedzany panel podczas turnieju',
+    title: 'Zarządzanie meczami',
+    description: 'Twórz terminarz, wpisuj wynik po 90 minutach i uruchamiaj rozliczenie, kiedy spotkanie jest gotowe.',
+    hint: 'Najczęściej odwiedzany panel podczas turnieju',
     icon: CalendarDays,
     accent: 'slate',
   },
@@ -53,7 +53,7 @@ export const AdminDashboardPage = () => {
       <SectionHeading
         eyebrow="Admin"
         title="Centrum sterowania"
-        description="Zarzadzaj graczami, terminarzem, wynikami i rozliczaniem meczow z jednego miejsca."
+        description="Zarządzaj graczami, terminarzem, wynikami i rozliczaniem meczów z jednego miejsca."
       />
 
       <QueryState
@@ -62,14 +62,14 @@ export const AdminDashboardPage = () => {
         errorMessage={errorMessage}
         isEmpty={players.length === 0 && teams.length === 0 && matches.length === 0}
         emptyTitle="Panel czeka na dane startowe"
-        emptyDescription="Dodaj druzyny, mecze albo pierwszych graczy, a centrum sterowania zacznie pokazywac postep."
-        loadingTitle="Ladowanie panelu admina"
-        loadingDescription="Pobieram graczy, druzyny i mecze potrzebne do podsumowania."
+        emptyDescription="Dodaj drużyny, mecze albo pierwszych graczy, a centrum sterowania zacznie pokazywać postęp."
+        loadingTitle="Ładowanie panelu admina"
+        loadingDescription="Pobieram graczy, drużyny i mecze potrzebne do podsumowania."
       >
         <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Gracze" value={players.length} />
-            <StatCard label="Druzyny" value={teams.length} />
+            <StatCard label="Drużyny" value={teams.length} />
             <StatCard label="Mecze" value={matches.length} />
             <StatCard label="Do rozliczenia" value={matchesToSettle} accent="text-emerald-300" />
           </div>
@@ -102,7 +102,7 @@ export const AdminDashboardPage = () => {
                 </div>
 
                 <Link className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-300 hover:text-emerald-200" to={to}>
-                  Otworz panel
+                  Otwórz panel
                   <ChevronRight className="h-4 w-4" />
                 </Link>
               </Panel>

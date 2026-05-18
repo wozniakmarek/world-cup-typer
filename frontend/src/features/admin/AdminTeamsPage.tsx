@@ -64,17 +64,17 @@ export const AdminTeamsPage = () => {
         groupName: createForm.groupName || undefined,
       }),
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Druzyna zostala dodana.' })
+      setFeedback({ tone: 'success', message: 'Drużyna została dodana.' })
       setCreateForm(emptyTeamForm)
       await refreshTeams()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie dodac druzyny', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się dodać drużyny', message: getErrorMessage(error) }),
   })
 
   const updateMutation = useMutation({
     mutationFn: () => {
       if (!selectedTeam) {
-        throw new Error('Najpierw wybierz druzyne do edycji.')
+        throw new Error('Najpierw wybierz drużynę do edycji.')
       }
 
       return adminApi.updateTeam(selectedTeam.id, {
@@ -84,10 +84,10 @@ export const AdminTeamsPage = () => {
       })
     },
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Druzyna zostala zaktualizowana.' })
+      setFeedback({ tone: 'success', message: 'Drużyna została zaktualizowana.' })
       await refreshTeams()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie zapisac zmian', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się zapisać zmian', message: getErrorMessage(error) }),
   })
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -108,9 +108,9 @@ export const AdminTeamsPage = () => {
   return (
     <div className="space-y-6">
       <SectionHeading
-        eyebrow="Admin • Druzyny"
-        title="Zarzadzanie druzynami"
-        description="Dodawaj zespoly, skroty i grupy turniejowe, zeby pozniej wygodnie ukladac terminarz."
+        eyebrow="Admin / Drużyny"
+        title="Zarządzanie drużynami"
+        description="Dodawaj zespoły, skróty i grupy turniejowe, żeby później wygodnie układać terminarz."
       />
 
       {feedback ? <InlineAlert tone={feedback.tone} title={feedback.title} message={feedback.message} /> : null}
@@ -118,12 +118,12 @@ export const AdminTeamsPage = () => {
       <div className="grid gap-6 xl:grid-cols-2">
         <Panel>
           <form className="space-y-4" onSubmit={(event) => void handleCreate(event)}>
-            <p className="font-display text-2xl uppercase text-white">Dodaj druzyne</p>
+            <p className="font-display text-2xl uppercase text-white">Dodaj drużynę</p>
             <FormField label="Nazwa">
               <input className={inputClassName} value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} />
             </FormField>
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="Skrot">
+              <FormField label="Skrót">
                 <input className={inputClassName} value={createForm.shortName} onChange={(event) => setCreateForm((current) => ({ ...current, shortName: event.target.value.toUpperCase() }))} />
               </FormField>
               <FormField label="Kod kraju">
@@ -136,20 +136,20 @@ export const AdminTeamsPage = () => {
                 <input className={inputClassName} value={createForm.groupName} onChange={(event) => setCreateForm((current) => ({ ...current, groupName: event.target.value.toUpperCase() }))} />
               </FormField>
             </div>
-            <button className={buttonClassName} type="submit">Dodaj druzyne</button>
+            <button className={buttonClassName} type="submit">Dodaj drużynę</button>
           </form>
         </Panel>
 
         <Panel>
           <form className="space-y-4" onSubmit={(event) => void handleUpdate(event)}>
-            <p className="font-display text-2xl uppercase text-white">Edytuj druzyne</p>
+            <p className="font-display text-2xl uppercase text-white">Edytuj drużynę</p>
             {selectedTeam ? (
               <>
                 <FormField label="Nazwa">
                   <input className={inputClassName} value={editForm.name} onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} />
                 </FormField>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <FormField label="Skrot">
+                  <FormField label="Skrót">
                     <input className={inputClassName} value={editForm.shortName} onChange={(event) => setEditForm((current) => ({ ...current, shortName: event.target.value.toUpperCase() }))} />
                   </FormField>
                   <FormField label="Kod kraju">
@@ -172,12 +172,12 @@ export const AdminTeamsPage = () => {
                       setEditForm(emptyTeamForm)
                     }}
                   >
-                    Wyczysc formularz
+                    Wyczyść formularz
                   </button>
                 </div>
               </>
             ) : (
-              <p className="text-sm text-slate-400">Wybierz druzyne z listy ponizej, aby zmienic jej dane.</p>
+              <p className="text-sm text-slate-400">Wybierz drużynę z listy poniżej, aby zmienić jej dane.</p>
             )}
           </form>
         </Panel>
@@ -188,10 +188,10 @@ export const AdminTeamsPage = () => {
         isError={teamsQuery.isError}
         errorMessage={getErrorMessage(teamsQuery.error)}
         isEmpty={teams.length === 0}
-        emptyTitle="Brak druzyn"
-        emptyDescription="Dodaj pierwsza reprezentacje, aby potem tworzyc terminarz i przypisywac grupy."
-        loadingTitle="Ladowanie druzyn"
-        loadingDescription="Pobieram liste reprezentacji i ich dane turniejowe."
+        emptyTitle="Brak drużyn"
+        emptyDescription="Dodaj pierwszą reprezentację, aby potem tworzyć terminarz i przypisywać grupy."
+        loadingTitle="Ładowanie drużyn"
+        loadingDescription="Pobieram listę reprezentacji i ich dane turniejowe."
       >
         <Panel className="overflow-hidden p-0">
           <ResponsiveTable
@@ -200,8 +200,8 @@ export const AdminTeamsPage = () => {
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-950/60 text-left uppercase tracking-[0.2em] text-slate-400">
                     <tr>
-                      <th className="px-4 py-4">Druzyna</th>
-                      <th className="px-4 py-4">Skrot</th>
+                      <th className="px-4 py-4">Drużyna</th>
+                      <th className="px-4 py-4">Skrót</th>
                       <th className="px-4 py-4">Kod</th>
                       <th className="px-4 py-4">Grupa</th>
                       <th className="px-4 py-4">Akcje</th>
@@ -239,7 +239,7 @@ export const AdminTeamsPage = () => {
                       {team.name}
                     </p>
                     <p className="mt-1 text-sm text-slate-400">
-                      {team.shortName} • {team.countryCode}
+                      {team.shortName} / {team.countryCode}
                     </p>
                   </div>
                   <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">

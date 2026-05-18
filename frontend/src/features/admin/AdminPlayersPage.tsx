@@ -56,11 +56,11 @@ export const AdminPlayersPage = () => {
   const createMutation = useMutation({
     mutationFn: () => adminApi.createPlayer(createForm),
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Gracz zostal dodany.' })
+      setFeedback({ tone: 'success', message: 'Gracz został dodany.' })
       setCreateForm(emptyCreateForm)
       await refreshPlayers()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie dodac gracza', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się dodać gracza', message: getErrorMessage(error) }),
   })
 
   const updateMutation = useMutation({
@@ -72,27 +72,27 @@ export const AdminPlayersPage = () => {
       return adminApi.updatePlayer(selectedPlayer.id, editForm)
     },
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Dane gracza zostaly zapisane.' })
+      setFeedback({ tone: 'success', message: 'Dane gracza zostały zapisane.' })
       await refreshPlayers()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie zapisac zmian', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się zapisać zmian', message: getErrorMessage(error) }),
   })
 
   const deactivateMutation = useMutation({
     mutationFn: (playerId: string) => adminApi.deactivatePlayer(playerId),
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Gracz zostal dezaktywowany.' })
+      setFeedback({ tone: 'success', message: 'Gracz został dezaktywowany.' })
       await refreshPlayers()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie dezaktywowac gracza', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się dezaktywować gracza', message: getErrorMessage(error) }),
   })
 
   const resetMutation = useMutation({
     mutationFn: (playerId: string) => adminApi.resetPassword(playerId),
     onSuccess: (data) => {
-      setFeedback({ tone: 'success', title: 'Haslo zresetowane', message: `Nowe haslo tymczasowe: ${data.temporaryPassword}` })
+      setFeedback({ tone: 'success', title: 'Hasło zresetowane', message: `Nowe hasło tymczasowe: ${data.temporaryPassword}` })
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie zresetowac hasla', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się zresetować hasła', message: getErrorMessage(error) }),
   })
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -113,9 +113,9 @@ export const AdminPlayersPage = () => {
   return (
     <div className="space-y-6">
       <SectionHeading
-        eyebrow="Admin • Gracze"
-        title="Zarzadzanie graczami"
-        description="Dodawaj nowe konta, edytuj role i w razie potrzeby resetuj hasla tymczasowe."
+        eyebrow="Admin / Gracze"
+        title="Zarządzanie graczami"
+        description="Dodawaj nowe konta, edytuj role i w razie potrzeby resetuj hasła tymczasowe."
       />
 
       {feedback ? <InlineAlert tone={feedback.tone} title={feedback.title} message={feedback.message} /> : null}
@@ -127,10 +127,10 @@ export const AdminPlayersPage = () => {
             <FormField label="Email">
               <input className={inputClassName} value={createForm.email} onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))} />
             </FormField>
-            <FormField label="Nazwa wyswietlana">
+            <FormField label="Nazwa wyświetlana">
               <input className={inputClassName} value={createForm.displayName} onChange={(event) => setCreateForm((current) => ({ ...current, displayName: event.target.value }))} />
             </FormField>
-            <FormField label="Haslo tymczasowe">
+            <FormField label="Hasło tymczasowe">
               <input className={inputClassName} value={createForm.password} onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))} />
             </FormField>
             <FormField label="Rola">
@@ -151,7 +151,7 @@ export const AdminPlayersPage = () => {
                 <FormField label="Email">
                   <input className={inputClassName} value={editForm.email} onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))} />
                 </FormField>
-                <FormField label="Nazwa wyswietlana">
+                <FormField label="Nazwa wyświetlana">
                   <input className={inputClassName} value={editForm.displayName} onChange={(event) => setEditForm((current) => ({ ...current, displayName: event.target.value }))} />
                 </FormField>
                 <FormField label="Rola">
@@ -167,7 +167,7 @@ export const AdminPlayersPage = () => {
                 <div className="flex flex-wrap gap-3">
                   <button className={buttonClassName} type="submit">Zapisz zmiany</button>
                   <button type="button" className={secondaryButtonClassName} onClick={() => void resetMutation.mutateAsync(selectedPlayer.id)}>
-                    Resetuj haslo
+                    Resetuj hasło
                   </button>
                   <button type="button" className={secondaryButtonClassName} onClick={() => void deactivateMutation.mutateAsync(selectedPlayer.id)}>
                     Dezaktywuj
@@ -175,7 +175,7 @@ export const AdminPlayersPage = () => {
                 </div>
               </>
             ) : (
-              <p className="text-sm text-slate-400">Wybierz gracza z listy ponizej, aby edytowac jego dane.</p>
+              <p className="text-sm text-slate-400">Wybierz gracza z listy poniżej, aby edytować jego dane.</p>
             )}
           </form>
         </Panel>
@@ -187,9 +187,9 @@ export const AdminPlayersPage = () => {
         errorMessage={getErrorMessage(playersQuery.error)}
         isEmpty={players.length === 0}
         emptyTitle="Brak graczy"
-        emptyDescription="Dodaj pierwsze konto, aby zaczac zarzadzac uprawnieniami i haslami."
-        loadingTitle="Ladowanie listy graczy"
-        loadingDescription="Pobieram konta i statusy aktywnosci."
+        emptyDescription="Dodaj pierwsze konto, aby zacząć zarządzać uprawnieniami i hasłami."
+        loadingTitle="Ładowanie listy graczy"
+        loadingDescription="Pobieram konta i statusy aktywności."
       >
         <Panel className="overflow-hidden p-0">
           <ResponsiveTable

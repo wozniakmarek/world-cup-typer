@@ -13,7 +13,7 @@ const commonLinks = [
 const adminLinks = [
   { to: '/admin', label: 'Admin', icon: Shield },
   { to: '/admin/players', label: 'Gracze', icon: Shield },
-  { to: '/admin/teams', label: 'Druzyny', icon: Shield },
+  { to: '/admin/teams', label: 'Drużyny', icon: Shield },
   { to: '/admin/matches', label: 'Mecze Admin', icon: Shield },
 ]
 
@@ -26,7 +26,7 @@ export const AppNavigation = () => {
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="font-display text-xl uppercase tracking-[0.24em] text-white">Typer Mistrzostw Swiata</p>
+            <p className="font-display text-xl uppercase tracking-[0.24em] text-white">Typer Mistrzostw Świata</p>
             <p className="text-sm text-slate-400">marekwozniak.me</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">

@@ -147,6 +147,11 @@ public sealed class MatchService : IMatchService
             throw new BusinessRuleException("Wyniki meczu nie mogą być ujemne.");
         }
 
+        if (request.HomeScoreFinal.HasValue != request.AwayScoreFinal.HasValue)
+        {
+            throw new BusinessRuleException("Wynik końcowy trzeba podać dla obu drużyn albo zostawić oba pola puste.");
+        }
+
         var match = await _dbContext.Matches.FirstOrDefaultAsync(candidate => candidate.Id == matchId, cancellationToken);
         if (match is null)
         {
@@ -157,7 +162,13 @@ public sealed class MatchService : IMatchService
         match.AwayScore90 = request.AwayScore90;
         match.HomeScoreFinal = request.HomeScoreFinal;
         match.AwayScoreFinal = request.AwayScoreFinal;
-        match.WinnerTeamId = request.WinnerTeamId ?? ResolveWinnerTeamId(match.HomeTeamId, match.AwayTeamId, request.HomeScoreFinal, request.AwayScoreFinal, request.HomeScore90, request.AwayScore90);
+        match.WinnerTeamId = request.WinnerTeamId ?? ResolveWinnerTeamId(
+            match.HomeTeamId,
+            match.AwayTeamId,
+            request.HomeScoreFinal,
+            request.AwayScoreFinal,
+            request.HomeScore90,
+            request.AwayScore90);
         match.Status = match.IsSettled ? MatchStatus.Settled : MatchStatus.Finished;
         match.UpdatedAtUtc = _dateTimeProvider.UtcNow;
 

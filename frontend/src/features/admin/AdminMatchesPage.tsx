@@ -48,13 +48,55 @@ type FeedbackState = {
   title?: string
 }
 
+type ResultFormState = {
+  homeScore90: string
+  awayScore90: string
+  homeScoreFinal: string
+  awayScoreFinal: string
+}
+
+type ParsedResultPayload = {
+  homeScore90: number
+  awayScore90: number
+  homeScoreFinal: number | null
+  awayScoreFinal: number | null
+}
+
+const parseResultPayload = (resultForm: ResultFormState): ParsedResultPayload => {
+  const parsedHomeScore90 = parseAdminScoreValue(resultForm.homeScore90)
+  const parsedAwayScore90 = parseAdminScoreValue(resultForm.awayScore90)
+  const hasHomeFinalScore = resultForm.homeScoreFinal.trim().length > 0
+  const hasAwayFinalScore = resultForm.awayScoreFinal.trim().length > 0
+  const parsedHomeScoreFinal = hasHomeFinalScore ? parseAdminScoreValue(resultForm.homeScoreFinal) : null
+  const parsedAwayScoreFinal = hasAwayFinalScore ? parseAdminScoreValue(resultForm.awayScoreFinal) : null
+
+  if (parsedHomeScore90 == null || parsedAwayScore90 == null) {
+    throw new Error('Wpisz nieujemne liczby całkowite dla wyniku po 90 minutach.')
+  }
+
+  if (hasHomeFinalScore !== hasAwayFinalScore) {
+    throw new Error('Jeśli wpisujesz wynik końcowy, podaj gole obu drużyn.')
+  }
+
+  if ((hasHomeFinalScore && parsedHomeScoreFinal == null) || (hasAwayFinalScore && parsedAwayScoreFinal == null)) {
+    throw new Error('Jeśli wpisujesz wynik końcowy, użyj nieujemnych liczb całkowitych.')
+  }
+
+  return {
+    homeScore90: parsedHomeScore90,
+    awayScore90: parsedAwayScore90,
+    homeScoreFinal: parsedHomeScoreFinal,
+    awayScoreFinal: parsedAwayScoreFinal,
+  }
+}
+
 export const AdminMatchesPage = () => {
   const queryClient = useQueryClient()
   const teamsQuery = useQuery({ queryKey: ['teams'], queryFn: teamsApi.getAll })
   const matchesQuery = useQuery({ queryKey: ['admin', 'matches'], queryFn: adminApi.getMatches })
   const [selectedMatch, setSelectedMatch] = useState<AdminMatch | null>(null)
   const [matchForm, setMatchForm] = useState(createEmptyMatchForm())
-  const [resultForm, setResultForm] = useState({
+  const [resultForm, setResultForm] = useState<ResultFormState>({
     homeScore90: '0',
     awayScore90: '0',
     homeScoreFinal: '',
@@ -83,11 +125,11 @@ export const AdminMatchesPage = () => {
         kickoffTimeUtc: fromDateTimeLocalValue(matchForm.kickoffTimeUtc),
       }),
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Mecz zostal dodany.' })
+      setFeedback({ tone: 'success', message: 'Mecz został dodany.' })
       setMatchForm(createEmptyMatchForm())
       await refreshData()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie dodac meczu', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się dodać meczu', message: getErrorMessage(error) }),
   })
 
   const updateMutation = useMutation({
@@ -102,10 +144,10 @@ export const AdminMatchesPage = () => {
       })
     },
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Mecz zostal zaktualizowany.' })
+      setFeedback({ tone: 'success', message: 'Mecz został zaktualizowany.' })
       await refreshData()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie zapisac zmian', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się zapisać zmian', message: getErrorMessage(error) }),
   })
 
   const resultMutation = useMutation({
@@ -114,50 +156,36 @@ export const AdminMatchesPage = () => {
         throw new Error('Najpierw wybierz mecz do wpisania wyniku.')
       }
 
-      const parsedHomeScore90 = parseAdminScoreValue(resultForm.homeScore90)
-      const parsedAwayScore90 = parseAdminScoreValue(resultForm.awayScore90)
-      const parsedHomeScoreFinal = resultForm.homeScoreFinal ? parseAdminScoreValue(resultForm.homeScoreFinal) : null
-      const parsedAwayScoreFinal = resultForm.awayScoreFinal ? parseAdminScoreValue(resultForm.awayScoreFinal) : null
-
-      if (parsedHomeScore90 == null || parsedAwayScore90 == null) {
-        throw new Error('Wpisz nieujemne liczby calkowite dla wyniku po 90 minutach.')
-      }
-
-      if ((resultForm.homeScoreFinal && parsedHomeScoreFinal == null) || (resultForm.awayScoreFinal && parsedAwayScoreFinal == null)) {
-        throw new Error('Jesli wpisujesz wynik finalny, uzyj nieujemnych liczb calkowitych.')
-      }
+      const payload = parseResultPayload(resultForm)
 
       return adminApi.setMatchResult(selectedMatch.id, {
-        homeScore90: parsedHomeScore90,
-        awayScore90: parsedAwayScore90,
-        homeScoreFinal: parsedHomeScoreFinal,
-        awayScoreFinal: parsedAwayScoreFinal,
+        ...payload,
         winnerTeamId: null,
       })
     },
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Wynik meczu zostal zapisany.' })
+      setFeedback({ tone: 'success', message: 'Wynik meczu został zapisany.' })
       await refreshData()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie zapisac wyniku', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się zapisać wyniku', message: getErrorMessage(error) }),
   })
 
   const settleMutation = useMutation({
     mutationFn: (matchId: string) => adminApi.settleMatch(matchId),
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Mecz zostal rozliczony.' })
+      setFeedback({ tone: 'success', message: 'Mecz został rozliczony.' })
       await refreshData()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie rozliczyc meczu', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się rozliczyć meczu', message: getErrorMessage(error) }),
   })
 
   const recalculateMutation = useMutation({
     mutationFn: () => adminApi.recalculateRanking(),
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Ranking zostal przeliczony.' })
+      setFeedback({ tone: 'success', message: 'Ranking został przeliczony.' })
       await refreshData()
     },
-    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie przeliczyc rankingu', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się przeliczyć rankingu', message: getErrorMessage(error) }),
   })
 
   const selectMatch = (match: AdminMatch) => {
@@ -211,18 +239,10 @@ export const AdminMatchesPage = () => {
     if (!selectedMatch) return
     setFeedback(null)
 
-    const parsedHomeScore90 = parseAdminScoreValue(resultForm.homeScore90)
-    const parsedAwayScore90 = parseAdminScoreValue(resultForm.awayScore90)
-    const parsedHomeScoreFinal = resultForm.homeScoreFinal ? parseAdminScoreValue(resultForm.homeScoreFinal) : null
-    const parsedAwayScoreFinal = resultForm.awayScoreFinal ? parseAdminScoreValue(resultForm.awayScoreFinal) : null
-
-    if (parsedHomeScore90 == null || parsedAwayScore90 == null) {
-      setFeedback({ tone: 'error', message: 'Wpisz nieujemne liczby calkowite dla wyniku po 90 minutach.' })
-      return
-    }
-
-    if ((resultForm.homeScoreFinal && parsedHomeScoreFinal == null) || (resultForm.awayScoreFinal && parsedAwayScoreFinal == null)) {
-      setFeedback({ tone: 'error', message: 'Jesli wpisujesz wynik finalny, uzyj nieujemnych liczb calkowitych.' })
+    try {
+      parseResultPayload(resultForm)
+    } catch (error) {
+      setFeedback({ tone: 'error', message: getErrorMessage(error) })
       return
     }
 
@@ -232,9 +252,9 @@ export const AdminMatchesPage = () => {
   return (
     <div className="space-y-6">
       <SectionHeading
-        eyebrow="Admin • Mecze"
-        title="Zarzadzanie terminarzem"
-        description="Dodawaj mecze, wpisuj wyniki po 90 minutach i rozliczaj ranking po zakonczonych spotkaniach."
+        eyebrow="Admin / Mecze"
+        title="Zarządzanie terminarzem"
+        description="Dodawaj mecze, wpisuj wyniki po 90 minutach i rozliczaj ranking po zakończonych spotkaniach."
       />
 
       {feedback ? <InlineAlert tone={feedback.tone} title={feedback.title} message={feedback.message} /> : null}
@@ -244,17 +264,17 @@ export const AdminMatchesPage = () => {
         isError={teamsQuery.isError || matchesQuery.isError}
         errorMessage={getErrorMessage(teamsQuery.error ?? matchesQuery.error)}
         isEmpty={teams.length === 0 && sortedMatches.length === 0}
-        emptyTitle="Brak terminarza i druzyn"
-        emptyDescription="Dodaj reprezentacje albo pierwszy mecz, aby zaczac budowac harmonogram turnieju."
-        loadingTitle="Ladowanie panelu meczow"
-        loadingDescription="Pobieram terminarz, druzyny i dane potrzebne do rozliczenia."
+        emptyTitle="Brak terminarza i drużyn"
+        emptyDescription="Dodaj reprezentacje albo pierwszy mecz, aby zacząć budować harmonogram turnieju."
+        loadingTitle="Ładowanie panelu meczów"
+        loadingDescription="Pobieram terminarz, drużyny i dane potrzebne do rozliczenia."
       >
         <div className="grid gap-6 2xl:grid-cols-[1.1fr_1.1fr_1.4fr]">
           <Panel>
             <form className="grid gap-4" onSubmit={(event) => void handleMatchSubmit(event)}>
               <div className="space-y-2">
                 <p className="font-display text-2xl uppercase text-white">{selectedMatch ? 'Edytuj mecz' : 'Dodaj mecz'}</p>
-                <p className="text-sm text-slate-400">Ustaw faze, druzyny, kickoff i podstawowe informacje potrzebne do typowania.</p>
+                <p className="text-sm text-slate-400">Ustaw fazę, drużyny, kickoff i podstawowe informacje potrzebne do typowania.</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField label="Numer meczu">
@@ -267,15 +287,15 @@ export const AdminMatchesPage = () => {
                     ))}
                   </select>
                 </FormField>
-                <FormField label="Druzyna gospodarzy">
+                <FormField label="Drużyna gospodarzy">
                   <select className={inputClassName} value={matchForm.homeTeamId} onChange={(event) => setMatchForm((current) => ({ ...current, homeTeamId: event.target.value }))}>
-                    <option value="">Wybierz druzyne</option>
+                    <option value="">Wybierz drużynę</option>
                     {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
                   </select>
                 </FormField>
-                <FormField label="Druzyna gosci">
+                <FormField label="Drużyna gości">
                   <select className={inputClassName} value={matchForm.awayTeamId} onChange={(event) => setMatchForm((current) => ({ ...current, awayTeamId: event.target.value }))}>
-                    <option value="">Wybierz druzyne</option>
+                    <option value="">Wybierz drużynę</option>
                     {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
                   </select>
                 </FormField>
@@ -290,7 +310,7 @@ export const AdminMatchesPage = () => {
                 <FormField label="Kickoff">
                   <input type="datetime-local" className={inputClassName} value={matchForm.kickoffTimeUtc} onChange={(event) => setMatchForm((current) => ({ ...current, kickoffTimeUtc: event.target.value }))} />
                 </FormField>
-                <FormField label="Stadion / venue">
+                <FormField label="Stadion / miejsce">
                   <input className={inputClassName} value={matchForm.venue} onChange={(event) => setMatchForm((current) => ({ ...current, venue: event.target.value }))} />
                 </FormField>
               </div>
@@ -298,7 +318,7 @@ export const AdminMatchesPage = () => {
                 <button className={buttonClassName} type="submit">{selectedMatch ? 'Zapisz zmiany' : 'Dodaj mecz'}</button>
                 {selectedMatch ? (
                   <button type="button" className={secondaryButtonClassName} onClick={clearSelection}>
-                    Wyczysc formularz
+                    Wyczyść formularz
                   </button>
                 ) : null}
               </div>
@@ -309,7 +329,7 @@ export const AdminMatchesPage = () => {
             <form className="grid gap-4" onSubmit={(event) => void handleResultSubmit(event)}>
               <div className="space-y-2">
                 <p className="font-display text-2xl uppercase text-white">Wpisz wynik / rozlicz</p>
-                <p className="text-sm text-slate-400">Ta sekcja sluzy do wpisania wyniku po 90 minutach i uruchomienia rozliczenia meczu.</p>
+                <p className="text-sm text-slate-400">Ta sekcja służy do wpisania wyniku po 90 minutach i uruchomienia rozliczenia meczu.</p>
               </div>
               {selectedMatch ? (
                 <>
@@ -323,13 +343,16 @@ export const AdminMatchesPage = () => {
                     <FormField label={`${selectedMatch.awayTeam.name} (90 min)`}>
                       <input type="number" min="0" step="1" className={inputClassName} value={resultForm.awayScore90} onChange={(event) => setResultForm((current) => ({ ...current, awayScore90: event.target.value }))} />
                     </FormField>
-                    <FormField label={`${selectedMatch.homeTeam.name} (final)`}>
+                    <FormField label={`${selectedMatch.homeTeam.name} (koniec meczu)`}>
                       <input type="number" min="0" step="1" className={inputClassName} value={resultForm.homeScoreFinal} onChange={(event) => setResultForm((current) => ({ ...current, homeScoreFinal: event.target.value }))} />
                     </FormField>
-                    <FormField label={`${selectedMatch.awayTeam.name} (final)`}>
+                    <FormField label={`${selectedMatch.awayTeam.name} (koniec meczu)`}>
                       <input type="number" min="0" step="1" className={inputClassName} value={resultForm.awayScoreFinal} onChange={(event) => setResultForm((current) => ({ ...current, awayScoreFinal: event.target.value }))} />
                     </FormField>
                   </div>
+                  <p className="text-sm text-slate-400">
+                    Wynik końcowy podaj tylko wtedy, gdy chcesz zapisać dane po dogrywce lub karnych. Uzupełnij wtedy oba pola.
+                  </p>
                   <div className="flex flex-wrap gap-3">
                     <button className={buttonClassName} type="submit">Zapisz wynik</button>
                     <button type="button" className={secondaryButtonClassName} onClick={() => void settleMutation.mutateAsync(selectedMatch.id)}>
@@ -342,7 +365,7 @@ export const AdminMatchesPage = () => {
                 </>
               ) : (
                 <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 px-4 py-6 text-sm text-slate-300">
-                  Wybierz mecz z listy po prawej, aby wpisac wynik po 90 minutach albo uruchomic rozliczenie.
+                  Wybierz mecz z listy po prawej, aby wpisać wynik po 90 minutach albo uruchomić rozliczenie.
                 </div>
               )}
             </form>
@@ -350,7 +373,7 @@ export const AdminMatchesPage = () => {
 
           <Panel className="space-y-4">
             <div className="space-y-2">
-              <p className="font-display text-2xl uppercase text-white">Lista meczow</p>
+              <p className="font-display text-2xl uppercase text-white">Lista meczów</p>
               <p className="text-sm text-slate-400">Szybko wybierz spotkanie do edycji, wpisania wyniku albo rozliczenia.</p>
             </div>
             <QueryState
@@ -358,8 +381,8 @@ export const AdminMatchesPage = () => {
               isError={matchesQuery.isError}
               errorMessage={getErrorMessage(matchesQuery.error)}
               isEmpty={sortedMatches.length === 0}
-              emptyTitle="Brak meczow"
-              emptyDescription="Dodaj pierwszy mecz, aby zaczac budowac terminarz."
+              emptyTitle="Brak meczów"
+              emptyDescription="Dodaj pierwszy mecz, aby zacząć budować terminarz."
             >
               <div className="space-y-3">
                 {sortedMatches.map((match) => (
@@ -367,10 +390,10 @@ export const AdminMatchesPage = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-semibold text-white">
-                          #{match.matchNumber} • {match.homeTeam.name} vs {match.awayTeam.name}
+                          #{match.matchNumber} / {match.homeTeam.name} vs {match.awayTeam.name}
                         </p>
                         <p className="mt-1 text-sm text-slate-400">
-                          {formatKickoff(match.kickoffTimeUtc)} • Typow: {match.predictionsCount}
+                          {formatKickoff(match.kickoffTimeUtc)} / Typów: {match.predictionsCount}
                         </p>
                       </div>
                       <StatusPill status={match.status} isSettled={match.isSettled} />
