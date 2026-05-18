@@ -5,8 +5,17 @@ const normalizeBaseUrl = (value?: string) => {
   return raw.endsWith('/api') ? raw : `${raw.replace(/\/$/, '')}/api`
 }
 
+const primaryBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL)
+const fallbackBaseUrl = import.meta.env.VITE_API_FALLBACK_BASE_URL
+  ? normalizeBaseUrl(import.meta.env.VITE_API_FALLBACK_BASE_URL)
+  : undefined
+
+type RetriableConfig = {
+  _usedFallbackBaseUrl?: boolean
+}
+
 export const apiClient = axios.create({
-  baseURL: normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL),
+  baseURL: primaryBaseUrl,
 })
 
 apiClient.interceptors.request.use((config) => {
@@ -18,6 +27,37 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (!axios.isAxiosError(error)) {
+      throw error
+    }
+
+    const requestConfig = error.config as (typeof error.config & RetriableConfig) | undefined
+    const shouldRetryWithFallback = Boolean(
+      fallbackBaseUrl &&
+      requestConfig &&
+      !error.response &&
+      error.code === 'ERR_NETWORK' &&
+      !requestConfig._usedFallbackBaseUrl &&
+      (requestConfig.baseURL ?? primaryBaseUrl) !== fallbackBaseUrl,
+    )
+
+    if (!shouldRetryWithFallback || !requestConfig || !fallbackBaseUrl) {
+      throw error
+    }
+
+    const retryConfig = {
+      ...requestConfig,
+      baseURL: fallbackBaseUrl,
+      _usedFallbackBaseUrl: true,
+    }
+
+    return apiClient.request(retryConfig)
+  },
+)
+
 export const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || error.message
@@ -27,5 +67,5 @@ export const getErrorMessage = (error: unknown) => {
     return error.message
   }
 
-  return 'Wystąpił nieoczekiwany błąd.'
+  return 'Wyst\u0105pi\u0142 nieoczekiwany b\u0142\u0105d.'
 }

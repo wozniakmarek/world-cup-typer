@@ -48,6 +48,7 @@ jobs:
         run: npm run build:pages
         env:
           VITE_API_BASE_URL: https://api-typer.marekwozniak.me
+          VITE_API_FALLBACK_BASE_URL: https://world-cup-typer-api-oznlp.ondigitalocean.app
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
