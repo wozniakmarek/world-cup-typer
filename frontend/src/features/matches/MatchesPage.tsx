@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { getErrorMessage } from '../../api/client'
 import { matchesApi } from '../../api/services'
 import { MatchCard } from '../../components/MatchCard'
+import { QueryState } from '../../components/QueryState'
 import { SectionHeading } from '../../components/SectionHeading'
+import { filterButtonClassName } from '../../styles/ui'
 
 const filters = [
   { key: 'all', label: 'Wszystkie' },
@@ -45,22 +48,29 @@ export const MatchesPage = () => {
             key={item.key}
             type="button"
             onClick={() => setFilter(item.key)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              filter === item.key
-                ? 'bg-emerald-400 text-slate-950'
-                : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
-            }`}
+            className={filterButtonClassName(filter === item.key)}
           >
             {item.label}
           </button>
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        {matches.map((match) => (
-          <MatchCard key={match.id} match={match} />
-        ))}
-      </div>
+      <QueryState
+        isLoading={matchesQuery.isLoading}
+        isError={matchesQuery.isError}
+        errorMessage={getErrorMessage(matchesQuery.error)}
+        isEmpty={matches.length === 0}
+        emptyTitle="Brak meczów dla tego filtra"
+        emptyDescription="Zmień filtr albo wróć później, gdy pojawią się kolejne spotkania."
+        loadingTitle="Ładowanie meczów"
+        loadingDescription="Pobieram terminarz i status Twoich typów."
+      >
+        <div className="grid gap-4 xl:grid-cols-2">
+          {matches.map((match) => (
+            <MatchCard key={match.id} match={match} />
+          ))}
+        </div>
+      </QueryState>
     </div>
   )
 }

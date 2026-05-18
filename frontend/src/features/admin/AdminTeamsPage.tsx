@@ -5,9 +5,12 @@ import { getErrorMessage } from '../../api/client'
 import { adminApi, teamsApi } from '../../api/services'
 import type { Team } from '../../api/types'
 import { FormField } from '../../components/FormField'
+import { InlineAlert } from '../../components/InlineAlert'
 import { Panel } from '../../components/Panel'
+import { QueryState } from '../../components/QueryState'
+import { ResponsiveTable } from '../../components/ResponsiveTable'
 import { SectionHeading } from '../../components/SectionHeading'
-import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
+import { buttonClassName, inputClassName, mobileRecordClassName, secondaryButtonClassName } from '../../styles/ui'
 
 const emptyTeamForm = {
   name: '',
@@ -17,13 +20,19 @@ const emptyTeamForm = {
   groupName: '',
 }
 
+type FeedbackState = {
+  tone: 'success' | 'error'
+  message: string
+  title?: string
+}
+
 export const AdminTeamsPage = () => {
   const queryClient = useQueryClient()
   const teamsQuery = useQuery({ queryKey: ['teams'], queryFn: teamsApi.getAll })
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
   const [createForm, setCreateForm] = useState(emptyTeamForm)
   const [editForm, setEditForm] = useState(emptyTeamForm)
-  const [feedback, setFeedback] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null)
 
   useEffect(() => {
     if (!selectedTeam) {
@@ -55,17 +64,17 @@ export const AdminTeamsPage = () => {
         groupName: createForm.groupName || undefined,
       }),
     onSuccess: async () => {
-      setFeedback('Drużyna została dodana.')
+      setFeedback({ tone: 'success', message: 'Druzyna zostala dodana.' })
       setCreateForm(emptyTeamForm)
       await refreshTeams()
     },
-    onError: (error) => setFeedback(getErrorMessage(error)),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie dodac druzyny', message: getErrorMessage(error) }),
   })
 
   const updateMutation = useMutation({
     mutationFn: () => {
       if (!selectedTeam) {
-        throw new Error('Najpierw wybierz drużynę do edycji.')
+        throw new Error('Najpierw wybierz druzyne do edycji.')
       }
 
       return adminApi.updateTeam(selectedTeam.id, {
@@ -75,10 +84,10 @@ export const AdminTeamsPage = () => {
       })
     },
     onSuccess: async () => {
-      setFeedback('Drużyna została zaktualizowana.')
+      setFeedback({ tone: 'success', message: 'Druzyna zostala zaktualizowana.' })
       await refreshTeams()
     },
-    onError: (error) => setFeedback(getErrorMessage(error)),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udalo sie zapisac zmian', message: getErrorMessage(error) }),
   })
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -94,25 +103,27 @@ export const AdminTeamsPage = () => {
     await updateMutation.mutateAsync()
   }
 
+  const teams = teamsQuery.data ?? []
+
   return (
     <div className="space-y-6">
       <SectionHeading
-        eyebrow="Admin • Drużyny"
-        title="Zarządzanie drużynami"
-        description="Dodawaj zespoły, skróty i grupy turniejowe, żeby później wygodnie układać terminarz."
+        eyebrow="Admin • Druzyny"
+        title="Zarzadzanie druzynami"
+        description="Dodawaj zespoly, skroty i grupy turniejowe, zeby pozniej wygodnie ukladac terminarz."
       />
 
-      {feedback ? <Panel className="bg-sky-500/10 text-sm text-sky-100">{feedback}</Panel> : null}
+      {feedback ? <InlineAlert tone={feedback.tone} title={feedback.title} message={feedback.message} /> : null}
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Panel>
           <form className="space-y-4" onSubmit={(event) => void handleCreate(event)}>
-            <p className="font-display text-2xl uppercase text-white">Dodaj drużynę</p>
+            <p className="font-display text-2xl uppercase text-white">Dodaj druzyne</p>
             <FormField label="Nazwa">
               <input className={inputClassName} value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} />
             </FormField>
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="Skrót">
+              <FormField label="Skrot">
                 <input className={inputClassName} value={createForm.shortName} onChange={(event) => setCreateForm((current) => ({ ...current, shortName: event.target.value.toUpperCase() }))} />
               </FormField>
               <FormField label="Kod kraju">
@@ -125,20 +136,20 @@ export const AdminTeamsPage = () => {
                 <input className={inputClassName} value={createForm.groupName} onChange={(event) => setCreateForm((current) => ({ ...current, groupName: event.target.value.toUpperCase() }))} />
               </FormField>
             </div>
-            <button className={buttonClassName} type="submit">Dodaj drużynę</button>
+            <button className={buttonClassName} type="submit">Dodaj druzyne</button>
           </form>
         </Panel>
 
         <Panel>
           <form className="space-y-4" onSubmit={(event) => void handleUpdate(event)}>
-            <p className="font-display text-2xl uppercase text-white">Edytuj drużynę</p>
+            <p className="font-display text-2xl uppercase text-white">Edytuj druzyne</p>
             {selectedTeam ? (
               <>
                 <FormField label="Nazwa">
                   <input className={inputClassName} value={editForm.name} onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} />
                 </FormField>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <FormField label="Skrót">
+                  <FormField label="Skrot">
                     <input className={inputClassName} value={editForm.shortName} onChange={(event) => setEditForm((current) => ({ ...current, shortName: event.target.value.toUpperCase() }))} />
                   </FormField>
                   <FormField label="Kod kraju">
@@ -161,52 +172,91 @@ export const AdminTeamsPage = () => {
                       setEditForm(emptyTeamForm)
                     }}
                   >
-                    Wyczyść formularz
+                    Wyczysc formularz
                   </button>
                 </div>
               </>
             ) : (
-              <p className="text-sm text-slate-400">Wybierz drużynę z listy poniżej, aby zmienić jej dane.</p>
+              <p className="text-sm text-slate-400">Wybierz druzyne z listy ponizej, aby zmienic jej dane.</p>
             )}
           </form>
         </Panel>
       </div>
 
-      <Panel className="overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-950/60 text-left uppercase tracking-[0.2em] text-slate-400">
-              <tr>
-                <th className="px-4 py-4">Drużyna</th>
-                <th className="px-4 py-4">Skrót</th>
-                <th className="px-4 py-4">Kod</th>
-                <th className="px-4 py-4">Grupa</th>
-                <th className="px-4 py-4">Akcje</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teamsQuery.data?.map((team) => (
-                <tr key={team.id} className="border-t border-white/5">
-                  <td className="px-4 py-4 text-white">
-                    <span className="inline-flex items-center gap-2">
-                      {team.flagEmoji ? <span>{team.flagEmoji}</span> : null}
-                      <span>{team.name}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-slate-300">{team.shortName}</td>
-                  <td className="px-4 py-4 text-slate-300">{team.countryCode}</td>
-                  <td className="px-4 py-4 text-slate-300">{team.groupName || '—'}</td>
-                  <td className="px-4 py-4">
-                    <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedTeam(team)}>
-                      Edytuj
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+      <QueryState
+        isLoading={teamsQuery.isLoading}
+        isError={teamsQuery.isError}
+        errorMessage={getErrorMessage(teamsQuery.error)}
+        isEmpty={teams.length === 0}
+        emptyTitle="Brak druzyn"
+        emptyDescription="Dodaj pierwsza reprezentacje, aby potem tworzyc terminarz i przypisywac grupy."
+        loadingTitle="Ladowanie druzyn"
+        loadingDescription="Pobieram liste reprezentacji i ich dane turniejowe."
+      >
+        <Panel className="overflow-hidden p-0">
+          <ResponsiveTable
+            table={
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-950/60 text-left uppercase tracking-[0.2em] text-slate-400">
+                    <tr>
+                      <th className="px-4 py-4">Druzyna</th>
+                      <th className="px-4 py-4">Skrot</th>
+                      <th className="px-4 py-4">Kod</th>
+                      <th className="px-4 py-4">Grupa</th>
+                      <th className="px-4 py-4">Akcje</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teams.map((team) => (
+                      <tr key={team.id} className="border-t border-white/5">
+                        <td className="px-4 py-4 text-white">
+                          <span className="inline-flex items-center gap-2">
+                            {team.flagEmoji ? <span>{team.flagEmoji}</span> : null}
+                            <span>{team.name}</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-slate-300">{team.shortName}</td>
+                        <td className="px-4 py-4 text-slate-300">{team.countryCode}</td>
+                        <td className="px-4 py-4 text-slate-300">{team.groupName || '-'}</td>
+                        <td className="px-4 py-4">
+                          <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedTeam(team)}>
+                            Edytuj
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            }
+            cards={teams.map((team) => (
+              <article key={team.id} className={mobileRecordClassName}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-white">
+                      {team.flagEmoji ? `${team.flagEmoji} ` : ''}
+                      {team.name}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {team.shortName} • {team.countryCode}
+                    </p>
+                  </div>
+                  <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">
+                    {team.groupName || 'Bez grupy'}
+                  </p>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end">
+                  <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedTeam(team)}>
+                    Edytuj
+                  </button>
+                </div>
+              </article>
+            ))}
+          />
+        </Panel>
+      </QueryState>
     </div>
   )
 }
