@@ -12,6 +12,10 @@ Prywatne MVP aplikacji webowej/PWA do typowania wyników meczów Mistrzostw Świ
 - `backend/`
 - `docs/`
 
+Przydatne dokumenty:
+- `docs/deployment-prep.md`
+- `docs/mvp-status.md`
+
 ## Co działa w MVP
 - logowanie admina i graczy,
 - zarządzanie graczami przez admina,
