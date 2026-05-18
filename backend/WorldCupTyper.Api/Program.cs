@@ -1,12 +1,15 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using WorldCupTyper.Api.Health;
 using WorldCupTyper.Api.Middleware;
 using WorldCupTyper.Infrastructure;
 using WorldCupTyper.Infrastructure.Options;
+using WorldCupTyper.Infrastructure.Persistence;
 using WorldCupTyper.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +53,8 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<WorldCupTyperDbContext>("database");
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -143,6 +148,16 @@ app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = HealthCheckResponseWriter.WriteJsonAsync,
+});
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => true,
+    ResponseWriter = HealthCheckResponseWriter.WriteJsonAsync,
+});
 app.MapControllers();
 
 app.Run();

@@ -4,6 +4,7 @@ import { ProtectedRoute } from '../app/ProtectedRoute'
 import { AdminDashboardPage } from '../features/admin/AdminDashboardPage'
 import { AdminMatchesPage } from '../features/admin/AdminMatchesPage'
 import { AdminPlayersPage } from '../features/admin/AdminPlayersPage'
+import { AdminTeamsPage } from '../features/admin/AdminTeamsPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { LoginPage } from '../features/auth/LoginPage'
 import { MatchDetailsPage } from '../features/matches/MatchDetailsPage'
@@ -13,7 +14,7 @@ import { RankingPage } from '../features/ranking/RankingPage'
 
 export const AppRouter = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -38,6 +39,7 @@ export const AppRouter = () => {
         >
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/players" element={<AdminPlayersPage />} />
+          <Route path="/admin/teams" element={<AdminTeamsPage />} />
           <Route path="/admin/matches" element={<AdminMatchesPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

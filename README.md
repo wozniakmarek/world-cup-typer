@@ -85,11 +85,23 @@ Docelowy backend powinien dostać co najmniej:
 - `Jwt__Audience`
 - `Jwt__ExpiryMinutes`
 - `Cors__AllowedOrigins__0=https://typer.marekwozniak.me`
+- `DatabaseStartup__ApplyMigrationsOnStartup=true`
 - `Seed__Enabled=false`
 
 ### Frontend environment variables
 Docelowy frontend powinien dostać:
 - `VITE_API_BASE_URL=https://api-typer.marekwozniak.me`
+
+### Frontend on GitHub Pages
+Repo zawiera workflow `.github/workflows/frontend-pages.yml`, który publikuje frontend na GitHub Pages po pushu do `main`.
+
+Aby go uruchomić docelowo:
+- w ustawieniach repo otwórz `Settings -> Pages`,
+- ustaw `Source` na `GitHub Actions`,
+- skonfiguruj custom domain `typer.marekwozniak.me`,
+- ustaw DNS dla subdomeny zgodnie z konfiguracją GitHub Pages.
+
+Build Pages używa `npm run build:pages`, które oprócz zwykłego buildu tworzy też `404.html` dla fallbacku SPA przy odświeżaniu podstron.
 
 ### Docker build for API
 Obraz API da sie zbudowac z katalogu repo:
@@ -97,6 +109,49 @@ Obraz API da sie zbudowac z katalogu repo:
 ```bash
 docker build -f backend/WorldCupTyper.Api/Dockerfile -t world-cup-typer-api .
 ```
+
+### Backend image release
+Repo zawiera workflow `.github/workflows/backend-image.yml`, który po zmianach w `backend/` publikuje obraz API do GitHub Container Registry.
+
+Docelowa nazwa obrazu:
+
+```text
+ghcr.io/wozniakmarek/world-cup-typer-api
+```
+
+Przykladowe tagi:
+- `latest` dla `main`,
+- `sha-<short-commit>` dla konkretnego commita,
+- `main` jako tag galezi.
+
+### DigitalOcean App Platform
+Repo zawiera tez:
+- app spec `.do/app.yaml`,
+- reczny workflow `.github/workflows/backend-app-platform.yml`.
+
+Ten workflow:
+1. buduje obraz API,
+2. publikuje go do GHCR,
+3. wdraza do DigitalOcean App Platform po konkretnym digestcie obrazu.
+
+Do uruchomienia w GitHub trzeba dodac sekrety:
+- `DIGITALOCEAN_ACCESS_TOKEN`
+- `GHCR_CREDENTIALS` w formacie `username:token`
+- `DEFAULT_CONNECTION`
+- `JWT_KEY`
+
+Repo zawiera tez reczny workflow `.github/workflows/backend-migrations.yml`, ktory uruchamia `dotnet ef database update` przeciwko connection stringowi z sekretu `DEFAULT_CONNECTION`.
+
+### Health endpoint
+Backend udostępnia anonimowe endpointy zdrowia:
+
+```text
+GET /health
+GET /health/live
+```
+
+`/health/live` sprawdza, czy proces działa.
+`/health` jest readiness checkiem i obejmuje też połączenie z bazą.
 
 ## Migracje
 Narzędzie EF jest dodane lokalnie przez manifest `dotnet-tools.json`.
@@ -113,4 +168,6 @@ dotnet tool run dotnet-ef database update --project WorldCupTyper.Infrastructure
 - import terminarza i wyników,
 - smart knockout resolver,
 - wykres progresu punktów na bazie `LeaderboardSnapshot`,
-- deploy na subdomeny `typer.marekwozniak.me` oraz `api-typer.marekwozniak.me`.
+- finalne spięcie domen `typer.marekwozniak.me` oraz `api-typer.marekwozniak.me`,
+- dopiecie produkcyjnego deployu po skonfigurowaniu sekretow i zasobow hostingu,
+- decyzja, czy docelowo zostawiamy migracje przy starcie aplikacji, czy przechodzimy w pelni na osobny workflow migracyjny.

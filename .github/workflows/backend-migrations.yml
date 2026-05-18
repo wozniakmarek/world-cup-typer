@@ -1,0 +1,32 @@
+name: Run backend database migrations
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Apply EF Core migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore backend dependencies
+        run: dotnet restore backend/WorldCupTyper.sln
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Apply database migrations
+        run: dotnet tool run dotnet-ef database update --project backend/WorldCupTyper.Infrastructure
+        env:
+          ConnectionStrings__DefaultConnection: ${{ secrets.DEFAULT_CONNECTION }}

@@ -1,0 +1,56 @@
+alerts:
+  - rule: DEPLOYMENT_FAILED
+name: world-cup-typer-api
+region: fra
+services:
+  - name: api
+    image:
+      registry_type: GHCR
+      registry: wozniakmarek
+      repository: world-cup-typer-api
+      registry_credentials: ${GHCR_CREDENTIALS}
+      digest: ${API_IMAGE_DIGEST}
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    health_check:
+      http_path: /health
+      port: 8080
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+        scope: RUN_TIME
+        type: GENERAL
+      - key: ConnectionStrings__DefaultConnection
+        value: ${DEFAULT_CONNECTION}
+        scope: RUN_TIME
+        type: SECRET
+      - key: Jwt__Key
+        value: ${JWT_KEY}
+        scope: RUN_TIME
+        type: SECRET
+      - key: Jwt__Issuer
+        value: WorldCupTyper
+        scope: RUN_TIME
+        type: GENERAL
+      - key: Jwt__Audience
+        value: WorldCupTyper.Client
+        scope: RUN_TIME
+        type: GENERAL
+      - key: Jwt__ExpiryMinutes
+        value: "720"
+        scope: RUN_TIME
+        type: GENERAL
+      - key: Cors__AllowedOrigins__0
+        value: https://typer.marekwozniak.me
+        scope: RUN_TIME
+        type: GENERAL
+      - key: Seed__Enabled
+        value: "false"
+        scope: RUN_TIME
+        type: GENERAL

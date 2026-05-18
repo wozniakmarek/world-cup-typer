@@ -13,6 +13,7 @@ const commonLinks = [
 const adminLinks = [
   { to: '/admin', label: 'Admin', icon: Shield },
   { to: '/admin/players', label: 'Gracze', icon: Shield },
+  { to: '/admin/teams', label: 'Drużyny', icon: Shield },
   { to: '/admin/matches', label: 'Mecze Admin', icon: Shield },
 ]
 

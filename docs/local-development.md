@@ -40,6 +40,15 @@ docker build -f backend/WorldCupTyper.Api/Dockerfile -t world-cup-typer-api .
 
 Kontener nasluchuje na porcie `8080`.
 
+Po uruchomieniu API mozna sprawdzic prosty stan aplikacji:
+
+```bash
+curl http://localhost:5000/health
+curl http://localhost:5000/health/live
+```
+
+`/health/live` sprawdza sam proces aplikacji, a `/health` obejmuje tez gotowosc z baza danych.
+
 ## CI
 Workflow `.github/workflows/ci.yml` odtwarza podstawowa weryfikacje projektu:
 - backend restore/build/test,
