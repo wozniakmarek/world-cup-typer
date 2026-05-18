@@ -57,6 +57,7 @@ npm run dev
 ```
 
 Frontend czyta `VITE_API_BASE_URL=http://localhost:5000`.
+Lokalny backend dopuszcza frontend uruchomiony zarowno pod `http://localhost:5173`, jak i `http://127.0.0.1:5173`.
 
 ## Seed development
 - Admin: `admin@marekwozniak.me` / `ChangeMe123!`

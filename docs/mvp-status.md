@@ -98,7 +98,7 @@ Ten dokument porownuje poczatkowe zalozenia projektu z aktualnym stanem repo. Ma
 
 ### 3. UX i polish MVP
 - zrobic jeszcze jeden pelny przeglad UX na realnych urzadzeniach i po docelowym deployu
-- zdecydowac, czy lokalny development ma wspierac tylko `http://localhost:5173`, czy rowniez `http://127.0.0.1:5173` w CORS
+- lokalny CORS wspiera teraz `http://localhost:5173` oraz `http://127.0.0.1:5173`; warto tylko utrzymac to w przyszlych zmianach konfiguracyjnych
 - ewentualnie dopracowac drobne copy i spacing po pierwszych testach uzytkownikow
 
 ### 4. Pierwszy etap po MVP

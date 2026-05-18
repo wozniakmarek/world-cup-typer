@@ -23,6 +23,7 @@ Domyślne API działa na `http://localhost:5000`.
 4. `npm run dev`
 
 Frontend oczekuje `VITE_API_BASE_URL=http://localhost:5000`.
+Domyslny CORS backendu wspiera lokalny frontend pod `http://localhost:5173` oraz `http://127.0.0.1:5173`.
 
 ## Seed development
 - Admin: `admin@marekwozniak.me` / `ChangeMe123!`
