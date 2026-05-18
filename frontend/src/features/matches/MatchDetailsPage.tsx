@@ -7,17 +7,29 @@ import { matchesApi } from '../../api/services'
 import { formatLongDate } from '../../app/formatters'
 import { EmptyState } from '../../components/EmptyState'
 import { FormField } from '../../components/FormField'
+import { InlineAlert } from '../../components/InlineAlert'
 import { Panel } from '../../components/Panel'
+import { QueryState } from '../../components/QueryState'
 import { SectionHeading } from '../../components/SectionHeading'
 import { StatusPill } from '../../components/StatusPill'
 import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
 
+const parseScoreValue = (value: string) => {
+  const normalized = value.trim()
+
+  if (!/^\d+$/.test(normalized)) {
+    return null
+  }
+
+  return Number(normalized)
+}
+
 export const MatchDetailsPage = () => {
   const { matchId } = useParams()
   const queryClient = useQueryClient()
-  const [homeScore, setHomeScore] = useState('0')
-  const [awayScore, setAwayScore] = useState('0')
-  const [feedback, setFeedback] = useState<string | null>(null)
+  const [homeScore, setHomeScore] = useState('')
+  const [awayScore, setAwayScore] = useState('')
+  const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null)
 
   const matchQuery = useQuery({
     queryKey: ['match', matchId],
@@ -32,11 +44,19 @@ export const MatchDetailsPage = () => {
   })
 
   useEffect(() => {
+    setFeedback(null)
+  }, [matchId])
+
+  useEffect(() => {
     if (matchQuery.data?.myPrediction) {
       setHomeScore(String(matchQuery.data.myPrediction.predictedHomeScore))
       setAwayScore(String(matchQuery.data.myPrediction.predictedAwayScore))
+      return
     }
-  }, [matchQuery.data?.myPrediction])
+
+    setHomeScore('')
+    setAwayScore('')
+  }, [matchId, matchQuery.data?.myPrediction])
 
   const savePredictionMutation = useMutation({
     mutationFn: async () => {
@@ -44,9 +64,16 @@ export const MatchDetailsPage = () => {
         return null
       }
 
+      const parsedHomeScore = parseScoreValue(homeScore)
+      const parsedAwayScore = parseScoreValue(awayScore)
+
+      if (parsedHomeScore == null || parsedAwayScore == null) {
+        throw new Error('Wpisz nieujemne liczby całkowite dla obu drużyn.')
+      }
+
       const payload = {
-        predictedHomeScore: Number(homeScore),
-        predictedAwayScore: Number(awayScore),
+        predictedHomeScore: parsedHomeScore,
+        predictedAwayScore: parsedAwayScore,
       }
 
       if (matchQuery.data?.myPrediction) {
@@ -56,127 +83,216 @@ export const MatchDetailsPage = () => {
       return matchesApi.createPrediction(matchId, payload)
     },
     onSuccess: async () => {
-      setFeedback('Typ zapisany.')
+      setFeedback({ tone: 'success', message: 'Typ zapisany.' })
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['match', matchId] }),
+        queryClient.invalidateQueries({ queryKey: ['match-predictions', matchId] }),
         queryClient.invalidateQueries({ queryKey: ['matches'] }),
         queryClient.invalidateQueries({ queryKey: ['predictions', 'mine'] }),
       ])
     },
-    onError: (error) => setFeedback(getErrorMessage(error)),
+    onError: (error) => setFeedback({ tone: 'error', message: getErrorMessage(error) }),
   })
-
-  const match = matchQuery.data
-  if (!match) {
-    return <EmptyState title="Ładowanie meczu" description="Pobieram szczegóły spotkania i Twojego typu." />
-  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setFeedback(null)
+
+    const parsedHomeScore = parseScoreValue(homeScore)
+    const parsedAwayScore = parseScoreValue(awayScore)
+
+    if (parsedHomeScore == null || parsedAwayScore == null) {
+      setFeedback({ tone: 'error', message: 'Wpisz nieujemne liczby całkowite dla obu drużyn.' })
+      return
+    }
+
     await savePredictionMutation.mutateAsync()
   }
 
+  const match = matchQuery.data
+  const isLocked = Boolean(match && !match.canEditPrediction && !match.isSettled)
+  const scoreAvailable = match ? match.homeScore90 != null || match.awayScore90 != null : false
+  const predictionInfoMessage = match?.canViewPredictions
+    ? 'Kickoff minął, więc typy pozostałych graczy są już widoczne.'
+    : 'Przed kickoffem widzisz wyłącznie swój typ.'
+
   return (
     <div className="space-y-6">
-      <SectionHeading
-        eyebrow="Szczegóły meczu"
-        title={`${match.homeTeam.name} vs ${match.awayTeam.name}`}
-        description={`Kickoff: ${formatLongDate(match.kickoffTimeUtc)}${match.venue ? ` • ${match.venue}` : ''}`}
-      />
-
-      <Panel className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="rounded-3xl bg-slate-950/50 px-4 py-4">
-            <p className="font-display text-3xl uppercase text-white">
-              {match.homeTeam.flagEmoji} {match.homeTeam.name}
-            </p>
-            <p className="mt-1 font-display text-3xl uppercase text-white">
-              {match.awayTeam.flagEmoji} {match.awayTeam.name}
-            </p>
-          </div>
-          <StatusPill status={match.status} isSettled={match.isSettled} />
-        </div>
-
-        {(match.homeScore90 ?? match.awayScore90) !== undefined ? (
-          <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-            Wynik po 90 min: <strong>{match.homeScore90 ?? '-'} : {match.awayScore90 ?? '-'}</strong>
-            {match.isSettled ? ` • Twoje punkty: ${match.myPoints ?? 0}` : ''}
-          </div>
-        ) : null}
-
-        <form className="grid gap-4 md:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => void handleSubmit(event)}>
-          <FormField label={`Typ: ${match.homeTeam.name}`}>
-            <input
-              type="number"
-              min="0"
-              value={homeScore}
-              onChange={(event) => setHomeScore(event.target.value)}
-              disabled={!match.canEditPrediction || savePredictionMutation.isPending}
-              className={inputClassName}
+      <QueryState
+        isLoading={matchQuery.isLoading}
+        isError={matchQuery.isError}
+        errorMessage={getErrorMessage(matchQuery.error)}
+        isEmpty={!match}
+        emptyTitle="Nie znaleziono meczu"
+        emptyDescription="To spotkanie nie jest dostępne albo zostało usunięte z terminarza."
+        loadingTitle="Ładowanie meczu"
+        loadingDescription="Pobieram szczegóły spotkania i Twój aktualny typ."
+      >
+        {match ? (
+          <>
+            <SectionHeading
+              eyebrow="Szczegóły meczu"
+              title={`${match.homeTeam.name} vs ${match.awayTeam.name}`}
+              description={`Kickoff: ${formatLongDate(match.kickoffTimeUtc)}${match.venue ? ` • ${match.venue}` : ''}`}
             />
-          </FormField>
-          <FormField label={`Typ: ${match.awayTeam.name}`}>
-            <input
-              type="number"
-              min="0"
-              value={awayScore}
-              onChange={(event) => setAwayScore(event.target.value)}
-              disabled={!match.canEditPrediction || savePredictionMutation.isPending}
-              className={inputClassName}
-            />
-          </FormField>
-          <div className="flex items-end">
-            <button type="submit" disabled={!match.canEditPrediction || savePredictionMutation.isPending} className={`${buttonClassName} w-full md:w-auto`}>
-              {match.myPrediction ? 'Zapisz zmianę' : 'Zapisz typ'}
-            </button>
-          </div>
-        </form>
 
-        {!match.canEditPrediction ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-            Typ zablokowany. Po kickoffie backend blokuje edycję niezależnie od UI.
-          </div>
-        ) : null}
-
-        {feedback ? <div className="rounded-3xl bg-sky-500/15 px-4 py-3 text-sm text-sky-100">{feedback}</div> : null}
-      </Panel>
-
-      <Panel className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-display text-2xl uppercase text-white">Typy graczy</p>
-            <p className="text-sm text-slate-400">
-              {predictionsQuery.data?.canViewAllPredictions
-                ? 'Kickoff minął, więc typy pozostałych graczy są widoczne.'
-                : 'Przed kickoffem widzisz wyłącznie swój typ.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void predictionsQuery.refetch()}
-            className={secondaryButtonClassName}
-          >
-            Odśwież
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {predictionsQuery.data?.predictions.map((prediction) => (
-            <div key={prediction.predictionId} className="flex items-center justify-between rounded-2xl bg-slate-950/50 px-4 py-3">
-              <div>
-                <p className="font-semibold text-white">{prediction.displayName}</p>
-                <p className="text-xs text-slate-400">
-                  {prediction.points != null ? `Punkty: ${prediction.points}` : 'Jeszcze bez rozliczenia'}
-                </p>
+            <Panel className="space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex-1 rounded-3xl bg-slate-950/50 px-4 py-4">
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Gospodarze</p>
+                      <p className="mt-1 font-display text-2xl uppercase text-white md:text-3xl">
+                        {match.homeTeam.flagEmoji} {match.homeTeam.name}
+                      </p>
+                    </div>
+                    <p className="text-center font-display text-sm uppercase tracking-[0.3em] text-slate-500">vs</p>
+                    <div className="md:text-right">
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Goście</p>
+                      <p className="mt-1 font-display text-2xl uppercase text-white md:text-3xl">
+                        {match.awayTeam.flagEmoji} {match.awayTeam.name}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <StatusPill status={match.status} isSettled={match.isSettled} />
               </div>
-              <p className="font-display text-2xl text-emerald-300">
-                {prediction.predictedHomeScore}:{prediction.predictedAwayScore}
-              </p>
-            </div>
-          ))}
-        </div>
-      </Panel>
+
+              {scoreAvailable ? (
+                <InlineAlert
+                  tone={match.isSettled ? 'success' : 'info'}
+                  title="Wynik po 90 minutach"
+                  message={`${match.homeScore90 ?? '-'} : ${match.awayScore90 ?? '-'}${match.isSettled ? ` • Twoje punkty: ${match.myPoints ?? 0}` : ''}`}
+                />
+              ) : null}
+
+              {match.canEditPrediction ? (
+                <InlineAlert
+                  tone="info"
+                  title="Typowanie jest otwarte"
+                  message="Możesz zapisać nowy typ albo poprawić obecny wynik do momentu kickoffu."
+                />
+              ) : null}
+
+              {isLocked ? (
+                <InlineAlert
+                  tone="warning"
+                  title="Typowanie zostało zablokowane"
+                  message="Po kickoffie backend blokuje edycję typu niezależnie od stanu formularza."
+                />
+              ) : null}
+
+              {match.isSettled ? (
+                <InlineAlert
+                  tone="success"
+                  title="Mecz rozliczony"
+                  message={`To spotkanie zostało rozliczone. Twój wynik punktowy: ${match.myPoints ?? 0}.`}
+                />
+              ) : null}
+
+              <form className="grid gap-4 md:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => void handleSubmit(event)}>
+                <FormField label={`Typ: ${match.homeTeam.name}`}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={homeScore}
+                    onChange={(event) => setHomeScore(event.target.value)}
+                    disabled={!match.canEditPrediction || savePredictionMutation.isPending}
+                    className={inputClassName}
+                  />
+                </FormField>
+                <FormField label={`Typ: ${match.awayTeam.name}`}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={awayScore}
+                    onChange={(event) => setAwayScore(event.target.value)}
+                    disabled={!match.canEditPrediction || savePredictionMutation.isPending}
+                    className={inputClassName}
+                  />
+                </FormField>
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    disabled={!match.canEditPrediction || savePredictionMutation.isPending}
+                    className={`${buttonClassName} w-full md:w-auto`}
+                  >
+                    {match.myPrediction ? 'Zapisz zmianę' : 'Zapisz typ'}
+                  </button>
+                </div>
+              </form>
+
+              {feedback ? <InlineAlert tone={feedback.tone} message={feedback.message} /> : null}
+            </Panel>
+
+            <Panel className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-display text-2xl uppercase text-white">Typy graczy</p>
+                  <p className="text-sm text-slate-400">{predictionInfoMessage}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void predictionsQuery.refetch()}
+                  className={secondaryButtonClassName}
+                >
+                  Odśwież
+                </button>
+              </div>
+
+              {predictionsQuery.isLoading ? (
+                <EmptyState
+                  compact
+                  title="Ładowanie typów"
+                  description="Pobieram listę przewidywań dla tego meczu."
+                />
+              ) : null}
+
+              {predictionsQuery.isError ? (
+                <InlineAlert
+                  tone="error"
+                  title="Nie udało się pobrać typów"
+                  message={getErrorMessage(predictionsQuery.error)}
+                />
+              ) : null}
+
+              {!predictionsQuery.isLoading && !predictionsQuery.isError && (predictionsQuery.data?.predictions.length ?? 0) === 0 ? (
+                <EmptyState
+                  compact
+                  title="Brak widocznych typów"
+                  description={
+                    match.canViewPredictions
+                      ? 'Ten mecz nie ma jeszcze zapisanych typów.'
+                      : 'Pozostali gracze staną się widoczni dopiero po kickoffie.'
+                  }
+                />
+              ) : null}
+
+              {!predictionsQuery.isLoading && !predictionsQuery.isError && (predictionsQuery.data?.predictions.length ?? 0) > 0 ? (
+                <div className="space-y-3">
+                  {predictionsQuery.data?.predictions.map((prediction) => (
+                    <div key={prediction.predictionId} className="flex items-center justify-between rounded-2xl bg-slate-950/50 px-4 py-3">
+                      <div>
+                        <p className="font-semibold text-white">{prediction.displayName}</p>
+                        <p className="text-xs text-slate-400">
+                          {prediction.points != null ? `Punkty: ${prediction.points}` : 'Jeszcze bez rozliczenia'}
+                        </p>
+                      </div>
+                      <p className="font-display text-2xl text-emerald-300">
+                        {prediction.predictedHomeScore}:{prediction.predictedAwayScore}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </Panel>
+          </>
+        ) : null}
+      </QueryState>
     </div>
   )
 }

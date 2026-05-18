@@ -5,9 +5,12 @@ import { getErrorMessage } from '../../api/client'
 import { adminApi, teamsApi } from '../../api/services'
 import type { Team } from '../../api/types'
 import { FormField } from '../../components/FormField'
+import { InlineAlert } from '../../components/InlineAlert'
 import { Panel } from '../../components/Panel'
+import { QueryState } from '../../components/QueryState'
+import { ResponsiveTable } from '../../components/ResponsiveTable'
 import { SectionHeading } from '../../components/SectionHeading'
-import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
+import { buttonClassName, inputClassName, mobileRecordClassName, secondaryButtonClassName } from '../../styles/ui'
 
 const emptyTeamForm = {
   name: '',
@@ -17,13 +20,19 @@ const emptyTeamForm = {
   groupName: '',
 }
 
+type FeedbackState = {
+  tone: 'success' | 'error'
+  message: string
+  title?: string
+}
+
 export const AdminTeamsPage = () => {
   const queryClient = useQueryClient()
   const teamsQuery = useQuery({ queryKey: ['teams'], queryFn: teamsApi.getAll })
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
   const [createForm, setCreateForm] = useState(emptyTeamForm)
   const [editForm, setEditForm] = useState(emptyTeamForm)
-  const [feedback, setFeedback] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null)
 
   useEffect(() => {
     if (!selectedTeam) {
@@ -55,11 +64,11 @@ export const AdminTeamsPage = () => {
         groupName: createForm.groupName || undefined,
       }),
     onSuccess: async () => {
-      setFeedback('Drużyna została dodana.')
+      setFeedback({ tone: 'success', message: 'Drużyna została dodana.' })
       setCreateForm(emptyTeamForm)
       await refreshTeams()
     },
-    onError: (error) => setFeedback(getErrorMessage(error)),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się dodać drużyny', message: getErrorMessage(error) }),
   })
 
   const updateMutation = useMutation({
@@ -75,10 +84,10 @@ export const AdminTeamsPage = () => {
       })
     },
     onSuccess: async () => {
-      setFeedback('Drużyna została zaktualizowana.')
+      setFeedback({ tone: 'success', message: 'Drużyna została zaktualizowana.' })
       await refreshTeams()
     },
-    onError: (error) => setFeedback(getErrorMessage(error)),
+    onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się zapisać zmian', message: getErrorMessage(error) }),
   })
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -94,15 +103,17 @@ export const AdminTeamsPage = () => {
     await updateMutation.mutateAsync()
   }
 
+  const teams = teamsQuery.data ?? []
+
   return (
     <div className="space-y-6">
       <SectionHeading
-        eyebrow="Admin • Drużyny"
+        eyebrow="Admin / Drużyny"
         title="Zarządzanie drużynami"
         description="Dodawaj zespoły, skróty i grupy turniejowe, żeby później wygodnie układać terminarz."
       />
 
-      {feedback ? <Panel className="bg-sky-500/10 text-sm text-sky-100">{feedback}</Panel> : null}
+      {feedback ? <InlineAlert tone={feedback.tone} title={feedback.title} message={feedback.message} /> : null}
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Panel>
@@ -172,41 +183,80 @@ export const AdminTeamsPage = () => {
         </Panel>
       </div>
 
-      <Panel className="overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-950/60 text-left uppercase tracking-[0.2em] text-slate-400">
-              <tr>
-                <th className="px-4 py-4">Drużyna</th>
-                <th className="px-4 py-4">Skrót</th>
-                <th className="px-4 py-4">Kod</th>
-                <th className="px-4 py-4">Grupa</th>
-                <th className="px-4 py-4">Akcje</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teamsQuery.data?.map((team) => (
-                <tr key={team.id} className="border-t border-white/5">
-                  <td className="px-4 py-4 text-white">
-                    <span className="inline-flex items-center gap-2">
-                      {team.flagEmoji ? <span>{team.flagEmoji}</span> : null}
-                      <span>{team.name}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-slate-300">{team.shortName}</td>
-                  <td className="px-4 py-4 text-slate-300">{team.countryCode}</td>
-                  <td className="px-4 py-4 text-slate-300">{team.groupName || '—'}</td>
-                  <td className="px-4 py-4">
-                    <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedTeam(team)}>
-                      Edytuj
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+      <QueryState
+        isLoading={teamsQuery.isLoading}
+        isError={teamsQuery.isError}
+        errorMessage={getErrorMessage(teamsQuery.error)}
+        isEmpty={teams.length === 0}
+        emptyTitle="Brak drużyn"
+        emptyDescription="Dodaj pierwszą reprezentację, aby potem tworzyć terminarz i przypisywać grupy."
+        loadingTitle="Ładowanie drużyn"
+        loadingDescription="Pobieram listę reprezentacji i ich dane turniejowe."
+      >
+        <Panel className="overflow-hidden p-0">
+          <ResponsiveTable
+            table={
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-950/60 text-left uppercase tracking-[0.2em] text-slate-400">
+                    <tr>
+                      <th className="px-4 py-4">Drużyna</th>
+                      <th className="px-4 py-4">Skrót</th>
+                      <th className="px-4 py-4">Kod</th>
+                      <th className="px-4 py-4">Grupa</th>
+                      <th className="px-4 py-4">Akcje</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teams.map((team) => (
+                      <tr key={team.id} className="border-t border-white/5">
+                        <td className="px-4 py-4 text-white">
+                          <span className="inline-flex items-center gap-2">
+                            {team.flagEmoji ? <span>{team.flagEmoji}</span> : null}
+                            <span>{team.name}</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-slate-300">{team.shortName}</td>
+                        <td className="px-4 py-4 text-slate-300">{team.countryCode}</td>
+                        <td className="px-4 py-4 text-slate-300">{team.groupName || '-'}</td>
+                        <td className="px-4 py-4">
+                          <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedTeam(team)}>
+                            Edytuj
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            }
+            cards={teams.map((team) => (
+              <article key={team.id} className={mobileRecordClassName}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-white">
+                      {team.flagEmoji ? `${team.flagEmoji} ` : ''}
+                      {team.name}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {team.shortName} / {team.countryCode}
+                    </p>
+                  </div>
+                  <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">
+                    {team.groupName || 'Bez grupy'}
+                  </p>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end">
+                  <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedTeam(team)}>
+                    Edytuj
+                  </button>
+                </div>
+              </article>
+            ))}
+          />
+        </Panel>
+      </QueryState>
     </div>
   )
 }

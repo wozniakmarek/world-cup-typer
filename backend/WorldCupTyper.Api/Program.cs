@@ -23,6 +23,7 @@ if (allowedOrigins is null || allowedOrigins.Length == 0)
     allowedOrigins =
     [
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "https://typer.marekwozniak.me",
     ];
 }

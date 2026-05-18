@@ -31,6 +31,9 @@ Ten dokument porownuje poczatkowe zalozenia projektu z aktualnym stanem repo. Ma
 - panel admina dla druzyn
 - panel admina dla meczow
 - PWA-ready konfiguracja z manifestem i service workerem
+- wspolne stany `loading/error/empty/success`
+- mobilne wzorce dla tabel i list adminowych
+- lepsza nawigacja i czytelniejsze komunikaty formularzy
 
 ### Operacyjne przygotowanie repo
 - `docker-compose.yml` dla Postgresa
@@ -61,9 +64,16 @@ Ten dokument porownuje poczatkowe zalozenia projektu z aktualnym stanem repo. Ma
 - Sa testy jednostkowe dla scoringu i kluczowych reguł biznesowych.
 
 ## Czesciowo domkniete
-- Responsywnosc mobilna jest sensowna, ale adminowe ekrany nadal warto przejrzec stricte pod telefon i male viewporty.
+- Responsywnosc mobilna jest sensowna i po polishu duzo dojrzalsza, ale nadal warto zrobic jeszcze jeden stricte produktowy przeglad na realnych telefonach przed publicznym deployem.
 - Deploy jest przygotowany workflowami i konfiguracja, ale nie zostal jeszcze skonfigurowany sekretami ani odpalony na docelowej infrastrukturze.
 - PWA jest gotowe technicznie do instalacji, ale bez pelnych push notifications i bez rozbudowanego offline.
+
+## Dodatkowo dopiete po MVP bazowym
+- wspolne komponenty `InlineAlert`, `QueryState` i `ResponsiveTable`
+- bardziej przewidywalne komunikaty sukcesu i bledu w ekranach gracza i admina
+- lepsza obsluga pustych i ladujacych sie sekcji na dashboardzie, meczach, rankingu i profilu
+- bardziej mobilny panel admina dla graczy, druzyn i meczow
+- poprawiona nawigacja na malych viewportach
 
 ## Swiadomie odlozone poza MVP
 - automatyczne pobieranie terminarza
@@ -87,9 +97,9 @@ Ten dokument porownuje poczatkowe zalozenia projektu z aktualnym stanem repo. Ma
 - albo przejsc na model: najpierw workflow migracyjny, potem deploy API
 
 ### 3. UX i polish MVP
-- przejrzec adminowe formularze i listy pod telefon
-- dodac bardziej czytelne empty states i loading states tam, gdzie sa jeszcze surowe
-- dopracowac komunikaty bledu i sukcesu w kilku formularzach
+- zrobic jeszcze jeden pelny przeglad UX na realnych urzadzeniach i po docelowym deployu
+- lokalny CORS wspiera teraz `http://localhost:5173` oraz `http://127.0.0.1:5173`; warto tylko utrzymac to w przyszlych zmianach konfiguracyjnych
+- ewentualnie dopracowac drobne copy i spacing po pierwszych testach uzytkownikow
 
 ### 4. Pierwszy etap po MVP
 - wykres progresu punktow na bazie `LeaderboardSnapshot`
@@ -105,3 +115,4 @@ Ten dokument porownuje poczatkowe zalozenia projektu z aktualnym stanem repo. Ma
 - `docker build -f backend/WorldCupTyper.Api/Dockerfile -t world-cup-typer-api .`
 - `dotnet tool run dotnet-ef database update --project backend/WorldCupTyper.Infrastructure`
 - runtime check `/health` i `/health/live`
+- smoke test frontendu na `http://localhost:5173` dla flow admina i gracza

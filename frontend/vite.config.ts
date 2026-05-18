@@ -10,7 +10,7 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['apple-touch-icon.svg', 'favicon.svg'],
       manifest: {
-        name: 'Typer Mistrzostw Swiata',
+        name: 'Typer Mistrzostw Świata',
         short_name: 'Typer MŚ',
         description: 'Prywatna aplikacja do typowania wyników meczów Mistrzostw Świata.',
         theme_color: '#071321',
