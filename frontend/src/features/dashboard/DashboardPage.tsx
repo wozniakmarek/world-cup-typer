@@ -102,7 +102,7 @@ export const DashboardPage = () => {
                         #{entry.position} {entry.displayName}
                       </p>
                       <p className="text-xs text-slate-400">
-                        Dokładne: {entry.exactScoreHits} • Rezultaty: {entry.correctOutcomeHits}
+                        Dokładne: {entry.exactScoreHits} / Rezultaty: {entry.correctOutcomeHits}
                       </p>
                     </div>
                     <p className="font-display text-2xl text-emerald-300">{entry.totalPoints}</p>
