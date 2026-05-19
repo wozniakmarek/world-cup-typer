@@ -15,7 +15,12 @@ function readSecretValue(value: string | undefined, key: string): string | undef
 
   const candidateKey = trimmed.slice(0, separatorIndex).trim()
   const candidateValue = trimmed.slice(separatorIndex + 1).trim()
-  return candidateKey.toLowerCase() === key.toLowerCase() ? candidateValue : trimmed
+
+  if (candidateKey.toLowerCase() === key.toLowerCase()) {
+    return candidateValue
+  }
+
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(candidateKey) ? undefined : trimmed
 }
 
 const smokeMode = readSecretValue(process.env.E2E_SMOKE_MODE, 'E2E_SMOKE_MODE')?.toLowerCase() ?? 'production'
