@@ -11,12 +11,16 @@ public sealed class TeamConfiguration : IEntityTypeConfiguration<Team>
         builder.ToTable("Teams");
 
         builder.HasKey(team => team.Id);
+        builder.Property(team => team.ExternalId).HasMaxLength(100);
         builder.Property(team => team.Name).HasMaxLength(100).IsRequired();
         builder.Property(team => team.ShortName).HasMaxLength(20).IsRequired();
         builder.Property(team => team.CountryCode).HasMaxLength(3).IsRequired();
         builder.Property(team => team.FlagEmoji).HasMaxLength(10);
         builder.Property(team => team.GroupName).HasMaxLength(20);
 
+        builder.HasIndex(team => team.ExternalId)
+            .IsUnique()
+            .HasFilter("\"ExternalId\" IS NOT NULL");
         builder.HasIndex(team => team.Name).IsUnique();
         builder.HasIndex(team => team.ShortName).IsUnique();
     }

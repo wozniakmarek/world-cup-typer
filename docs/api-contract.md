@@ -30,6 +30,7 @@
 - `PUT /api/admin/matches/{id}/result`
 - `POST /api/admin/matches/{id}/settle`
 - `POST /api/admin/matches/recalculate-ranking`
+- `POST /api/admin/matches/sync-football-data`
 
 ## Predictions
 - `GET /api/predictions/my`

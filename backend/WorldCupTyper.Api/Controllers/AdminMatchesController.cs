@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WorldCupTyper.Application.Abstractions;
 using WorldCupTyper.Application.DTOs;
 using WorldCupTyper.Application.Services.Interfaces;
 
@@ -12,11 +13,16 @@ public sealed class AdminMatchesController : ControllerBase
 {
     private readonly IMatchService _matchService;
     private readonly IMatchSettlementService _matchSettlementService;
+    private readonly IScheduleImportService _scheduleImportService;
 
-    public AdminMatchesController(IMatchService matchService, IMatchSettlementService matchSettlementService)
+    public AdminMatchesController(
+        IMatchService matchService,
+        IMatchSettlementService matchSettlementService,
+        IScheduleImportService scheduleImportService)
     {
         _matchService = matchService;
         _matchSettlementService = matchSettlementService;
+        _scheduleImportService = scheduleImportService;
     }
 
     [HttpGet]
@@ -56,5 +62,11 @@ public sealed class AdminMatchesController : ControllerBase
     {
         await _matchSettlementService.RecalculateRankingsAsync(cancellationToken);
         return NoContent();
+    }
+
+    [HttpPost("sync-football-data")]
+    public async Task<ActionResult<ScheduleSyncSummaryDto>> SyncFootballData(CancellationToken cancellationToken)
+    {
+        return Ok(await _scheduleImportService.ImportScheduleAsync(cancellationToken));
     }
 }
