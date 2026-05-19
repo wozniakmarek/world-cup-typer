@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 function readSecretValue(value: string | undefined, key: string): string | undefined {
   const trimmed = value?.trim()
@@ -7,8 +8,30 @@ function readSecretValue(value: string | undefined, key: string): string | undef
     return undefined
   }
 
-  const prefixedKey = `${key}=`
-  return trimmed.startsWith(prefixedKey) ? trimmed.slice(prefixedKey.length).trim() : trimmed
+  const separatorIndex = trimmed.indexOf('=')
+  if (separatorIndex <= 0) {
+    return trimmed
+  }
+
+  const candidateKey = trimmed.slice(0, separatorIndex).trim()
+  const candidateValue = trimmed.slice(separatorIndex + 1).trim()
+
+  if (candidateKey.toLowerCase() === key.toLowerCase()) {
+    return candidateValue
+  }
+
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(candidateKey) ? undefined : trimmed
+}
+
+const smokeMode = readSecretValue(process.env.E2E_SMOKE_MODE, 'E2E_SMOKE_MODE')?.toLowerCase() ?? 'production'
+const isStagingSmoke = smokeMode === 'staging'
+
+async function login(page: Page, email: string, password: string) {
+  await page.goto('/login')
+  await page.getByLabel('Login').fill(email)
+  await page.getByLabel('Hasło').fill(password)
+  await page.getByRole('button', { name: 'Wejdź do aplikacji' }).click()
+  await expect(page.getByRole('button', { name: 'Wyloguj' })).toBeVisible({ timeout: 15_000 })
 }
 
 test('strona logowania ładuje się poprawnie', async ({ page }) => {
@@ -34,12 +57,40 @@ const roles = [
 for (const role of roles) {
   test(`logowanie smoke (${role.name})`, async ({ page }) => {
     test.skip(!role.email || !role.password, `Brak danych logowania dla roli: ${role.name}`)
-
-    await page.goto('/login')
-    await page.getByLabel('Login').fill(role.email!)
-    await page.getByLabel('Hasło').fill(role.password!)
-    await page.getByRole('button', { name: 'Wejdź do aplikacji' }).click()
-
-    await expect(page.getByRole('button', { name: 'Wyloguj' })).toBeVisible({ timeout: 15_000 })
+    await login(page, role.email!, role.password!)
   })
 }
+
+test('staging smoke (player): mecze, ranking i profil', async ({ page }) => {
+  const player = roles.find((role) => role.name === 'player')
+
+  test.skip(!isStagingSmoke, 'Rozszerzony smoke jest uruchamiany tylko dla staging')
+  test.skip(!player?.email || !player.password, 'Brak danych logowania dla roli: player')
+
+  await login(page, player.email!, player.password!)
+
+  await page.getByRole('link', { name: 'Mecze', exact: true }).click()
+  await expect(page).toHaveURL(/\/matches$/)
+  await expect(page.getByText('Typowanie spotkań')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Ranking', exact: true }).click()
+  await expect(page).toHaveURL(/\/ranking$/)
+  await expect(page.getByText('Tabela liderów')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Profil', exact: true }).click()
+  await expect(page).toHaveURL(/\/profile$/)
+  await expect(page.getByText('Moje statystyki')).toBeVisible()
+})
+
+test('staging smoke (admin): wejście do panelu admina', async ({ page }) => {
+  const admin = roles.find((role) => role.name === 'admin')
+
+  test.skip(!isStagingSmoke, 'Rozszerzony smoke jest uruchamiany tylko dla staging')
+  test.skip(!admin?.email || !admin.password, 'Brak danych logowania dla roli: admin')
+
+  await login(page, admin.email!, admin.password!)
+
+  await page.getByRole('link', { name: 'Admin', exact: true }).click()
+  await expect(page).toHaveURL(/\/admin$/)
+  await expect(page.getByText('Centrum sterowania')).toBeVisible()
+})

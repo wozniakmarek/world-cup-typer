@@ -7,8 +7,19 @@ function readSecretValue(value: string | undefined, key: string): string | undef
     return undefined
   }
 
-  const prefixedKey = `${key}=`
-  return trimmed.startsWith(prefixedKey) ? trimmed.slice(prefixedKey.length).trim() : trimmed
+  const separatorIndex = trimmed.indexOf('=')
+  if (separatorIndex <= 0) {
+    return trimmed
+  }
+
+  const candidateKey = trimmed.slice(0, separatorIndex).trim()
+  const candidateValue = trimmed.slice(separatorIndex + 1).trim()
+
+  if (candidateKey.toLowerCase() === key.toLowerCase()) {
+    return candidateValue
+  }
+
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(candidateKey) ? undefined : trimmed
 }
 
 const rawBaseUrl = readSecretValue(process.env.E2E_BASE_URL, 'E2E_BASE_URL') ?? 'http://127.0.0.1:4173'
