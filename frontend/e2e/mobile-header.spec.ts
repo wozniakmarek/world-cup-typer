@@ -36,7 +36,20 @@ const matches = [
   },
 ]
 
+const runsAgainstLocalPreview = () => {
+  const rawBaseUrl = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173'
+
+  try {
+    const { hostname } = new URL(rawBaseUrl)
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  } catch {
+    return false
+  }
+}
+
 test.beforeEach(async ({ page }) => {
+  test.skip(!runsAgainstLocalPreview(), 'Mobilna regresja layoutu wymaga lokalnego preview z kodem z PR-a')
+
   await page.setViewportSize({ width: 390, height: 844 })
   await page.addInitScript((user) => {
     window.localStorage.setItem('typer.auth.token', 'test-token')
