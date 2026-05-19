@@ -9,7 +9,8 @@ public sealed record PlayerDto(
     UserRole Role,
     bool IsActive,
     DateTime CreatedAtUtc,
-    DateTime? LastLoginAtUtc);
+    DateTime? LastLoginAtUtc,
+    string? AvatarUrl);
 
 public sealed record CreatePlayerRequest(
     string Email,

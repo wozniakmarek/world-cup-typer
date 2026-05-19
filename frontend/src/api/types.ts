@@ -17,6 +17,7 @@ export interface CurrentUser {
   displayName: string
   role: UserRole
   isActive: boolean
+  avatarUrl?: string | null
 }
 
 export interface AuthResponse {
@@ -93,6 +94,7 @@ export interface Player {
   isActive: boolean
   createdAtUtc: string
   lastLoginAtUtc?: string | null
+  avatarUrl?: string | null
 }
 
 export interface ResetPasswordResponse {
@@ -132,6 +134,7 @@ export interface LeaderboardEntry {
   exactScoreHits: number
   correctOutcomeHits: number
   predictionsCount: number
+  avatarUrl?: string | null
   isCurrentUser: boolean
 }
 

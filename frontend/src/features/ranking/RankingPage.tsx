@@ -5,6 +5,7 @@ import { Panel } from '../../components/Panel'
 import { QueryState } from '../../components/QueryState'
 import { ResponsiveTable } from '../../components/ResponsiveTable'
 import { SectionHeading } from '../../components/SectionHeading'
+import { UserAvatar } from '../../components/UserAvatar'
 import { mobileRecordClassName } from '../../styles/ui'
 
 export const RankingPage = () => {
@@ -52,8 +53,11 @@ export const RankingPage = () => {
                       >
                         <td className="px-4 py-4 font-display text-xl text-white">#{entry.position}</td>
                         <td className="px-4 py-4 text-white">
-                          <span className={entry.isCurrentUser ? 'font-semibold text-emerald-200' : undefined}>
-                            {entry.displayName}
+                          <span className="flex items-center gap-3">
+                            <UserAvatar displayName={entry.displayName} avatarUrl={entry.avatarUrl} size="sm" />
+                            <span className={entry.isCurrentUser ? 'font-semibold text-emerald-200' : undefined}>
+                              {entry.displayName}
+                            </span>
                           </span>
                         </td>
                         <td className="px-4 py-4 text-emerald-300">{entry.totalPoints}</td>
@@ -72,11 +76,14 @@ export const RankingPage = () => {
                 className={`${mobileRecordClassName} ${entry.isCurrentUser ? 'border-emerald-400/30 bg-emerald-400/10' : ''}`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-display text-xl text-white">#{entry.position}</p>
-                    <p className={`mt-1 text-sm ${entry.isCurrentUser ? 'font-semibold text-emerald-200' : 'text-white'}`}>
-                      {entry.displayName}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <UserAvatar displayName={entry.displayName} avatarUrl={entry.avatarUrl} />
+                    <div className="min-w-0">
+                      <p className="font-display text-xl text-white">#{entry.position}</p>
+                      <p className={`mt-1 truncate text-sm ${entry.isCurrentUser ? 'font-semibold text-emerald-200' : 'text-white'}`}>
+                        {entry.displayName}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Punkty</p>

@@ -48,7 +48,7 @@ public sealed class AuthService : IAuthService
 
         return new AuthResponse(
             _jwtTokenService.GenerateToken(user),
-            new CurrentUserDto(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive));
+            ToCurrentUserDto(user));
     }
 
     public async Task<CurrentUserDto> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -62,11 +62,52 @@ public sealed class AuthService : IAuthService
             throw new UnauthorizedAppException("Użytkownik nie istnieje lub jest nieaktywny.");
         }
 
-        return new CurrentUserDto(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive);
+        return ToCurrentUserDto(user);
+    }
+
+    public async Task<CurrentUserDto> UpdateAvatarAsync(Guid userId, UpdateAvatarRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(candidate => candidate.Id == userId && candidate.IsActive, cancellationToken);
+
+        if (user is null)
+        {
+            throw new UnauthorizedAppException("Uzytkownik nie istnieje lub jest nieaktywny.");
+        }
+
+        user.AvatarUrl = NormalizeAvatarUrl(request.AvatarUrl);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return ToCurrentUserDto(user);
     }
 
     public Task LogoutAsync(CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
+    }
+
+    private static CurrentUserDto ToCurrentUserDto(WorldCupTyper.Domain.Entities.ApplicationUser user) =>
+        new(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive, user.AvatarUrl);
+
+    private static string? NormalizeAvatarUrl(string? avatarUrl)
+    {
+        if (string.IsNullOrWhiteSpace(avatarUrl))
+        {
+            return null;
+        }
+
+        var normalized = avatarUrl.Trim();
+        if (normalized.Length > 500)
+        {
+            throw new BusinessRuleException("Adres avatara moze miec maksymalnie 500 znakow.");
+        }
+
+        if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new BusinessRuleException("Adres avatara musi byc pelnym adresem http lub https.");
+        }
+
+        return normalized;
     }
 }
