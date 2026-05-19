@@ -1,3 +1,5 @@
+const DEFAULT_LOCAL_PREVIEW_BASE_URL = 'http://127.0.0.1:4173'
+
 export function readSecretValue(value: string | undefined, key: string): string | undefined {
   const trimmed = value?.trim()
 
@@ -26,7 +28,7 @@ export function normalizeBaseUrl(rawBaseUrl: string): string {
 }
 
 export function runsAgainstLocalPreview(baseUrlValue = process.env.E2E_BASE_URL): boolean {
-  const rawBaseUrl = readSecretValue(baseUrlValue, 'E2E_BASE_URL') ?? 'http://127.0.0.1:4173'
+  const rawBaseUrl = readSecretValue(baseUrlValue, 'E2E_BASE_URL') ?? DEFAULT_LOCAL_PREVIEW_BASE_URL
 
   try {
     const { hostname } = new URL(normalizeBaseUrl(rawBaseUrl))

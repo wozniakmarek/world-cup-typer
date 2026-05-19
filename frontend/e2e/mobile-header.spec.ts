@@ -70,7 +70,9 @@ test('logged-in mobile shell keeps primary content high in the first viewport', 
   await page.goto('/')
 
   const header = page.locator('header')
-  const dashboardTitle = page.getByRole('heading', { name: /marek wozniak/i })
+  const dashboardTitle = page.getByRole('heading', {
+    name: new RegExp(currentUser.displayName, 'i'),
+  })
 
   await expect(dashboardTitle).toBeVisible()
 
@@ -85,8 +87,8 @@ test('logged-in mobile shell keeps primary content high in the first viewport', 
 
   const headerBottom = headerBox.y + headerBox.height
 
-  // Keep the main heading close to the header (allowing layout/font variance in CI).
+  // Keep the main heading close to the header, allowing ~96px for content spacing and CI font variance.
   expect(dashboardTitleBox.y).toBeLessThanOrEqual(headerBottom + 96)
-  // In a 390x844 viewport the heading should still stay in the upper portion of the first screen.
+  // In a 390x844 viewport, 360px (~43%) keeps the heading in the upper part of the first screen.
   expect(dashboardTitleBox.y).toBeLessThanOrEqual(360)
 })
