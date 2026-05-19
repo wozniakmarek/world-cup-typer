@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { LayoutDashboard, Shield, Trophy, UserCircle2 } from 'lucide-react'
+import { LayoutDashboard, LogOut, Shield, Trophy, UserCircle2 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../features/auth/AuthContext'
 
@@ -23,27 +23,32 @@ export const AppNavigation = () => {
 
   return (
     <header className="sticky top-0 z-20 border-b border-white/5 bg-pitch-950/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="font-display text-xl uppercase tracking-[0.24em] text-white">Typer Mistrzostw Świata</p>
-            <p className="text-sm text-slate-400">marekwozniak.me</p>
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2.5 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-display text-sm uppercase tracking-[0.18em] text-white sm:text-xl sm:tracking-[0.24em]">
+              <span className="sm:hidden">Typer MŚ</span>
+              <span className="hidden sm:inline">Typer Mistrzostw Świata</span>
+            </p>
+            <p className="hidden text-sm text-slate-400 sm:block">marekwozniak.me</p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="max-w-[8.75rem] truncate rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 sm:max-w-none sm:px-4 sm:py-2 sm:text-sm">
               {user?.displayName}
             </div>
             <button
               type="button"
               onClick={() => void logout()}
-              className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-200 transition hover:border-emerald-400/60 hover:text-white"
+              aria-label="Wyloguj"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-slate-200 transition hover:border-emerald-400/60 hover:text-white sm:h-auto sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
             >
-              Wyloguj
+              <LogOut className="h-4 w-4 sm:hidden" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Wyloguj</span>
             </button>
           </div>
         </div>
 
-        <nav className="flex gap-2 overflow-x-auto pb-1">
+        <nav className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5 sm:mx-0 sm:gap-2 sm:px-0 sm:pb-1">
           {links.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -51,7 +56,7 @@ export const AppNavigation = () => {
               end={to === '/'}
               className={({ isActive }) =>
                 clsx(
-                  'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition',
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition sm:gap-2 sm:px-4 sm:py-2 sm:text-sm',
                   isActive
                     ? 'bg-emerald-400 text-slate-950'
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white',
