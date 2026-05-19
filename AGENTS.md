@@ -6,6 +6,7 @@
 - Prefer tests over manual-only validation.
 - Never store secrets or sensitive production data in the repository.
 - Never merge with red checks.
+- Never merge without required/positive review approval.
 
 ## Agent responsibilities
 - `frontend-polish`

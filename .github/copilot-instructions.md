@@ -23,6 +23,7 @@
 
 ## What Copilot must not do
 - Do not push directly to `main`; use branches and pull requests.
+- Do not merge pull requests without required/positive review approval.
 - Do not hardcode secrets, tokens, passwords, JWT keys, or connection strings.
 - Do not rotate secrets, change GitHub rulesets, DNS, or hosting settings unless a human explicitly handles the required UI action.
 - Do not mutate production data unless the task explicitly requires a safe, minimal production fix.
@@ -55,6 +56,7 @@
 
 ## Pull request expectations
 - Keep changes scoped and easy to review.
+- Do not merge without required review approval.
 - Mention verification commands in the PR body or summary.
 - If smoke tests are skipped because secrets are missing, state that explicitly.
 - Prefer additive fixes over wide refactors unless the task is specifically a refactor.
