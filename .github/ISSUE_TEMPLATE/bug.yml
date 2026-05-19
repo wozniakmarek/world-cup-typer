@@ -1,0 +1,58 @@
+name: "Bug report"
+description: "Zgłoszenie błędu z danymi do szybkiej reprodukcji i naprawy"
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Opis problemu
+      description: Krótko i konkretnie co jest nie tak.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Kroki reprodukcji
+      description: Numerowana lista kroków 1..N.
+      placeholder: |
+        1. Zaloguj się jako ...
+        2. Wejdź na ...
+        3. Kliknij ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected vs Actual
+      placeholder: |
+        Expected: ...
+        Actual: ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Środowisko
+      placeholder: "branch/commit, przeglądarka, urządzenie, env URL"
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Ryzyko i wpływ
+      description: Kogo dotyka i jak bardzo blokuje.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklista
+      options:
+        - label: Dodałem/am kroki reprodukcji
+          required: true
+        - label: Dodałem/am expected/actual
+          required: true
+        - label: Dodałem/am informacje o środowisku
+          required: true
