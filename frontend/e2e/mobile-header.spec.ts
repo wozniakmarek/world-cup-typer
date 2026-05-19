@@ -48,7 +48,7 @@ test.beforeEach(async ({ page, baseURL }) => {
   test.skip(!baseURL, 'Mobile layout regression test requires baseURL in Playwright configuration.')
   test.info().annotations.push({
     type: 'base-url-host',
-    description: runsAgainstLocalPreview() ? 'lokalny-preview' : 'zdalny-host',
+    description: runsAgainstLocalPreview() ? 'local-preview' : 'remote-host',
   })
 
   await page.setViewportSize({ width: 390, height: 844 })
@@ -85,6 +85,8 @@ test('logged-in mobile shell keeps primary content high in the first viewport', 
 
   const headerBottom = headerBox.y + headerBox.height
 
+  // Keep the main heading close to the header (allowing layout/font variance in CI).
   expect(dashboardTitleBox.y).toBeLessThanOrEqual(headerBottom + 96)
+  // In a 390x844 viewport the heading should still stay in the upper portion of the first screen.
   expect(dashboardTitleBox.y).toBeLessThanOrEqual(360)
 })

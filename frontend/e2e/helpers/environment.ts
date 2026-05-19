@@ -17,6 +17,7 @@ export function readSecretValue(value: string | undefined, key: string): string 
     return candidateValue
   }
 
+  // Ignore KEY=VALUE pairs for other variables, but preserve URL-like inputs containing '='.
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(candidateKey) ? undefined : trimmed
 }
 
