@@ -1,4 +1,9 @@
 const DEFAULT_LOCAL_PREVIEW_BASE_URL = 'http://127.0.0.1:4173'
+const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+function isEnvironmentVariableKey(value: string): boolean {
+  return ENV_KEY_PATTERN.test(value)
+}
 
 export function readSecretValue(value: string | undefined, key: string): string | undefined {
   const trimmed = value?.trim()
@@ -20,7 +25,7 @@ export function readSecretValue(value: string | undefined, key: string): string 
   }
 
   // Ignore KEY=VALUE pairs for other variables, but preserve URL-like inputs containing '='.
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(candidateKey) ? undefined : trimmed
+  return isEnvironmentVariableKey(candidateKey) ? undefined : trimmed
 }
 
 export function normalizeBaseUrl(rawBaseUrl: string): string {
