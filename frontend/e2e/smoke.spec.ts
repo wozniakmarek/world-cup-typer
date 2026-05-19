@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test'
 
+function readSecretValue(value: string | undefined, key: string): string | undefined {
+  const trimmed = value?.trim()
+
+  if (!trimmed) {
+    return undefined
+  }
+
+  const prefixedKey = `${key}=`
+  return trimmed.startsWith(prefixedKey) ? trimmed.slice(prefixedKey.length).trim() : trimmed
+}
+
 test('strona logowania ładuje się poprawnie', async ({ page }) => {
   await page.goto('/login')
   await expect(page.getByText('Logowanie')).toBeVisible()
@@ -10,13 +21,13 @@ test('strona logowania ładuje się poprawnie', async ({ page }) => {
 const roles = [
   {
     name: 'admin',
-    email: process.env.E2E_ADMIN_EMAIL,
-    password: process.env.E2E_ADMIN_PASSWORD,
+    email: readSecretValue(process.env.E2E_ADMIN_EMAIL, 'E2E_ADMIN_EMAIL'),
+    password: readSecretValue(process.env.E2E_ADMIN_PASSWORD, 'E2E_ADMIN_PASSWORD'),
   },
   {
     name: 'player',
-    email: process.env.E2E_PLAYER_EMAIL,
-    password: process.env.E2E_PLAYER_PASSWORD,
+    email: readSecretValue(process.env.E2E_PLAYER_EMAIL, 'E2E_PLAYER_EMAIL'),
+    password: readSecretValue(process.env.E2E_PLAYER_PASSWORD, 'E2E_PLAYER_PASSWORD'),
   },
 ]
 

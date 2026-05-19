@@ -41,18 +41,20 @@ jobs:
         run: |
           if [ -n "$SECRET_BASE_URL" ]; then
             echo "E2E_BASE_URL=$SECRET_BASE_URL" >> "$GITHUB_ENV"
+            echo "USE_LOCAL_PREVIEW=false" >> "$GITHUB_ENV"
           else
             echo "E2E_BASE_URL=http://127.0.0.1:4173" >> "$GITHUB_ENV"
+            echo "USE_LOCAL_PREVIEW=true" >> "$GITHUB_ENV"
           fi
 
       - name: Start local preview fallback
-        if: ${{ secrets.E2E_BASE_URL == '' }}
+        if: ${{ env.USE_LOCAL_PREVIEW == 'true' }}
         run: |
           npm run build
           nohup npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/frontend-preview.log 2>&1 &
 
       - name: Wait for local preview
-        if: ${{ secrets.E2E_BASE_URL == '' }}
+        if: ${{ env.USE_LOCAL_PREVIEW == 'true' }}
         run: |
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:4173 >/dev/null; then
