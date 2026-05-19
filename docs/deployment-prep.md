@@ -35,6 +35,11 @@ Repo jest przygotowane do kolejnego etapu wdrozenia, ale bez wymuszania konkretn
   - `Cors__AllowedOrigins__0`
   - `DatabaseStartup__ApplyMigrationsOnStartup`
   - `Seed__Enabled=false`
+  - `FootballData__Enabled=false`
+  - `FootballData__ApiToken`
+  - `FootballData__CompetitionCode=WC`
+  - `FootballData__SyncIntervalMinutes=30`
+  - `FootballData__SettleAutomatically=true`
 
 ## CI
 Workflow `.github/workflows/ci.yml` uruchamia:
@@ -68,12 +73,39 @@ Wymagane sekrety repo:
 - `GHCR_CREDENTIALS`
 - `DEFAULT_CONNECTION`
 - `JWT_KEY`
+- `FOOTBALL_DATA_API_TOKEN`
 
 `GHCR_CREDENTIALS` powinno miec format `username:token`. Zgodnie z dokumentacja DigitalOcean App Platform i `digitalocean/app_action`, sekret ten trafia do `registry_credentials` w app specu i pozwala App Platform pobrac prywatny obraz z GHCR.
 
 Workflow buduje obraz, publikuje go do GHCR i przekazuje jego digest do `.do/app.yaml` przez zmienna `API_IMAGE_DIGEST`, dzieki czemu wdrazany jest dokladnie ten artefakt, ktory zostal zbudowany w danym runie.
 
 Jesli chcesz przejac migracje bazy poza startup aplikacji, mozna ustawic `DatabaseStartup__ApplyMigrationsOnStartup=false` i uruchamiac migracje osobnym krokiem release.
+
+## football-data.org rollout
+
+Automatyczny worker football-data.org powinien zostac wlaczony dopiero po smoke tescie na stagingu.
+
+Domyslna wartosc w `.do/app.yaml` to:
+
+```yaml
+FootballData__Enabled=false
+FootballData__CompetitionCode=WC
+FootballData__SyncIntervalMinutes=30
+FootballData__SettleAutomatically=true
+```
+
+Token musi byc ustawiony jako sekret `FOOTBALL_DATA_API_TOKEN`; nie zapisujemy go w repozytorium ani w jawnych wartosciach app specu.
+
+Zalecana kolejnosc:
+
+1. Dodaj `FOOTBALL_DATA_API_TOKEN` w GitHub Secrets.
+2. Wykonaj deploy backendu z `FootballData__Enabled=false`.
+3. Uruchom migracje bazy albo zostaw `DatabaseStartup__ApplyMigrationsOnStartup=true`.
+4. Zaloguj sie jako admin na stagingu.
+5. Wywolaj recznie `POST /api/admin/matches/sync-football-data`.
+6. Sprawdz, czy import nie utworzyl duplikatow druzyn ani meczow i czy zakonczone mecze z wynikiem po 90 minutach zostaly rozliczone.
+7. Dopiero po pozytywnym smoke ustaw `FootballData__Enabled=true` w srodowisku stagingowym.
+8. Produkcyjne wlaczenie workera wymaga osobnej decyzji czlowieka.
 
 ## Osobny workflow migracyjny
 Repo zawiera tez reczny workflow `.github/workflows/backend-migrations.yml`.
