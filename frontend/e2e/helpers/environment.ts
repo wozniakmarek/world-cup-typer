@@ -23,3 +23,14 @@ export function readSecretValue(value: string | undefined, key: string): string 
 export function normalizeBaseUrl(rawBaseUrl: string): string {
   return /^https?:\/\//i.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`
 }
+
+export function runsAgainstLocalPreview(baseUrlValue = process.env.E2E_BASE_URL): boolean {
+  const rawBaseUrl = readSecretValue(baseUrlValue, 'E2E_BASE_URL') ?? 'http://127.0.0.1:4173'
+
+  try {
+    const { hostname } = new URL(normalizeBaseUrl(rawBaseUrl))
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  } catch {
+    return false
+  }
+}

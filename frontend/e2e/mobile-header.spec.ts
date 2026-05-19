@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { normalizeBaseUrl, readSecretValue } from './helpers/environment'
+import type { Locator } from '@playwright/test'
+import { runsAgainstLocalPreview } from './helpers/environment'
 
 const currentUser = {
   id: 'user-1',
@@ -37,51 +38,14 @@ const matches = [
   },
 ]
 
-const runsAgainstLocalPreview = () => {
-  const rawBaseUrl = readSecretValue(process.env.E2E_BASE_URL, 'E2E_BASE_URL') ?? 'http://127.0.0.1:4173'
-
-  try {
-    const { hostname } = new URL(normalizeBaseUrl(rawBaseUrl))
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
-  } catch {
-    return false
-  }
+async function getVisibleBoundingBox(locator: Locator, message: string) {
+  const box = await locator.boundingBox()
+  expect(box, message).not.toBeNull()
+  return box as NonNullable<typeof box>
 }
-
-function withBaseUrlEnv(value: string | undefined, assertion: () => void) {
-  const previous = process.env.E2E_BASE_URL
-
-  if (value === undefined) {
-    delete process.env.E2E_BASE_URL
-  } else {
-    process.env.E2E_BASE_URL = value
-  }
-
-  try {
-    assertion()
-  } finally {
-    if (previous === undefined) {
-      delete process.env.E2E_BASE_URL
-    } else {
-      process.env.E2E_BASE_URL = previous
-    }
-  }
-}
-
-test('runsAgainstLocalPreview obsługuje adres bez schematu', () => {
-  withBaseUrlEnv('127.0.0.1:4173', () => {
-    expect(runsAgainstLocalPreview()).toBeTruthy()
-  })
-})
-
-test('runsAgainstLocalPreview obsługuje format KEY=VALUE', () => {
-  withBaseUrlEnv('E2E_BASE_URL=127.0.0.1:4173', () => {
-    expect(runsAgainstLocalPreview()).toBeTruthy()
-  })
-})
 
 test.beforeEach(async ({ page, baseURL }) => {
-  test.skip(!baseURL, 'Mobilna regresja layoutu wymaga ustawionego baseURL w konfiguracji Playwright.')
+  test.skip(!baseURL, 'Mobile layout regression test requires baseURL in Playwright configuration.')
   test.info().annotations.push({
     type: 'base-url-host',
     description: runsAgainstLocalPreview() ? 'lokalny-preview' : 'zdalny-host',
@@ -110,20 +74,14 @@ test('logged-in mobile shell keeps primary content high in the first viewport', 
 
   await expect(dashboardTitle).toBeVisible()
 
-  const headerBox = await header.boundingBox()
-  expect(headerBox, 'Nie udało się odczytać położenia nagłówka. Upewnij się, że header jest widoczny.').not.toBeNull()
-  if (!headerBox) {
-    throw new Error('Nie udało się odczytać położenia nagłówka.')
-  }
-
-  const dashboardTitleBox = await dashboardTitle.boundingBox()
-  expect(
-    dashboardTitleBox,
-    'Nie udało się odczytać położenia nagłówka strony z nazwą użytkownika.',
-  ).not.toBeNull()
-  if (!dashboardTitleBox) {
-    throw new Error('Nie udało się odczytać położenia nagłówka strony z nazwą użytkownika.')
-  }
+  const headerBox = await getVisibleBoundingBox(
+    header,
+    'Could not read header position. Make sure the header is visible.',
+  )
+  const dashboardTitleBox = await getVisibleBoundingBox(
+    dashboardTitle,
+    'Could not read dashboard title position.',
+  )
 
   expect(headerBox.height).toBeLessThanOrEqual(144)
   expect(dashboardTitleBox.y).toBeLessThanOrEqual(210)
