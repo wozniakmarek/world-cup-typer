@@ -13,6 +13,11 @@ const currentUser = {
   isActive: true,
 }
 
+const playerUser = {
+  ...currentUser,
+  role: 'Player',
+}
+
 const team = (id: string, name: string, shortName: string) => ({
   id,
   name,
@@ -79,4 +84,43 @@ test('logged-in mobile shell keeps primary content high in the first viewport', 
 
   expect(dashboardTitleBox.y).toBeLessThanOrEqual(headerBottom + MAX_TITLE_OFFSET_FROM_HEADER)
   expect(dashboardTitleBox.y).toBeLessThanOrEqual(MAX_TITLE_Y_IN_FIRST_VIEWPORT)
+})
+
+test('player mobile navigation keeps primary destinations in a fixed thumb bar', async ({ page }) => {
+  await page.route('**/api/auth/me', async (route) => route.fulfill({ json: playerUser }))
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
+  }, playerUser)
+
+  await page.goto('/')
+
+  const bottomNavigation = page.getByRole('navigation', { name: 'Nawigacja mobilna gracza' })
+  await expect(bottomNavigation).toBeVisible()
+
+  const viewport = page.viewportSize()
+  expect(viewport).not.toBeNull()
+
+  const navigationBox = await getVisibleBoundingBox(bottomNavigation, 'Could not read mobile bottom nav position.')
+  expect(navigationBox.y + navigationBox.height).toBeGreaterThanOrEqual((viewport?.height ?? 0) - 24)
+
+  for (const label of ['Dashboard', 'Mecze', 'Ranking', 'Profil']) {
+    await expect(bottomNavigation.getByRole('link', { name: label, exact: true })).toBeVisible()
+  }
+
+  await expect(bottomNavigation.getByRole('link', { name: 'Admin', exact: true })).toHaveCount(0)
+})
+
+test('admin mobile navigation keeps player destinations and exposes admin shortcuts', async ({ page }) => {
+  await page.goto('/')
+
+  const bottomNavigation = page.getByRole('navigation', { name: 'Nawigacja mobilna gracza' })
+  await expect(bottomNavigation).toBeVisible()
+
+  for (const label of ['Dashboard', 'Mecze', 'Ranking', 'Profil']) {
+    await expect(bottomNavigation.getByRole('link', { name: label, exact: true })).toBeVisible()
+  }
+
+  for (const label of ['Admin', 'Gracze', 'Drużyny', 'Mecze Admin']) {
+    await expect(bottomNavigation.getByRole('link', { name: label, exact: true })).toBeVisible()
+  }
 })
