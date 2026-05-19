@@ -41,7 +41,10 @@ jobs:
           SECRET_STAGING_BASE_URL: ${{ secrets.E2E_STAGING_BASE_URL }}
         run: |
           echo "E2E_SMOKE_MODE=production" >> "$GITHUB_ENV"
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ] && [ -n "$SECRET_PRODUCTION_BASE_URL" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "E2E_BASE_URL=http://127.0.0.1:4173" >> "$GITHUB_ENV"
+            echo "USE_LOCAL_PREVIEW=true" >> "$GITHUB_ENV"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ] && [ -n "$SECRET_PRODUCTION_BASE_URL" ]; then
             echo "E2E_BASE_URL=$SECRET_PRODUCTION_BASE_URL" >> "$GITHUB_ENV"
             echo "USE_LOCAL_PREVIEW=false" >> "$GITHUB_ENV"
           elif [ -n "$SECRET_STAGING_BASE_URL" ]; then

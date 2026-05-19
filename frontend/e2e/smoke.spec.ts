@@ -1,30 +1,10 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-
-function readSecretValue(value: string | undefined, key: string): string | undefined {
-  const trimmed = value?.trim()
-
-  if (!trimmed) {
-    return undefined
-  }
-
-  const separatorIndex = trimmed.indexOf('=')
-  if (separatorIndex <= 0) {
-    return trimmed
-  }
-
-  const candidateKey = trimmed.slice(0, separatorIndex).trim()
-  const candidateValue = trimmed.slice(separatorIndex + 1).trim()
-
-  if (candidateKey.toLowerCase() === key.toLowerCase()) {
-    return candidateValue
-  }
-
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(candidateKey) ? undefined : trimmed
-}
+import { readSecretValue, runsAgainstLocalPreview } from './helpers/environment'
 
 const smokeMode = readSecretValue(process.env.E2E_SMOKE_MODE, 'E2E_SMOKE_MODE')?.toLowerCase() ?? 'production'
 const isStagingSmoke = smokeMode === 'staging'
+const isLocalPreview = runsAgainstLocalPreview()
 
 async function login(page: Page, email: string, password: string) {
   await page.goto('/login')
@@ -56,6 +36,7 @@ const roles = [
 
 for (const role of roles) {
   test(`logowanie smoke (${role.name})`, async ({ page }) => {
+    test.skip(isLocalPreview, `Logowanie smoke dla roli ${role.name} wymaga środowiska z API`)
     test.skip(!role.email || !role.password, `Brak danych logowania dla roli: ${role.name}`)
     await login(page, role.email!, role.password!)
   })

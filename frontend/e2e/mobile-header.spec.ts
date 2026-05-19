@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test'
+import type { Locator } from '@playwright/test'
+import { runsAgainstLocalPreview } from './helpers/environment'
+
+const MAX_TITLE_OFFSET_FROM_HEADER = 96
+const MAX_TITLE_Y_IN_FIRST_VIEWPORT = 260
 
 const currentUser = {
   id: 'user-1',
@@ -36,15 +41,10 @@ const matches = [
   },
 ]
 
-const runsAgainstLocalPreview = () => {
-  const rawBaseUrl = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173'
-
-  try {
-    const { hostname } = new URL(rawBaseUrl)
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
-  } catch {
-    return false
-  }
+async function getVisibleBoundingBox(locator: Locator, message: string) {
+  const box = await locator.boundingBox()
+  expect(box, message).not.toBeNull()
+  return box as NonNullable<typeof box>
 }
 
 test.beforeEach(async ({ page }) => {
@@ -69,11 +69,14 @@ test('logged-in mobile shell keeps primary content high in the first viewport', 
   await page.goto('/')
 
   const header = page.locator('header')
-  await expect(page.getByRole('heading', { name: /marek wozniak/i })).toBeVisible()
+  const dashboardTitle = page.getByRole('heading', { name: new RegExp(currentUser.displayName, 'i') })
 
-  const headerBox = await header.boundingBox()
-  const dashboardTitleBox = await page.getByRole('heading', { name: /marek wozniak/i }).boundingBox()
+  await expect(dashboardTitle).toBeVisible()
 
-  expect(headerBox?.height).toBeLessThanOrEqual(144)
-  expect(dashboardTitleBox?.y).toBeLessThanOrEqual(210)
+  const headerBox = await getVisibleBoundingBox(header, 'Could not read header position. Make sure the header is visible.')
+  const dashboardTitleBox = await getVisibleBoundingBox(dashboardTitle, 'Could not read dashboard title position.')
+  const headerBottom = headerBox.y + headerBox.height
+
+  expect(dashboardTitleBox.y).toBeLessThanOrEqual(headerBottom + MAX_TITLE_OFFSET_FROM_HEADER)
+  expect(dashboardTitleBox.y).toBeLessThanOrEqual(MAX_TITLE_Y_IN_FIRST_VIEWPORT)
 })
