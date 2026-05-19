@@ -15,11 +15,15 @@ E2E_BASE_URL=http://127.0.0.1:4173 npm run test:e2e:smoke
 - Workflow: `.github/workflows/playwright-smoke.yml`
 - Triggery: `pull_request`, `push` na `main`, `workflow_dispatch`
 - Sekrety (repo settings):
-  - `E2E_BASE_URL`
+  - `E2E_BASE_URL` (produkcyjny smoke na `push` do `main`)
+  - `E2E_STAGING_BASE_URL` (szerszy smoke na stagingu dla `pull_request` i `workflow_dispatch`)
   - `E2E_ADMIN_EMAIL`
   - `E2E_ADMIN_PASSWORD`
   - `E2E_PLAYER_EMAIL`
   - `E2E_PLAYER_PASSWORD`
+- Tryb smoke:
+  - `production` (domyślny): ekran logowania + logowanie ról,
+  - `staging`: dodatkowo flow gracza (mecze/ranking/profil) i flow admina (panel admina).
 
 ## Gdzie szukać logów i artefaktów
 - GitHub Actions → run `Playwright Smoke`.

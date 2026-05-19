@@ -80,6 +80,16 @@ Pipeline uruchamia:
 - build frontendu `Vite`,
 - build obrazu Docker dla `WorldCupTyper.Api`.
 
+Workflow `.github/workflows/playwright-smoke.yml` uruchamia smoke Playwright:
+- `push` na `main`: bezpieczny zakres production (`E2E_BASE_URL`),
+- `pull_request` / `workflow_dispatch`: może używać staging (`E2E_STAGING_BASE_URL`) i szerszego smoke po zalogowaniu.
+
+Sekrety dla smoke:
+- `E2E_BASE_URL` (produkcyjny URL smoke),
+- `E2E_STAGING_BASE_URL` (opcjonalny staging URL smoke),
+- `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`,
+- `E2E_PLAYER_EMAIL`, `E2E_PLAYER_PASSWORD`.
+
 ## Deploy preparation
 
 ### Backend environment variables

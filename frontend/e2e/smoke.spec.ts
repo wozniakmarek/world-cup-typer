@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 function readSecretValue(value: string | undefined, key: string): string | undefined {
   const trimmed = value?.trim()
@@ -24,11 +25,7 @@ function readSecretValue(value: string | undefined, key: string): string | undef
 const smokeMode = readSecretValue(process.env.E2E_SMOKE_MODE, 'E2E_SMOKE_MODE')?.toLowerCase() ?? 'production'
 const isStagingSmoke = smokeMode === 'staging'
 
-async function login(
-  page: Parameters<Parameters<typeof test>[1]>[0]['page'],
-  email: string,
-  password: string,
-) {
+async function login(page: Page, email: string, password: string) {
   await page.goto('/login')
   await page.getByLabel('Login').fill(email)
   await page.getByLabel('Hasło').fill(password)
