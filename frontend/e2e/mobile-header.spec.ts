@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test'
 import type { Locator } from '@playwright/test'
 import { runsAgainstLocalPreview } from './helpers/environment'
 
+const MAX_TITLE_OFFSET_FROM_HEADER = 96
+const MAX_TITLE_Y_IN_FIRST_VIEWPORT = 360
+
 const currentUser = {
   id: 'user-1',
   email: 'player@example.com',
@@ -88,7 +91,7 @@ test('logged-in mobile shell keeps primary content high in the first viewport', 
   const headerBottom = headerBox.y + headerBox.height
 
   // Keep the main heading close to the header, allowing ~96px for content spacing and CI font variance.
-  expect(dashboardTitleBox.y).toBeLessThanOrEqual(headerBottom + 96)
+  expect(dashboardTitleBox.y).toBeLessThanOrEqual(headerBottom + MAX_TITLE_OFFSET_FROM_HEADER)
   // In a 390x844 viewport, 360px (~43%) keeps the heading in the upper part of the first screen.
-  expect(dashboardTitleBox.y).toBeLessThanOrEqual(360)
+  expect(dashboardTitleBox.y).toBeLessThanOrEqual(MAX_TITLE_Y_IN_FIRST_VIEWPORT)
 })

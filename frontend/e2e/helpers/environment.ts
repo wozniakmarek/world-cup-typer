@@ -14,6 +14,7 @@ export function readSecretValue(value: string | undefined, key: string): string 
 
   const separatorIndex = trimmed.indexOf('=')
   if (separatorIndex <= 0) {
+    // If '=' is missing (or starts the value), treat it as a raw value, not KEY=VALUE env syntax.
     return trimmed
   }
 
