@@ -5,6 +5,28 @@
 - Node.js 20+
 - Docker Desktop
 
+## Szybki start
+Z katalogu repo mozesz uzyc lokalnego launchera:
+
+```powershell
+.\typer.ps1 start
+```
+
+Skrot uruchamia PostgreSQL, API na `http://localhost:5000` i frontend na `http://localhost:5173`.
+
+Dostepne komendy:
+- `.\typer.ps1 start` - start lokalnego stacka i otwarcie strony,
+- `.\typer.ps1 stop` - zatrzymanie lokalnych procesow projektu i Postgresa,
+- `.\typer.ps1 build` - restore/build/test backendu oraz build frontendu,
+- `.\typer.ps1 rebuild` - stop, build i ponowny start,
+- `.\typer.ps1 status` - status portow i healthcheckow.
+
+Na Windows mozesz tez uzyc wrappera:
+
+```powershell
+.\typer.cmd start
+```
+
 ## Backend
 1. `docker compose up -d`
 2. `cd backend`
