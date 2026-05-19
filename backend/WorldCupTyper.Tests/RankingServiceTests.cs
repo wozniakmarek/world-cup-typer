@@ -55,6 +55,20 @@ public sealed class RankingServiceTests
         ranking.Select(entry => entry.UserId).First().Should().Be(marek.Id);
     }
 
+    [Fact]
+    public async Task Ranking_ShouldIncludeUserAvatarUrl()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out _, out _);
+        marek.AvatarUrl = "https://cdn.example.com/marek.jpg";
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var ranking = await service.GetRankingAsync();
+
+        ranking.Single(entry => entry.UserId == marek.Id).AvatarUrl.Should().Be("https://cdn.example.com/marek.jpg");
+    }
+
     private static RankingService CreateService(WorldCupTyperDbContext dbContext)
     {
         var builder = new LeaderboardBuilder(dbContext);

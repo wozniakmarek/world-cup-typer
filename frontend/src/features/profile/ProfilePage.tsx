@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { predictionsApi, rankingApi } from '../../api/services'
 import { formatKickoff } from '../../app/formatters'
@@ -6,13 +7,32 @@ import { QueryState } from '../../components/QueryState'
 import { Panel } from '../../components/Panel'
 import { SectionHeading } from '../../components/SectionHeading'
 import { StatCard } from '../../components/StatCard'
+import { FormField } from '../../components/FormField'
+import { InlineAlert } from '../../components/InlineAlert'
+import { UserAvatar } from '../../components/UserAvatar'
+import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
+import { useAuth } from '../auth/AuthContext'
 
 export const ProfilePage = () => {
+  const queryClient = useQueryClient()
+  const { user, updateAvatar } = useAuth()
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
   const myRankingQuery = useQuery({ queryKey: ['ranking', 'me'], queryFn: rankingApi.getMine })
   const progressQuery = useQuery({ queryKey: ['ranking', 'progress'], queryFn: rankingApi.getProgress })
   const predictionsQuery = useQuery({ queryKey: ['predictions', 'mine'], queryFn: predictionsApi.getMine })
 
   const ranking = myRankingQuery.data
+  const avatarMutation = useMutation({
+    mutationFn: (nextAvatarUrl?: string | null) => updateAvatar(nextAvatarUrl?.trim() || null),
+    onSuccess: (currentUser) => {
+      setAvatarUrl(currentUser.avatarUrl ?? '')
+      void queryClient.invalidateQueries({ queryKey: ['ranking'] })
+    },
+  })
+
+  useEffect(() => {
+    setAvatarUrl(user?.avatarUrl ?? '')
+  }, [user?.avatarUrl])
 
   return (
     <div className="space-y-6">
@@ -21,6 +41,60 @@ export const ProfilePage = () => {
         title="Moje statystyki"
         description="Twoje miejsce w tabeli, aktualny dorobek punktowy i historia typów."
       />
+
+      <Panel>
+        <div className="grid gap-5 lg:grid-cols-[auto_1fr] lg:items-center">
+          <div className="flex items-center gap-4">
+            <UserAvatar displayName={user?.displayName ?? 'Gracz'} avatarUrl={user?.avatarUrl} size="lg" />
+            <div className="min-w-0">
+              <p className="truncate font-display text-2xl uppercase text-white">{user?.displayName}</p>
+              <p className="truncate text-sm text-slate-400">{user?.email}</p>
+            </div>
+          </div>
+
+          <form
+            className="grid gap-3 md:grid-cols-[1fr_auto]"
+            onSubmit={(event) => {
+              event.preventDefault()
+              avatarMutation.mutate(avatarUrl)
+            }}
+          >
+            <FormField label="Zdjęcie profilowe" hint="Wklej pełny adres URL obrazu albo zostaw puste, żeby użyć inicjałów.">
+              <input
+                className={inputClassName}
+                value={avatarUrl}
+                onChange={(event) => setAvatarUrl(event.target.value)}
+                placeholder="https://..."
+                type="url"
+              />
+            </FormField>
+
+            <div className="flex items-end gap-2">
+              <button className={buttonClassName} type="submit" disabled={avatarMutation.isPending}>
+                Zapisz
+              </button>
+              <button
+                className={secondaryButtonClassName}
+                type="button"
+                disabled={avatarMutation.isPending}
+                onClick={() => {
+                  setAvatarUrl('')
+                  avatarMutation.mutate(null)
+                }}
+              >
+                Usuń
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {avatarMutation.isError ? (
+          <InlineAlert className="mt-4" tone="error" message={getErrorMessage(avatarMutation.error)} />
+        ) : null}
+        {avatarMutation.isSuccess ? (
+          <InlineAlert className="mt-4" tone="success" message="Avatar profilu został zapisany." />
+        ) : null}
+      </Panel>
 
       <QueryState
         isLoading={myRankingQuery.isLoading}

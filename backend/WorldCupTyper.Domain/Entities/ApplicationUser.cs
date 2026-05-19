@@ -8,6 +8,7 @@ public class ApplicationUser
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
+    public string? AvatarUrl { get; set; }
     public UserRole Role { get; set; } = UserRole.Player;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; }

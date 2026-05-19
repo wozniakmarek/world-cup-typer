@@ -8,6 +8,7 @@ public sealed record LeaderboardEntryDto(
     int ExactScoreHits,
     int CorrectOutcomeHits,
     int PredictionsCount,
+    string? AvatarUrl,
     bool IsCurrentUser);
 
 public sealed record RankingProgressPointDto(

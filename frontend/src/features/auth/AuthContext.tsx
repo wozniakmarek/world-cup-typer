@@ -11,6 +11,7 @@ interface AuthContextValue {
   isInitializing: boolean
   login: (login: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  updateAvatar: (avatarUrl?: string | null) => Promise<CurrentUser>
 }
 
 const TOKEN_KEY = 'typer.auth.token'
@@ -62,6 +63,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(response.user)
         localStorage.setItem(TOKEN_KEY, response.token)
         localStorage.setItem(USER_KEY, JSON.stringify(response.user))
+      },
+      updateAvatar: async (avatarUrl) => {
+        const currentUser = await authApi.updateAvatar({ avatarUrl })
+        setUser(currentUser)
+        localStorage.setItem(USER_KEY, JSON.stringify(currentUser))
+
+        return currentUser
       },
       logout: async () => {
         try {

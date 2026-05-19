@@ -42,6 +42,7 @@ public sealed class LeaderboardBuilder
                 {
                     user.Id,
                     user.DisplayName,
+                    user.AvatarUrl,
                     TotalPoints = predictions.Sum(prediction => prediction.Points),
                     ExactScoreHits = predictions.Count(prediction => prediction.IsExactScore),
                     CorrectOutcomeHits = predictions.Count(prediction => prediction.IsCorrectOutcome),
@@ -61,6 +62,7 @@ public sealed class LeaderboardBuilder
                 entry.ExactScoreHits,
                 entry.CorrectOutcomeHits,
                 entry.PredictionsCount,
+                entry.AvatarUrl,
                 currentUserId.HasValue && currentUserId.Value == entry.Id))
             .ToList();
     }

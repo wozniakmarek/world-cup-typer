@@ -9,6 +9,9 @@ public sealed record CurrentUserDto(
     string Email,
     string DisplayName,
     UserRole Role,
-    bool IsActive);
+    bool IsActive,
+    string? AvatarUrl);
 
 public sealed record AuthResponse(string Token, CurrentUserDto User);
+
+public sealed record UpdateAvatarRequest(string? AvatarUrl);

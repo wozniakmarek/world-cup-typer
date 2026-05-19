@@ -1,7 +1,8 @@
 import clsx from 'clsx'
 import { LayoutDashboard, LogOut, Shield, Trophy, UserCircle2 } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../features/auth/AuthContext'
+import { UserAvatar } from './UserAvatar'
 
 const commonLinks = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,9 +34,14 @@ export const AppNavigation = () => {
             <p className="hidden text-sm text-slate-400 sm:block">marekwozniak.me</p>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <div className="max-w-[8.75rem] truncate rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 sm:max-w-none sm:px-4 sm:py-2 sm:text-sm">
-              {user?.displayName}
-            </div>
+            <Link
+              to="/profile"
+              className="flex max-w-[10.5rem] items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-1 pr-3 text-xs text-slate-200 transition hover:border-emerald-400/50 hover:text-white focus-visible:border-emerald-400/70 focus-visible:outline-none sm:max-w-none sm:pr-4 sm:text-sm"
+              aria-label="Przejdź do profilu"
+            >
+              <UserAvatar displayName={user?.displayName ?? 'Gracz'} avatarUrl={user?.avatarUrl} size="sm" />
+              <span className="truncate">{user?.displayName}</span>
+            </Link>
             <button
               type="button"
               onClick={() => void logout()}

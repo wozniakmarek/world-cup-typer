@@ -40,4 +40,12 @@ public sealed class AuthController : ControllerBase
         var user = await _authService.GetCurrentUserAsync(User.GetUserId(), cancellationToken);
         return Ok(user);
     }
+
+    [Authorize]
+    [HttpPut("me/avatar")]
+    public async Task<ActionResult<CurrentUserDto>> UpdateAvatar([FromBody] UpdateAvatarRequest request, CancellationToken cancellationToken)
+    {
+        var user = await _authService.UpdateAvatarAsync(User.GetUserId(), request, cancellationToken);
+        return Ok(user);
+    }
 }

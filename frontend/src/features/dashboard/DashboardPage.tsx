@@ -7,6 +7,7 @@ import { Panel } from '../../components/Panel'
 import { QueryState } from '../../components/QueryState'
 import { SectionHeading } from '../../components/SectionHeading'
 import { StatCard } from '../../components/StatCard'
+import { UserAvatar } from '../../components/UserAvatar'
 import { useAuth } from '../auth/AuthContext'
 
 export const DashboardPage = () => {
@@ -97,13 +98,16 @@ export const DashboardPage = () => {
               <div className="space-y-3">
                 {topQuery.data?.map((entry) => (
                   <div key={entry.userId} className="flex items-center justify-between rounded-2xl bg-slate-950/50 px-4 py-3">
-                    <div>
-                      <p className="font-semibold text-white">
-                        #{entry.position} {entry.displayName}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        Dokładne: {entry.exactScoreHits} / Rezultaty: {entry.correctOutcomeHits}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar displayName={entry.displayName} avatarUrl={entry.avatarUrl} size="sm" />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-white">
+                          #{entry.position} {entry.displayName}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Dokładne: {entry.exactScoreHits} / Rezultaty: {entry.correctOutcomeHits}
+                        </p>
+                      </div>
                     </div>
                     <p className="font-display text-2xl text-emerald-300">{entry.totalPoints}</p>
                   </div>

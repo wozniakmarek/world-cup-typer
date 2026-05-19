@@ -103,5 +103,6 @@ public static class DtoMapper
             user.Role,
             user.IsActive,
             user.CreatedAtUtc,
-            user.LastLoginAtUtc);
+            user.LastLoginAtUtc,
+            user.AvatarUrl);
 }
