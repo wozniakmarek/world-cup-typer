@@ -1,9 +1,12 @@
-# Playwright smoke (world-cup-typer)
+# Playwright smoke (`world-cup-typer`)
 
-## Cel
-Szybka weryfikacja, czy aplikacja działa po zmianach: uruchomienie UI, ekran logowania, opcjonalnie logowanie kont testowych.
+## Goal
+Fast verification that the application still works after changes:
+- app opens,
+- login page renders,
+- optional admin/player login works.
 
-## Jak uruchomić lokalnie
+## Local run
 ```bash
 cd frontend
 npm ci
@@ -11,23 +14,46 @@ npx playwright install --with-deps chromium
 E2E_BASE_URL=http://127.0.0.1:4173 npm run test:e2e:smoke
 ```
 
-## Jak uruchamia się w CI
-- Workflow: `.github/workflows/playwright-smoke.yml`
-- Triggery: `pull_request`, `push` na `main`, `workflow_dispatch`
-- Sekrety (repo settings):
-  - `E2E_BASE_URL`
-  - `E2E_ADMIN_EMAIL`
-  - `E2E_ADMIN_PASSWORD`
-  - `E2E_PLAYER_EMAIL`
-  - `E2E_PLAYER_PASSWORD`
+## CI workflow
+- Workflow file: `.github/workflows/playwright-smoke.yml`
+- Triggers:
+  - `pull_request`
+  - `push` to `main`
+  - `workflow_dispatch`
 
-## Gdzie szukać logów i artefaktów
-- GitHub Actions → run `Playwright Smoke`.
-- Na failure pobierz artifact `playwright-artifacts`:
-  - trace (`trace.zip`),
-  - screenshoty,
-  - video.
+## Secrets
+- `E2E_BASE_URL`
+- `E2E_ADMIN_EMAIL`
+- `E2E_ADMIN_PASSWORD`
+- `E2E_PLAYER_EMAIL`
+- `E2E_PLAYER_PASSWORD`
 
-## Interpretacja failure
-- Błąd na teście „ładowanie logowania” zwykle oznacza niedostępny `E2E_BASE_URL` albo problem renderu frontendu.
-- Błąd na teście logowania roli zwykle oznacza problem z danymi konta, auth API lub dostępnością backendu.
+## Environment policy
+- Preferred target is staging.
+- Production is smoke-only:
+  - page opens,
+  - login works,
+  - core screens load.
+- Do not run repeated or destructive admin actions on production.
+
+## Secret format
+- Preferred: raw value only, for example `https://staging.example.com`
+- Avoid storing secrets as `KEY=value`
+- The workflow and tests tolerate `KEY=value`, but that is a fallback, not the target format
+
+## Artifacts and logs
+- GitHub Actions -> `Playwright Smoke`
+- On failure download artifact `playwright-artifacts`:
+  - `trace.zip`
+  - screenshots
+  - video
+
+## Failure hints
+- Login page load failure usually means:
+  - bad `E2E_BASE_URL`,
+  - frontend is down,
+  - DNS or routing issue.
+- Role login failure usually means:
+  - bad credentials,
+  - auth API issue,
+  - backend availability problem.

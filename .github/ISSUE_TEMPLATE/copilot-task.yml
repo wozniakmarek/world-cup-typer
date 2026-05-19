@@ -1,0 +1,69 @@
+name: Copilot task
+description: Structured task for GitHub Copilot or repo agents
+title: "[Copilot]: "
+labels:
+  - copilot
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Frontend
+        - Backend
+        - QA smoke
+        - Release check
+        - CI/CD
+        - Documentation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Preferred environment
+      description: Use staging by default. Production should be smoke-only unless explicitly approved.
+      options:
+        - Staging
+        - Production smoke only
+        - Local only
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Describe the outcome Copilot should achieve.
+      placeholder: Fix the login regression on mobile without changing API contracts.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Keep this concrete and testable.
+      placeholder: |
+        - Login page renders correctly on mobile
+        - Admin and player can log in
+        - No backend contract changes
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and guardrails
+      description: Mention no-go areas, deployment risk, or files that should stay untouched.
+      placeholder: Do not touch production data or GitHub secrets. Keep changes minimal.
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Expected verification
+      description: What commands or checks should Copilot run before calling the task done?
+      placeholder: |
+        - npm run build
+        - npm run test:e2e:smoke
+        - dotnet test WorldCupTyper.sln
