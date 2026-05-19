@@ -3,6 +3,7 @@ namespace WorldCupTyper.Domain.Entities;
 public class Team
 {
     public Guid Id { get; set; }
+    public string? ExternalId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string ShortName { get; set; } = string.Empty;
     public string CountryCode { get; set; } = string.Empty;

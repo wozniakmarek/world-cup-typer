@@ -21,6 +21,9 @@ public sealed class MatchConfiguration : IEntityTypeConfiguration<Match>
         builder.Property(match => match.CreatedAtUtc).IsRequired();
 
         builder.HasIndex(match => match.MatchNumber).IsUnique();
+        builder.HasIndex(match => match.ExternalId)
+            .IsUnique()
+            .HasFilter("\"ExternalId\" IS NOT NULL");
         builder.HasIndex(match => match.KickoffTimeUtc);
 
         builder.HasOne(match => match.HomeTeam)

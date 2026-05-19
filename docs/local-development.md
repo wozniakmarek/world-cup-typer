@@ -38,6 +38,22 @@ Na Windows mozesz tez uzyc wrappera:
 
 Domyślne API działa na `http://localhost:5000`.
 
+### football-data.org automation
+
+Automatyczny import terminarza i wynikow jest domyslnie wylaczony. Do lokalnego lub stagingowego testu ustaw konfiguracje przez zmienne srodowiskowe albo sekrety hostingu:
+
+```powershell
+$env:FootballData__Enabled = "true"
+$env:FootballData__ApiToken = "<football-data-token>"
+$env:FootballData__CompetitionCode = "WC"
+$env:FootballData__SyncIntervalMinutes = "30"
+$env:FootballData__SettleAutomatically = "true"
+```
+
+Worker uruchamia synchronizacje tylko wtedy, gdy `FootballData__Enabled=true` i token nie jest pusty. Ten sam import mozna wywolac recznie jako admin przez `POST /api/admin/matches/sync-football-data`, co jest zalecane do smoke testu na stagingu przed wlaczeniem cyklicznej automatyzacji.
+
+Tokena API nie zapisujemy w repozytorium. Produkcyjne wlaczenie importu wymaga jawnej decyzji czlowieka i powinno nastapic dopiero po staging smoke.
+
 ## Frontend
 1. `cd frontend`
 2. `npm install`

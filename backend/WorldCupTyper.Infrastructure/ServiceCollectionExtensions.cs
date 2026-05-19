@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using WorldCupTyper.Application.Abstractions;
 using WorldCupTyper.Application.Services;
 using WorldCupTyper.Application.Services.Interfaces;
 using WorldCupTyper.Infrastructure.Auth;
+using WorldCupTyper.Infrastructure.FootballData;
 using WorldCupTyper.Infrastructure.Options;
 using WorldCupTyper.Infrastructure.Persistence;
 using WorldCupTyper.Infrastructure.Seeding;
@@ -23,16 +25,23 @@ public static class ServiceCollectionExtensions
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<DevelopmentSeedOptions>(configuration.GetSection(DevelopmentSeedOptions.SectionName));
         services.Configure<DatabaseStartupOptions>(configuration.GetSection(DatabaseStartupOptions.SectionName));
+        services.Configure<FootballDataOptions>(configuration.GetSection(FootballDataOptions.SectionName));
 
         services.AddDbContext<WorldCupTyperDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<WorldCupTyperDbContext>());
+        services.AddHttpClient<IFootballDataClient, FootballDataClient>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<FootballDataOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+        });
 
         services.AddScoped<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddScoped<IPasswordHasher, PasswordHasherAdapter>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<INotificationService, NoopNotificationService>();
-        services.AddScoped<IScheduleImportService, StubScheduleImportService>();
+        services.AddScoped<IScheduleImportService, FootballDataScheduleImportService>();
         services.AddScoped<IKnockoutResolverService, StubKnockoutResolverService>();
+        services.AddHostedService<FootballDataSyncWorker>();
 
         services.AddScoped<LeaderboardBuilder>();
         services.AddScoped<IAuthService, AuthService>();
