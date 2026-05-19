@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test'
 import type { Locator } from '@playwright/test'
 import { runsAgainstLocalPreview } from './helpers/environment'
 
-const MAX_TITLE_OFFSET_FROM_HEADER = 96
-const MAX_TITLE_Y_IN_FIRST_VIEWPORT = 360
+const MAX_TITLE_OFFSET_FROM_HEADER = 96 // allows typical spacing below header plus CI font/render variance
+const MAX_TITLE_Y_IN_FIRST_VIEWPORT = 360 // ~43% of 844px viewport height
 
 const currentUser = {
   id: 'user-1',
