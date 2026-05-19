@@ -9,17 +9,13 @@ function readSecretValue(value: string | undefined, key: string): string | undef
   }
 
   const separatorIndex = trimmed.indexOf('=')
-  if (separatorIndex > 0) {
-    const candidateKey = trimmed.slice(0, separatorIndex).trim()
-    const candidateValue = trimmed.slice(separatorIndex + 1).trim()
-
-    if (candidateKey.toLowerCase() === key.toLowerCase()) {
-      return candidateValue
-    }
+  if (separatorIndex <= 0) {
+    return trimmed
   }
 
-  const prefixedKey = `${key}=`
-  return trimmed.startsWith(prefixedKey) ? trimmed.slice(prefixedKey.length).trim() : trimmed
+  const candidateKey = trimmed.slice(0, separatorIndex).trim()
+  const candidateValue = trimmed.slice(separatorIndex + 1).trim()
+  return candidateKey.toLowerCase() === key.toLowerCase() ? candidateValue : trimmed
 }
 
 const smokeMode = readSecretValue(process.env.E2E_SMOKE_MODE, 'E2E_SMOKE_MODE')?.toLowerCase() ?? 'production'
