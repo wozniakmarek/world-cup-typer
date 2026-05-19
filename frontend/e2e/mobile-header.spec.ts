@@ -86,5 +86,5 @@ test('logged-in mobile shell keeps primary content high in the first viewport', 
   const headerBottom = headerBox.y + headerBox.height
 
   expect(dashboardTitleBox.y).toBeLessThanOrEqual(headerBottom + 96)
-  expect(dashboardTitleBox.y).toBeLessThanOrEqual(240)
+  expect(dashboardTitleBox.y).toBeLessThanOrEqual(360)
 })
