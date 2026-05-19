@@ -13,6 +13,8 @@ backend/**/TestResults/
 # Local config
 .env
 .env.local
+.local/
+*.log
 
 # OS / editors
 .vs/
