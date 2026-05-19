@@ -1,0 +1,52 @@
+name: "Feature request"
+description: "Nowa funkcja/opcja z kryteriami akceptacji pod implementację przez Copilota"
+title: "[FEATURE] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Kontekst biznesowy
+      description: Dlaczego ta funkcja jest potrzebna?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Zakres
+      description: Co wchodzi, a co nie wchodzi do zmiany.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] AC1 ...
+        - [ ] AC2 ...
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Ryzyko / edge cases
+      description: Co może pójść nie tak i jak to ograniczyć.
+    validations:
+      required: true
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: Notatki techniczne (opcjonalnie)
+      placeholder: "API/DTO, migracje, wpływ na frontend/backend, telemetry"
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklista gotowości
+      options:
+        - label: Zakres jest jednoznaczny
+          required: true
+        - label: Kryteria akceptacji są testowalne
+          required: true
+        - label: Ryzyka zostały opisane
+          required: true

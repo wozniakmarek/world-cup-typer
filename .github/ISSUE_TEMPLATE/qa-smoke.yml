@@ -1,0 +1,54 @@
+name: "QA smoke task"
+description: "Zadanie smoke/regresji dla Playwright i ręcznego QA"
+title: "[QA-SMOKE] "
+labels:
+  - qa
+  - smoke
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Cel smoke
+      description: Co dokładnie chcemy sprawdzić?
+    validations:
+      required: true
+  - type: textarea
+    id: test_scope
+    attributes:
+      label: Zakres testów
+      placeholder: |
+        - login admin
+        - login player
+        - ranking
+        - profile
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Środowisko i dane
+      placeholder: "URL, branch, wymagane konta testowe, feature flagi"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Oczekiwany rezultat
+    validations:
+      required: true
+  - type: textarea
+    id: failure_data
+    attributes:
+      label: Dane przy failure
+      description: Link do runa, trace/screenshot/video, logi.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklista wykonania
+      options:
+        - label: Mam zdefiniowany zakres smoke
+          required: true
+        - label: Mam komplet danych środowiskowych
+          required: true
+        - label: Wiem gdzie podpiąć artifacty z Playwright
+          required: true
