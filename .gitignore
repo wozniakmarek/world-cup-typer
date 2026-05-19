@@ -1,6 +1,8 @@
 # Node / frontend
 frontend/node_modules/
 frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
 
 # .NET / backend
 backend/**/bin/
