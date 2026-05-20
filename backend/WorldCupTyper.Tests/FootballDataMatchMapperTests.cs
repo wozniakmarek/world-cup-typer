@@ -103,6 +103,20 @@ public sealed class FootballDataMatchMapperTests
         result.Should().BeNull();
     }
 
+    [Fact]
+    public void Map_WithMissingTeamTla_ShouldConstrainTeamCodesToDatabaseLimits()
+    {
+        var match = CreateMatch(status: "SCHEDULED");
+        match.HomeTeam.Tla = null;
+        match.HomeTeam.ShortName = "Winner Group A";
+
+        var result = FootballDataMatchMapper.Map(match);
+
+        result.Should().NotBeNull();
+        result!.HomeTeam.ShortName.Should().Be("Winner Group A");
+        result.HomeTeam.CountryCode.Should().Be("WIN");
+    }
+
     private static FootballDataMatchDto CreateMatch(
         string status,
         string duration = "REGULAR",

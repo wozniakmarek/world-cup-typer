@@ -5,6 +5,9 @@ namespace WorldCupTyper.Infrastructure.FootballData;
 public static class FootballDataMatchMapper
 {
     private const string ProviderPrefix = "football-data";
+    private const int TeamNameMaxLength = 100;
+    private const int TeamShortNameMaxLength = 20;
+    private const int TeamCountryCodeMaxLength = 3;
 
     public static FootballDataMatchSyncModel? Map(FootballDataMatchDto match)
     {
@@ -64,13 +67,13 @@ public static class FootballDataMatchMapper
     {
         var name = FirstNonBlank(team.Name, team.ShortName, team.Tla) ?? "Unknown team";
         var shortName = FirstNonBlank(team.Tla, team.ShortName, team.Name) ?? name;
-        var countryCode = FirstNonBlank(team.Tla, team.ShortName) ?? shortName;
+        var countryCode = FirstNonBlank(team.Tla, team.ShortName, team.Name) ?? shortName;
 
         return new FootballDataTeamSyncModel(
             ExternalId: team.Id.HasValue ? BuildExternalId(team.Id.Value) : null,
-            Name: name.Trim(),
-            ShortName: shortName.Trim(),
-            CountryCode: countryCode.Trim().ToUpperInvariant());
+            Name: TrimToMaxLength(name, TeamNameMaxLength),
+            ShortName: TrimToMaxLength(shortName, TeamShortNameMaxLength),
+            CountryCode: NormalizeCountryCode(countryCode));
     }
 
     private static (int? Home, int? Away) ResolveScore90(FootballDataScoreDto score)
@@ -106,5 +109,16 @@ public static class FootballDataMatchMapper
     private static string NormalizeKey(string? value)
     {
         return value?.Trim().ToUpperInvariant() ?? string.Empty;
+    }
+
+    private static string NormalizeCountryCode(string value)
+    {
+        return TrimToMaxLength(value, TeamCountryCodeMaxLength).ToUpperInvariant();
+    }
+
+    private static string TrimToMaxLength(string value, int maxLength)
+    {
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 }
