@@ -93,7 +93,7 @@ public sealed class MatchService : IMatchService
         var match = new Match
         {
             Id = Guid.NewGuid(),
-            ExternalId = request.ExternalId?.Trim(),
+            ExternalId = NormalizeExternalId(request.ExternalId),
             MatchNumber = request.MatchNumber,
             Phase = request.Phase,
             GroupName = request.GroupName?.Trim(),
@@ -123,7 +123,7 @@ public sealed class MatchService : IMatchService
 
         await ValidateMatchRequestAsync(request, matchId, cancellationToken);
 
-        match.ExternalId = request.ExternalId?.Trim();
+        match.ExternalId = NormalizeExternalId(request.ExternalId);
         match.MatchNumber = request.MatchNumber;
         match.Phase = request.Phase;
         match.GroupName = request.GroupName?.Trim();
@@ -240,5 +240,11 @@ public sealed class MatchService : IMatchService
         }
 
         return homeScore > awayScore ? homeTeamId : awayTeamId;
+    }
+
+    private static string? NormalizeExternalId(string? externalId)
+    {
+        var trimmed = externalId?.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
     }
 }

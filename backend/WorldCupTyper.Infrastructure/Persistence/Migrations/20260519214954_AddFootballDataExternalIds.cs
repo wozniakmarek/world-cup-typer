@@ -10,42 +10,31 @@ namespace WorldCupTyper.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "ExternalId",
-                table: "Teams",
-                type: "character varying(100)",
-                maxLength: 100,
-                nullable: true);
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE "Teams" ADD COLUMN IF NOT EXISTS "ExternalId" character varying(100);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Teams_ExternalId",
-                table: "Teams",
-                column: "ExternalId",
-                unique: true,
-                filter: "\"ExternalId\" IS NOT NULL");
+                DROP INDEX IF EXISTS "IX_Teams_ExternalId";
+                CREATE UNIQUE INDEX "IX_Teams_ExternalId"
+                    ON "Teams" ("ExternalId")
+                    WHERE "ExternalId" IS NOT NULL AND btrim("ExternalId") <> '';
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Matches_ExternalId",
-                table: "Matches",
-                column: "ExternalId",
-                unique: true,
-                filter: "\"ExternalId\" IS NOT NULL");
+                DROP INDEX IF EXISTS "IX_Matches_ExternalId";
+                CREATE UNIQUE INDEX "IX_Matches_ExternalId"
+                    ON "Matches" ("ExternalId")
+                    WHERE "ExternalId" IS NOT NULL AND btrim("ExternalId") <> '';
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Teams_ExternalId",
-                table: "Teams");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Matches_ExternalId",
-                table: "Matches");
-
-            migrationBuilder.DropColumn(
-                name: "ExternalId",
-                table: "Teams");
+            migrationBuilder.Sql(
+                """
+                DROP INDEX IF EXISTS "IX_Teams_ExternalId";
+                DROP INDEX IF EXISTS "IX_Matches_ExternalId";
+                ALTER TABLE "Teams" DROP COLUMN IF EXISTS "ExternalId";
+                """);
         }
     }
 }

@@ -23,7 +23,7 @@ public sealed class MatchConfiguration : IEntityTypeConfiguration<Match>
         builder.HasIndex(match => match.MatchNumber).IsUnique();
         builder.HasIndex(match => match.ExternalId)
             .IsUnique()
-            .HasFilter("\"ExternalId\" IS NOT NULL");
+            .HasFilter("\"ExternalId\" IS NOT NULL AND btrim(\"ExternalId\") <> ''");
         builder.HasIndex(match => match.KickoffTimeUtc);
 
         builder.HasOne(match => match.HomeTeam)
