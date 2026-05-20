@@ -54,3 +54,23 @@ services:
         value: "false"
         scope: RUN_TIME
         type: GENERAL
+      - key: FootballData__Enabled
+        value: "false"
+        scope: RUN_TIME
+        type: GENERAL
+      - key: FootballData__ApiToken
+        value: ${FOOTBALL_DATA_API_TOKEN}
+        scope: RUN_TIME
+        type: SECRET
+      - key: FootballData__CompetitionCode
+        value: WC
+        scope: RUN_TIME
+        type: GENERAL
+      - key: FootballData__SyncIntervalMinutes
+        value: "30"
+        scope: RUN_TIME
+        type: GENERAL
+      - key: FootballData__SettleAutomatically
+        value: "true"
+        scope: RUN_TIME
+        type: GENERAL
