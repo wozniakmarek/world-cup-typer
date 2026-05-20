@@ -67,13 +67,15 @@ public static class FootballDataMatchMapper
     {
         var name = FirstNonBlank(team.Name, team.ShortName, team.Tla) ?? "Unknown team";
         var shortName = FirstNonBlank(team.Tla, team.ShortName, team.Name) ?? name;
-        var countryCode = FirstNonBlank(team.Tla, team.ShortName, team.Name) ?? shortName;
+        var countryCode = FirstNonBlank(team.Tla) is { } tla
+            ? NormalizeCountryCode(tla)
+            : BuildFallbackCountryCode(FirstNonBlank(team.ShortName, team.Name) ?? shortName);
 
         return new FootballDataTeamSyncModel(
             ExternalId: team.Id.HasValue ? BuildExternalId(team.Id.Value) : null,
             Name: TrimToMaxLength(name, TeamNameMaxLength),
             ShortName: TrimToMaxLength(shortName, TeamShortNameMaxLength),
-            CountryCode: NormalizeCountryCode(countryCode));
+            CountryCode: countryCode);
     }
 
     private static (int? Home, int? Away) ResolveScore90(FootballDataScoreDto score)
@@ -114,6 +116,29 @@ public static class FootballDataMatchMapper
     private static string NormalizeCountryCode(string value)
     {
         return TrimToMaxLength(value, TeamCountryCodeMaxLength).ToUpperInvariant();
+    }
+
+    private static string BuildFallbackCountryCode(string value)
+    {
+        var trimmed = value.Trim();
+        var firstLetter = trimmed.FirstOrDefault(char.IsLetter);
+        var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+        if (firstLetter != default && digits.Length >= 2)
+        {
+            return $"{char.ToUpperInvariant(firstLetter)}{digits[^2..]}";
+        }
+
+        var initials = new string(
+            trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(part => part.FirstOrDefault(char.IsLetterOrDigit))
+                .Where(character => character != default)
+                .Select(char.ToUpperInvariant)
+                .Take(TeamCountryCodeMaxLength)
+                .ToArray());
+
+        return initials.Length > 0
+            ? initials
+            : NormalizeCountryCode(trimmed);
     }
 
     private static string TrimToMaxLength(string value, int maxLength)
