@@ -1,6 +1,11 @@
 alerts:
   - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED
 name: world-cup-typer-api
+domains:
+  - domain: api-typer.marekwozniak.me
+    type: PRIMARY
+    minimum_tls_version: "1.2"
 region: fra
 services:
   - name: api
