@@ -11,6 +11,34 @@ namespace WorldCupTyper.Tests;
 public sealed class MatchServiceTests
 {
     [Fact]
+    public async Task CreateMatch_WithBlankExternalId_ShouldPersistNull()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        var service = new MatchService(dbContext, dateTimeProvider);
+        var homeTeam = CreateTeam("Polska", "POL");
+        var awayTeam = CreateTeam("Niemcy", "GER");
+
+        dbContext.Teams.AddRange(homeTeam, awayTeam);
+        await dbContext.SaveChangesAsync();
+
+        await service.CreateMatchAsync(new UpsertMatchRequest(
+            "   ",
+            9001,
+            MatchPhase.GroupStage,
+            "A",
+            homeTeam.Id,
+            awayTeam.Id,
+            null,
+            null,
+            dateTimeProvider.UtcNow.AddDays(1),
+            "Warszawa"));
+
+        var savedMatch = dbContext.Matches.Single(candidate => candidate.MatchNumber == 9001);
+        savedMatch.ExternalId.Should().BeNull();
+    }
+
+    [Fact]
     public async Task SetResult_WithOnlyOneFinalScore_ShouldThrow()
     {
         using var dbContext = TestDbContextFactory.Create();

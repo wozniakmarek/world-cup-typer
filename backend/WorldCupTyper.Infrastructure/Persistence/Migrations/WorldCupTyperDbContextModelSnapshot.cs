@@ -192,7 +192,7 @@ namespace WorldCupTyper.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ExternalId")
                         .IsUnique()
-                        .HasFilter("\"ExternalId\" IS NOT NULL");
+                        .HasFilter("\"ExternalId\" IS NOT NULL AND btrim(\"ExternalId\") <> ''");
 
                     b.HasIndex("HomeTeamId");
 
@@ -309,7 +309,7 @@ namespace WorldCupTyper.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ExternalId")
                         .IsUnique()
-                        .HasFilter("\"ExternalId\" IS NOT NULL");
+                        .HasFilter("\"ExternalId\" IS NOT NULL AND btrim(\"ExternalId\") <> ''");
 
                     b.HasIndex("Name")
                         .IsUnique();

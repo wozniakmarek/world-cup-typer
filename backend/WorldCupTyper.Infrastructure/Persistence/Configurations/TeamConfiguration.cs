@@ -20,7 +20,7 @@ public sealed class TeamConfiguration : IEntityTypeConfiguration<Team>
 
         builder.HasIndex(team => team.ExternalId)
             .IsUnique()
-            .HasFilter("\"ExternalId\" IS NOT NULL");
+            .HasFilter("\"ExternalId\" IS NOT NULL AND btrim(\"ExternalId\") <> ''");
         builder.HasIndex(team => team.Name).IsUnique();
         builder.HasIndex(team => team.ShortName).IsUnique();
     }
