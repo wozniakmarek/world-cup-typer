@@ -60,7 +60,7 @@ services:
         scope: RUN_TIME
         type: GENERAL
       - key: FootballData__Enabled
-        value: "false"
+        value: "true"
         scope: RUN_TIME
         type: GENERAL
       - key: FootballData__ApiToken
