@@ -78,6 +78,7 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
             {
                 failed++;
                 _logger.LogWarning(exception, "Football-data.org match import failed for {ExternalId}.", providerMatch.ExternalId);
+                ClearTrackedChangesAfterFailure();
             }
         }
 
@@ -113,6 +114,13 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
     {
         if (!string.IsNullOrWhiteSpace(providerTeam.ExternalId))
         {
+            var trackedByExternalId = _dbContext.Teams.Local
+                .FirstOrDefault(team => team.ExternalId == providerTeam.ExternalId);
+            if (trackedByExternalId is not null)
+            {
+                return trackedByExternalId;
+            }
+
             var byExternalId = await _dbContext.Teams
                 .FirstOrDefaultAsync(team => team.ExternalId == providerTeam.ExternalId, cancellationToken);
             if (byExternalId is not null)
@@ -122,6 +130,13 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         }
 
         var countryCode = NormalizeCountryCode(providerTeam.CountryCode);
+        var trackedTeam = _dbContext.Teams.Local.FirstOrDefault(
+            team => TeamMatchesProvider(team, providerTeam, countryCode));
+        if (trackedTeam is not null)
+        {
+            return trackedTeam;
+        }
+
         return await _dbContext.Teams.FirstOrDefaultAsync(
             team => team.CountryCode == countryCode
                 || team.ShortName == providerTeam.ShortName
@@ -222,5 +237,20 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
     private static string NormalizeCountryCode(string countryCode)
     {
         return countryCode.Trim().ToUpperInvariant();
+    }
+
+    private void ClearTrackedChangesAfterFailure()
+    {
+        if (_dbContext is DbContext dbContext)
+        {
+            dbContext.ChangeTracker.Clear();
+        }
+    }
+
+    private static bool TeamMatchesProvider(Team team, FootballDataTeamSyncModel providerTeam, string countryCode)
+    {
+        return team.CountryCode == countryCode
+            || team.ShortName == providerTeam.ShortName
+            || team.Name == providerTeam.Name;
     }
 }

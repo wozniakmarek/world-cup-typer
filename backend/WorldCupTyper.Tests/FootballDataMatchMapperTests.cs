@@ -114,7 +114,7 @@ public sealed class FootballDataMatchMapperTests
 
         result.Should().NotBeNull();
         result!.HomeTeam.ShortName.Should().Be("Winner Group A");
-        result.HomeTeam.CountryCode.Should().Be("WIN");
+        result.HomeTeam.CountryCode.Should().Be("WGA");
     }
 
     private static FootballDataMatchDto CreateMatch(
