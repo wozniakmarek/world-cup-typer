@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { predictionsApi, rankingApi } from '../../api/services'
-import { formatKickoff } from '../../app/formatters'
+import { formatKickoff, translateTeamName } from '../../app/formatters'
 import { QueryState } from '../../components/QueryState'
 import { Panel } from '../../components/Panel'
 import { SectionHeading } from '../../components/SectionHeading'
@@ -162,7 +162,7 @@ export const ProfilePage = () => {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-semibold text-white">
-                        {item.homeTeamName} vs {item.awayTeamName}
+                        {translateTeamName(item.homeTeamName)} vs {translateTeamName(item.awayTeamName)}
                       </p>
                       <p className="text-sm text-slate-400">{formatKickoff(item.kickoffTimeUtc)}</p>
                     </div>
