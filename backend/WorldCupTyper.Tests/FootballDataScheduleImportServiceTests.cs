@@ -91,6 +91,23 @@ public sealed class FootballDataScheduleImportServiceTests
     }
 
     [Fact]
+    public async Task ImportScheduleAsync_WithGroupStageTeams_ShouldApplyGroupAndFlags()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        var providerMatch = Match(status: MatchStatus.Scheduled, groupName: "A");
+        var service = CreateService(dbContext, dateTimeProvider, providerMatch);
+
+        var summary = await service.ImportScheduleAsync();
+
+        summary.FailedMatches.Should().Be(0);
+        dbContext.Teams.Single(team => team.Name == "Poland").GroupName.Should().Be("A");
+        dbContext.Teams.Single(team => team.Name == "Poland").FlagEmoji.Should().Be("🇵🇱");
+        dbContext.Teams.Single(team => team.Name == "Germany").GroupName.Should().Be("A");
+        dbContext.Teams.Single(team => team.Name == "Germany").FlagEmoji.Should().Be("🇩🇪");
+    }
+
+    [Fact]
     public async Task ImportScheduleAsync_WithFinishedExtraTimeMatchWithoutRegularTime_ShouldNotSettle()
     {
         using var dbContext = TestDbContextFactory.Create();
@@ -203,6 +220,7 @@ public sealed class FootballDataScheduleImportServiceTests
         int? awayScore90 = null,
         int? homeScoreFinal = null,
         int? awayScoreFinal = null,
+        string? groupName = "Group A",
         FootballDataTeamSyncModel? homeTeam = null,
         FootballDataTeamSyncModel? awayTeam = null)
     {
@@ -210,7 +228,7 @@ public sealed class FootballDataScheduleImportServiceTests
             ExternalId: "football-data:1001",
             MatchNumber: 1,
             Phase: MatchPhase.GroupStage,
-            GroupName: "Group A",
+            GroupName: groupName,
             HomeTeam: homeTeam ?? new FootballDataTeamSyncModel("football-data:794", "Poland", "POL", "POL"),
             AwayTeam: awayTeam ?? new FootballDataTeamSyncModel("football-data:759", "Germany", "GER", "GER"),
             KickoffTimeUtc: new DateTime(2026, 6, 18, 18, 0, 0, DateTimeKind.Utc),

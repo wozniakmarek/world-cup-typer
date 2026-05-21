@@ -27,7 +27,10 @@ public sealed class MatchService : IMatchService
             .ThenBy(match => match.MatchNumber)
             .ToListAsync(cancellationToken);
 
-        return matches.Select(match => match.ToMatchSummaryDto(currentUserId, _dateTimeProvider.UtcNow)).ToList();
+        return matches
+            .Where(ShouldShowToPlayer)
+            .Select(match => match.ToMatchSummaryDto(currentUserId, _dateTimeProvider.UtcNow))
+            .ToList();
     }
 
     public async Task<IReadOnlyCollection<MatchSummaryDto>> GetTodayMatchesAsync(Guid currentUserId, CancellationToken cancellationToken = default)
@@ -42,7 +45,10 @@ public sealed class MatchService : IMatchService
             .ThenBy(match => match.MatchNumber)
             .ToListAsync(cancellationToken);
 
-        return matches.Select(match => match.ToMatchSummaryDto(currentUserId, nowUtc)).ToList();
+        return matches
+            .Where(ShouldShowToPlayer)
+            .Select(match => match.ToMatchSummaryDto(currentUserId, nowUtc))
+            .ToList();
     }
 
     public async Task<IReadOnlyCollection<MatchSummaryDto>> GetUpcomingMatchesAsync(Guid currentUserId, CancellationToken cancellationToken = default)
@@ -52,10 +58,13 @@ public sealed class MatchService : IMatchService
             .Where(match => match.KickoffTimeUtc >= nowUtc)
             .OrderBy(match => match.KickoffTimeUtc)
             .ThenBy(match => match.MatchNumber)
-            .Take(10)
             .ToListAsync(cancellationToken);
 
-        return matches.Select(match => match.ToMatchSummaryDto(currentUserId, nowUtc)).ToList();
+        return matches
+            .Where(ShouldShowToPlayer)
+            .Take(10)
+            .Select(match => match.ToMatchSummaryDto(currentUserId, nowUtc))
+            .ToList();
     }
 
     public async Task<MatchDetailsDto> GetMatchDetailsAsync(Guid matchId, Guid currentUserId, bool isAdmin, CancellationToken cancellationToken = default)
@@ -63,7 +72,7 @@ public sealed class MatchService : IMatchService
         var match = await QueryMatchesForUser(currentUserId)
             .FirstOrDefaultAsync(candidate => candidate.Id == matchId, cancellationToken);
 
-        if (match is null)
+        if (match is null || !ShouldShowToPlayer(match))
         {
             throw new NotFoundException("Nie znaleziono meczu.");
         }
@@ -246,5 +255,26 @@ public sealed class MatchService : IMatchService
     {
         var trimmed = externalId?.Trim();
         return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+    }
+
+    private static bool ShouldShowToPlayer(Match match)
+    {
+        return match.Phase == MatchPhase.GroupStage
+            || (!IsPlaceholderTeam(match.HomeTeam) && !IsPlaceholderTeam(match.AwayTeam));
+    }
+
+    private static bool IsPlaceholderTeam(Team team)
+    {
+        return IsPlaceholderValue(team.Name)
+            || IsPlaceholderValue(team.ShortName)
+            || IsPlaceholderValue(team.CountryCode);
+    }
+
+    private static bool IsPlaceholderValue(string value)
+    {
+        var normalized = value.Trim().ToUpperInvariant();
+        return normalized is "UNKNOWN TEAM" or "UNKNOWN" or "TBA" or "TBD" or "TO BE ANNOUNCED"
+            || normalized.StartsWith("WINNER GROUP ", StringComparison.Ordinal)
+            || normalized.StartsWith("RUNNER-UP GROUP ", StringComparison.Ordinal);
     }
 }

@@ -23,7 +23,7 @@ public static class FootballDataMatchMapper
             ExternalId: BuildExternalId(match.Id),
             MatchNumber: match.Id,
             Phase: MapPhase(match.Stage),
-            GroupName: Normalize(match.Group),
+            GroupName: NormalizeGroupName(match.Group),
             HomeTeam: MapTeam(match.HomeTeam),
             AwayTeam: MapTeam(match.AwayTeam),
             KickoffTimeUtc: DateTime.SpecifyKind(match.UtcDate, DateTimeKind.Utc),
@@ -111,6 +111,20 @@ public static class FootballDataMatchMapper
     private static string NormalizeKey(string? value)
     {
         return value?.Trim().ToUpperInvariant() ?? string.Empty;
+    }
+
+    private static string? NormalizeGroupName(string? value)
+    {
+        var normalized = Normalize(value);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        var key = normalized.Replace('_', ' ').Trim();
+        return key.StartsWith("GROUP ", StringComparison.OrdinalIgnoreCase)
+            ? key["GROUP ".Length..].Trim().ToUpperInvariant()
+            : normalized;
     }
 
     private static string NormalizeCountryCode(string value)

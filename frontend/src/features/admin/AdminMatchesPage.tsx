@@ -4,17 +4,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { adminApi, teamsApi } from '../../api/services'
 import type { AdminMatch, MatchPhase, MatchStatus } from '../../api/types'
-import { formatKickoff, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../app/formatters'
+import { formatKickoff, formatMatchContext, formatTeamDisplayName, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../app/formatters'
 import { FormField } from '../../components/FormField'
 import { InlineAlert } from '../../components/InlineAlert'
 import { Panel } from '../../components/Panel'
 import { QueryState } from '../../components/QueryState'
 import { SectionHeading } from '../../components/SectionHeading'
 import { StatusPill } from '../../components/StatusPill'
-import { buttonClassName, inputClassName, mobileRecordClassName, secondaryButtonClassName } from '../../styles/ui'
+import { buttonClassName, filterButtonClassName, inputClassName, mobileRecordClassName, secondaryButtonClassName } from '../../styles/ui'
 
 const phaseOptions: MatchPhase[] = ['GroupStage', 'RoundOf32', 'RoundOf16', 'QuarterFinal', 'SemiFinal', 'ThirdPlace', 'Final']
 const statusOptions: MatchStatus[] = ['Scheduled', 'InProgress', 'Finished', 'Settled', 'Cancelled']
+const listFilters = [
+  { key: 'upcoming', label: 'Nadchodzące' },
+  { key: 'needsSettlement', label: 'Do rozliczenia' },
+  { key: 'all', label: 'Wszystkie' },
+] as const
+const listFilterReferenceTime = Date.now()
 
 const getDefaultKickoffValue = () => toDateTimeLocalValue(new Date().toISOString())
 
@@ -102,10 +108,24 @@ export const AdminMatchesPage = () => {
     homeScoreFinal: '',
     awayScoreFinal: '',
   })
+  const [listFilter, setListFilter] = useState<(typeof listFilters)[number]['key']>('upcoming')
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
 
   const teams = teamsQuery.data ?? []
   const sortedMatches = matchesQuery.data ?? []
+  const visibleMatches = sortedMatches.filter((match) => {
+    const kickoffTime = new Date(match.kickoffTimeUtc).getTime()
+
+    if (listFilter === 'upcoming') {
+      return kickoffTime >= listFilterReferenceTime && !match.isSettled
+    }
+
+    if (listFilter === 'needsSettlement') {
+      return kickoffTime < listFilterReferenceTime && !match.isSettled
+    }
+
+    return true
+  })
 
   const refreshData = async () => {
     await Promise.all([
@@ -376,22 +396,35 @@ export const AdminMatchesPage = () => {
               <p className="font-display text-2xl uppercase text-white">Lista meczów</p>
               <p className="text-sm text-slate-400">Szybko wybierz spotkanie do edycji, wpisania wyniku albo rozliczenia.</p>
             </div>
+            <div className="flex flex-wrap gap-2">
+              {listFilters.map((filter) => (
+                <button
+                  key={filter.key}
+                  type="button"
+                  className={filterButtonClassName(listFilter === filter.key)}
+                  onClick={() => setListFilter(filter.key)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
             <QueryState
               isLoading={matchesQuery.isLoading}
               isError={matchesQuery.isError}
               errorMessage={getErrorMessage(matchesQuery.error)}
-              isEmpty={sortedMatches.length === 0}
+              isEmpty={visibleMatches.length === 0}
               emptyTitle="Brak meczów"
               emptyDescription="Dodaj pierwszy mecz, aby zacząć budować terminarz."
             >
               <div className="space-y-3">
-                {sortedMatches.map((match) => (
+                {visibleMatches.map((match) => (
                   <article key={match.id} className={mobileRecordClassName}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-semibold text-white">
-                          #{match.matchNumber} / {match.homeTeam.name} vs {match.awayTeam.name}
+                          {formatTeamDisplayName(match.homeTeam)} vs {formatTeamDisplayName(match.awayTeam)}
                         </p>
+                        <p className="mt-1 text-sm text-slate-400">{formatMatchContext(match)}</p>
                         <p className="mt-1 text-sm text-slate-400">
                           {formatKickoff(match.kickoffTimeUtc)} / Typów: {match.predictionsCount}
                         </p>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { MatchSummary } from '../api/types'
-import { formatKickoff, getPredictionLabel } from '../app/formatters'
+import { formatKickoff, formatMatchContext, formatTeamDisplayName, getPredictionLabel } from '../app/formatters'
 import { StatusPill } from './StatusPill'
 
 export const MatchCard = ({ match }: { match: MatchSummary }) => {
@@ -15,10 +15,10 @@ export const MatchCard = ({ match }: { match: MatchSummary }) => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="font-display text-xs uppercase tracking-[0.28em] text-emerald-300/80 sm:text-sm">
-            Mecz #{match.matchNumber} • {match.phase}
+            {formatMatchContext(match)}
           </p>
           <p className="text-sm text-slate-400">{formatKickoff(match.kickoffTimeUtc)}</p>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{match.venue || 'Lokalizacja TBD'}</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{match.venue || 'Miejsce do potwierdzenia'}</p>
         </div>
         <StatusPill status={match.status} isSettled={match.isSettled} />
       </div>
@@ -28,14 +28,14 @@ export const MatchCard = ({ match }: { match: MatchSummary }) => {
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Gospodarze</p>
             <p className="mt-1 font-display text-lg uppercase text-white sm:text-xl">
-              {match.homeTeam.flagEmoji} {match.homeTeam.name}
+              {formatTeamDisplayName(match.homeTeam)}
             </p>
           </div>
           <span className="text-center font-display text-sm uppercase tracking-[0.3em] text-slate-500">vs</span>
           <div className="text-left sm:text-right">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Goście</p>
             <p className="mt-1 font-display text-lg uppercase text-white sm:text-xl">
-              {match.awayTeam.flagEmoji} {match.awayTeam.name}
+              {formatTeamDisplayName(match.awayTeam)}
             </p>
           </div>
         </div>
