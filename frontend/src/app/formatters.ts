@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import type { MatchStatus, PredictionSummary } from '../api/types'
+import type { MatchPhase, MatchStatus, PredictionSummary, Team } from '../api/types'
 
 export const formatKickoff = (value: string) => format(new Date(value), 'dd.MM HH:mm')
 
@@ -23,6 +23,48 @@ export const matchStatusLabel: Record<MatchStatus, string> = {
 
 export const getPredictionLabel = (prediction?: PredictionSummary | null) =>
   prediction ? `${prediction.predictedHomeScore}:${prediction.predictedAwayScore}` : 'Brak typu'
+
+type MatchContext = {
+  phase: MatchPhase
+  groupName?: string | null
+}
+
+type MatchWithTeams = MatchContext & {
+  homeTeam: Team
+  awayTeam: Team
+}
+
+const phaseLabels: Record<MatchPhase, string> = {
+  GroupStage: 'Faza grupowa',
+  RoundOf32: '1/16 finału',
+  RoundOf16: '1/8 finału',
+  QuarterFinal: 'Ćwierćfinał',
+  SemiFinal: 'Półfinał',
+  ThirdPlace: 'Mecz o 3. miejsce',
+  Final: 'Finał',
+}
+
+export const formatMatchContext = (match: MatchContext) => {
+  const phaseLabel = phaseLabels[match.phase]
+  return match.phase === 'GroupStage' && match.groupName
+    ? `${phaseLabel} · Grupa ${match.groupName}`
+    : phaseLabel
+}
+
+export const formatTeamDisplayName = (team: Team) =>
+  team.flagEmoji ? `${team.flagEmoji} ${team.name}` : team.name
+
+export const hasPlaceholderTeam = (team: Team) => {
+  const values = [team.name, team.shortName, team.countryCode].map((value) => value.trim().toUpperCase())
+
+  return values.some((value) =>
+    ['UNKNOWN TEAM', 'UNKNOWN', 'TBA', 'TBD', 'TO BE ANNOUNCED'].includes(value)
+      || value.startsWith('WINNER GROUP ')
+      || value.startsWith('RUNNER-UP GROUP '))
+}
+
+export const shouldShowMatchToPlayer = (match: MatchWithTeams) =>
+  match.phase === 'GroupStage' || (!hasPlaceholderTeam(match.homeTeam) && !hasPlaceholderTeam(match.awayTeam))
 
 export const getResultBadgeClass = (status: MatchStatus, isSettled: boolean) => {
   if (isSettled || status === 'Settled') {

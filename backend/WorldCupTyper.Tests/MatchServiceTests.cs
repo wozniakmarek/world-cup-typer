@@ -88,6 +88,27 @@ public sealed class MatchServiceTests
         savedMatch.WinnerTeamId.Should().Be(homeTeam.Id);
     }
 
+    [Fact]
+    public async Task GetMatchesAsync_WithUnresolvedKnockoutMatch_ShouldHideItFromPlayers()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        var service = new MatchService(dbContext, dateTimeProvider);
+        var knownTeam = CreateTeam("Mexico", "MEX");
+        var placeholderTeam = CreateTeam("Unknown team", "TBA");
+        var match = CreateMatch(knownTeam.Id, placeholderTeam.Id, dateTimeProvider.UtcNow.AddDays(30));
+        match.MatchNumber = 537417;
+        match.Phase = MatchPhase.RoundOf32;
+
+        dbContext.Teams.AddRange(knownTeam, placeholderTeam);
+        dbContext.Matches.Add(match);
+        await dbContext.SaveChangesAsync();
+
+        var result = await service.GetMatchesAsync(Guid.NewGuid());
+
+        result.Should().BeEmpty();
+    }
+
     private static Team CreateTeam(string name, string shortName)
     {
         return new Team

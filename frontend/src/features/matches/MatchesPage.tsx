@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { matchesApi } from '../../api/services'
+import { shouldShowMatchToPlayer } from '../../app/formatters'
 import { MatchCard } from '../../components/MatchCard'
 import { QueryState } from '../../components/QueryState'
 import { SectionHeading } from '../../components/SectionHeading'
@@ -18,7 +19,7 @@ export const MatchesPage = () => {
   const [filter, setFilter] = useState<(typeof filters)[number]['key']>('all')
   const matchesQuery = useQuery({ queryKey: ['matches'], queryFn: matchesApi.getAll })
 
-  const matches = (matchesQuery.data ?? []).filter((match) => {
+  const matches = (matchesQuery.data ?? []).filter((match) => shouldShowMatchToPlayer(match)).filter((match) => {
     if (filter === 'open') {
       return match.canEditPrediction
     }

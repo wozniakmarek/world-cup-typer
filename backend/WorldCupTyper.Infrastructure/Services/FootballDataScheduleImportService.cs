@@ -13,6 +13,50 @@ namespace WorldCupTyper.Infrastructure.Services;
 
 public sealed class FootballDataScheduleImportService : IScheduleImportService
 {
+    private static readonly IReadOnlyDictionary<string, string> FlagByCountryCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ARG"] = "🇦🇷",
+        ["AUS"] = "🇦🇺",
+        ["AUT"] = "🇦🇹",
+        ["BEL"] = "🇧🇪",
+        ["BIH"] = "🇧🇦",
+        ["BRA"] = "🇧🇷",
+        ["CAN"] = "🇨🇦",
+        ["CHI"] = "🇨🇱",
+        ["COL"] = "🇨🇴",
+        ["CRC"] = "🇨🇷",
+        ["CRO"] = "🇭🇷",
+        ["CZE"] = "🇨🇿",
+        ["DEN"] = "🇩🇰",
+        ["ECU"] = "🇪🇨",
+        ["ENG"] = "🏴",
+        ["ESP"] = "🇪🇸",
+        ["FRA"] = "🇫🇷",
+        ["GER"] = "🇩🇪",
+        ["GHA"] = "🇬🇭",
+        ["IRN"] = "🇮🇷",
+        ["ITA"] = "🇮🇹",
+        ["JPN"] = "🇯🇵",
+        ["KOR"] = "🇰🇷",
+        ["MAR"] = "🇲🇦",
+        ["MEX"] = "🇲🇽",
+        ["NED"] = "🇳🇱",
+        ["NZL"] = "🇳🇿",
+        ["PAR"] = "🇵🇾",
+        ["POL"] = "🇵🇱",
+        ["POR"] = "🇵🇹",
+        ["QAT"] = "🇶🇦",
+        ["RSA"] = "🇿🇦",
+        ["SCO"] = "🏴",
+        ["SEN"] = "🇸🇳",
+        ["SRB"] = "🇷🇸",
+        ["SUI"] = "🇨🇭",
+        ["TUN"] = "🇹🇳",
+        ["URU"] = "🇺🇾",
+        ["USA"] = "🇺🇸",
+        ["WAL"] = "🏴",
+    };
+
     private readonly IAppDbContext _dbContext;
     private readonly IFootballDataClient _client;
     private readonly IMatchSettlementService _settlementService;
@@ -49,8 +93,8 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         {
             try
             {
-                var homeTeam = await UpsertTeamAsync(providerMatch.HomeTeam, cancellationToken);
-                var awayTeam = await UpsertTeamAsync(providerMatch.AwayTeam, cancellationToken);
+                var homeTeam = await UpsertTeamAsync(providerMatch.HomeTeam, providerMatch.GroupName, providerMatch.Phase, cancellationToken);
+                var awayTeam = await UpsertTeamAsync(providerMatch.AwayTeam, providerMatch.GroupName, providerMatch.Phase, cancellationToken);
                 var (match, wasCreated) = await UpsertMatchAsync(providerMatch, homeTeam.Id, awayTeam.Id, cancellationToken);
 
                 if (wasCreated)
@@ -85,7 +129,11 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         return new ScheduleSyncSummaryDto(imported, updated, skipped, settled, failed);
     }
 
-    private async Task<Team> UpsertTeamAsync(FootballDataTeamSyncModel providerTeam, CancellationToken cancellationToken)
+    private async Task<Team> UpsertTeamAsync(
+        FootballDataTeamSyncModel providerTeam,
+        string? groupName,
+        MatchPhase phase,
+        CancellationToken cancellationToken)
     {
         var team = await FindTeamAsync(providerTeam, cancellationToken);
         if (team is null)
@@ -97,6 +145,8 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
                 Name = providerTeam.Name,
                 ShortName = providerTeam.ShortName,
                 CountryCode = NormalizeCountryCode(providerTeam.CountryCode),
+                FlagEmoji = ResolveFlagEmoji(providerTeam.CountryCode),
+                GroupName = ResolveGroupName(groupName, phase),
             };
 
             await _dbContext.Teams.AddAsync(team, cancellationToken);
@@ -107,6 +157,8 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         team.Name = providerTeam.Name;
         team.ShortName = providerTeam.ShortName;
         team.CountryCode = NormalizeCountryCode(providerTeam.CountryCode);
+        team.FlagEmoji = ResolveFlagEmoji(providerTeam.CountryCode) ?? team.FlagEmoji;
+        team.GroupName = ResolveGroupName(groupName, phase) ?? team.GroupName;
         return team;
     }
 
@@ -237,6 +289,20 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
     private static string NormalizeCountryCode(string countryCode)
     {
         return countryCode.Trim().ToUpperInvariant();
+    }
+
+    private static string? ResolveFlagEmoji(string countryCode)
+    {
+        return FlagByCountryCode.TryGetValue(NormalizeCountryCode(countryCode), out var flagEmoji)
+            ? flagEmoji
+            : null;
+    }
+
+    private static string? ResolveGroupName(string? groupName, MatchPhase phase)
+    {
+        return phase == MatchPhase.GroupStage && !string.IsNullOrWhiteSpace(groupName)
+            ? groupName.Trim()
+            : null;
     }
 
     private void ClearTrackedChangesAfterFailure()

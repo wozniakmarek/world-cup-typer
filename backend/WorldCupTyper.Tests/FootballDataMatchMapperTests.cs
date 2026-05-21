@@ -18,7 +18,7 @@ public sealed class FootballDataMatchMapperTests
         result.Status.Should().Be(MatchStatus.Scheduled);
         result.MatchNumber.Should().Be(1001);
         result.Phase.Should().Be(MatchPhase.GroupStage);
-        result.GroupName.Should().Be("Group C");
+        result.GroupName.Should().Be("C");
     }
 
     [Fact]
