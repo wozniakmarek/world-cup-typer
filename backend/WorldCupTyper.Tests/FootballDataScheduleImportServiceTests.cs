@@ -108,6 +108,66 @@ public sealed class FootballDataScheduleImportServiceTests
     }
 
     [Fact]
+    public async Task ImportScheduleAsync_WithUnlistedIsoCountryCode_ShouldDeriveFlagEmoji()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        var providerMatch = Match(
+            status: MatchStatus.Scheduled,
+            homeTeam: new FootballDataTeamSyncModel("football-data:100", "Nigeria", "NGA", "NGA"),
+            awayTeam: new FootballDataTeamSyncModel("football-data:101", "Norway", "NOR", "NOR"));
+        var service = CreateService(dbContext, dateTimeProvider, providerMatch);
+
+        var summary = await service.ImportScheduleAsync();
+
+        summary.FailedMatches.Should().Be(0);
+        dbContext.Teams.Single(team => team.Name == "Nigeria").FlagEmoji.Should().Be("🇳🇬");
+        dbContext.Teams.Single(team => team.Name == "Norway").FlagEmoji.Should().Be("🇳🇴");
+    }
+
+    [Fact]
+    public async Task ImportScheduleAsync_WithFifaAliasCountryCode_ShouldResolveFlagEmoji()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        (string Name, string Code, string Flag)[] teams =
+        {
+            ("Algeria", "ALG", "🇩🇿"),
+            ("Cape Verde Islands", "CPV", "🇨🇻"),
+            ("Congo DR", "COD", "🇨🇩"),
+            ("Curaçao", "CUW", "🇨🇼"),
+            ("Haiti", "HAI", "🇭🇹"),
+            ("Honduras", "HON", "🇭🇳"),
+            ("Iraq", "IRQ", "🇮🇶"),
+            ("Jordan", "JOR", "🇯🇴"),
+            ("Saudi Arabia", "KSA", "🇸🇦"),
+            ("Sweden", "SWE", "🇸🇪"),
+            ("Turkey", "TUR", "🇹🇷"),
+            ("Uruguay", "URY", "🇺🇾"),
+            ("Uzbekistan", "UZB", "🇺🇿"),
+        };
+        var providerMatches = teams
+            .Chunk(2)
+            .Select((pair, index) => Match(
+                status: MatchStatus.Scheduled,
+                matchNumber: 200 + index,
+                homeTeam: ToProviderTeam(pair[0], 200 + index * 2),
+                awayTeam: pair.Length > 1
+                    ? ToProviderTeam(pair[1], 201 + index * 2)
+                    : new FootballDataTeamSyncModel("football-data:999", "Poland", "POL", "POL")))
+            .ToArray();
+        var service = CreateService(dbContext, dateTimeProvider, providerMatches);
+
+        var summary = await service.ImportScheduleAsync();
+
+        summary.FailedMatches.Should().Be(0);
+        foreach (var team in teams)
+        {
+            dbContext.Teams.Single(candidate => candidate.Name == team.Name).FlagEmoji.Should().Be(team.Flag);
+        }
+    }
+
+    [Fact]
     public async Task ImportScheduleAsync_WithFinishedExtraTimeMatchWithoutRegularTime_ShouldNotSettle()
     {
         using var dbContext = TestDbContextFactory.Create();
@@ -220,13 +280,14 @@ public sealed class FootballDataScheduleImportServiceTests
         int? awayScore90 = null,
         int? homeScoreFinal = null,
         int? awayScoreFinal = null,
+        int matchNumber = 1,
         string? groupName = "Group A",
         FootballDataTeamSyncModel? homeTeam = null,
         FootballDataTeamSyncModel? awayTeam = null)
     {
         return new FootballDataMatchSyncModel(
-            ExternalId: "football-data:1001",
-            MatchNumber: 1,
+            ExternalId: $"football-data:{matchNumber}",
+            MatchNumber: matchNumber,
             Phase: MatchPhase.GroupStage,
             GroupName: groupName,
             HomeTeam: homeTeam ?? new FootballDataTeamSyncModel("football-data:794", "Poland", "POL", "POL"),
@@ -238,6 +299,11 @@ public sealed class FootballDataScheduleImportServiceTests
             AwayScore90: awayScore90,
             HomeScoreFinal: homeScoreFinal,
             AwayScoreFinal: awayScoreFinal);
+    }
+
+    private static FootballDataTeamSyncModel ToProviderTeam((string Name, string Code, string Flag) team, int externalId)
+    {
+        return new FootballDataTeamSyncModel($"football-data:{externalId}", team.Name, team.Code, team.Code);
     }
 
     private static Team CreateTeam(string externalId, string name, string shortName)

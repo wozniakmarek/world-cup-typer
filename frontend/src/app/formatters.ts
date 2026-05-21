@@ -44,6 +44,162 @@ const phaseLabels: Record<MatchPhase, string> = {
   Final: 'Finał',
 }
 
+const isoRegionByCountryCode: Record<string, string> = {
+  ALG: 'DZ',
+  ARG: 'AR',
+  AUS: 'AU',
+  AUT: 'AT',
+  BEL: 'BE',
+  BIH: 'BA',
+  BRA: 'BR',
+  CAN: 'CA',
+  CHI: 'CL',
+  CIV: 'CI',
+  CMR: 'CM',
+  COD: 'CD',
+  COL: 'CO',
+  CPV: 'CV',
+  CRC: 'CR',
+  CRO: 'HR',
+  CUR: 'CW',
+  CUW: 'CW',
+  CZE: 'CZ',
+  DEN: 'DK',
+  ECU: 'EC',
+  EGY: 'EG',
+  ENG: 'GB',
+  ESP: 'ES',
+  FRA: 'FR',
+  GER: 'DE',
+  GHA: 'GH',
+  HAI: 'HT',
+  HON: 'HN',
+  IRN: 'IR',
+  IRQ: 'IQ',
+  ITA: 'IT',
+  JPN: 'JP',
+  JOR: 'JO',
+  KOR: 'KR',
+  KSA: 'SA',
+  MAR: 'MA',
+  MEX: 'MX',
+  NED: 'NL',
+  NGA: 'NG',
+  NOR: 'NO',
+  NZL: 'NZ',
+  PAN: 'PA',
+  PAR: 'PY',
+  POL: 'PL',
+  POR: 'PT',
+  QAT: 'QA',
+  RSA: 'ZA',
+  SCO: 'GB',
+  SEN: 'SN',
+  SRB: 'RS',
+  SWE: 'SE',
+  SUI: 'CH',
+  TUN: 'TN',
+  TUR: 'TR',
+  URU: 'UY',
+  URY: 'UY',
+  USA: 'US',
+  UZB: 'UZ',
+  WAL: 'GB',
+}
+
+const flagEmojiByCountryCode: Record<string, string> = {
+  ENG: '🏴',
+  SCO: '🏴',
+  WAL: '🏴',
+}
+
+const polishTeamNameByName: Record<string, string> = {
+  Algeria: 'Algieria',
+  Argentina: 'Argentyna',
+  Australia: 'Australia',
+  Austria: 'Austria',
+  Belgium: 'Belgia',
+  'Bosnia-Herzegovina': 'Bośnia i Hercegowina',
+  Brazil: 'Brazylia',
+  Cameroon: 'Kamerun',
+  Canada: 'Kanada',
+  'Cape Verde Islands': 'Republika Zielonego Przylądka',
+  Chile: 'Chile',
+  Colombia: 'Kolumbia',
+  'Congo DR': 'Demokratyczna Republika Konga',
+  'Costa Rica': 'Kostaryka',
+  Croatia: 'Chorwacja',
+  Curaçao: 'Curaçao',
+  Czechia: 'Czechy',
+  Denmark: 'Dania',
+  Ecuador: 'Ekwador',
+  Egypt: 'Egipt',
+  England: 'Anglia',
+  France: 'Francja',
+  Germany: 'Niemcy',
+  Ghana: 'Ghana',
+  Haiti: 'Haiti',
+  Honduras: 'Honduras',
+  Iran: 'Iran',
+  Iraq: 'Irak',
+  Italy: 'Włochy',
+  'Ivory Coast': 'Wybrzeże Kości Słoniowej',
+  Japan: 'Japonia',
+  Jordan: 'Jordania',
+  Mexico: 'Meksyk',
+  Morocco: 'Maroko',
+  Netherlands: 'Holandia',
+  'New Zealand': 'Nowa Zelandia',
+  Nigeria: 'Nigeria',
+  Norway: 'Norwegia',
+  Panama: 'Panama',
+  Paraguay: 'Paragwaj',
+  Poland: 'Polska',
+  Portugal: 'Portugalia',
+  Qatar: 'Katar',
+  'Saudi Arabia': 'Arabia Saudyjska',
+  Scotland: 'Szkocja',
+  Senegal: 'Senegal',
+  Serbia: 'Serbia',
+  'South Africa': 'Republika Południowej Afryki',
+  'South Korea': 'Korea Południowa',
+  Spain: 'Hiszpania',
+  Sweden: 'Szwecja',
+  Switzerland: 'Szwajcaria',
+  Tunisia: 'Tunezja',
+  Turkey: 'Turcja',
+  Uruguay: 'Urugwaj',
+  'United States': 'Stany Zjednoczone',
+  Uzbekistan: 'Uzbekistan',
+  Wales: 'Walia',
+}
+
+const buildRegionalIndicatorFlag = (regionCode: string) => {
+  const normalized = regionCode.trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(normalized)) {
+    return null
+  }
+
+  return String.fromCodePoint(...[...normalized].map((character) => 0x1f1e6 + character.charCodeAt(0) - 65))
+}
+
+export const getTeamFlagEmoji = (team: Team) => {
+  const explicitFlagEmoji = team.flagEmoji?.trim()
+  if (explicitFlagEmoji && !/^[A-Z]{2,3}$/i.test(explicitFlagEmoji)) {
+    return explicitFlagEmoji
+  }
+
+  const countryCode = team.countryCode.trim().toUpperCase()
+  if (flagEmojiByCountryCode[countryCode]) {
+    return flagEmojiByCountryCode[countryCode]
+  }
+
+  const regionCode = countryCode.length === 2 ? countryCode : isoRegionByCountryCode[countryCode]
+  return regionCode ? buildRegionalIndicatorFlag(regionCode) : null
+}
+
+export const translateTeamName = (name: string) => polishTeamNameByName[name.trim()] ?? name
+
 export const formatMatchContext = (match: MatchContext) => {
   const phaseLabel = phaseLabels[match.phase]
   return match.phase === 'GroupStage' && match.groupName
@@ -51,8 +207,11 @@ export const formatMatchContext = (match: MatchContext) => {
     : phaseLabel
 }
 
-export const formatTeamDisplayName = (team: Team) =>
-  team.flagEmoji ? `${team.flagEmoji} ${team.name}` : team.name
+export const formatTeamDisplayName = (team: Team) => {
+  const flagEmoji = getTeamFlagEmoji(team)
+  const teamName = translateTeamName(team.name)
+  return flagEmoji ? `${flagEmoji} ${teamName}` : teamName
+}
 
 export const hasPlaceholderTeam = (team: Team) => {
   const values = [team.name, team.shortName, team.countryCode].map((value) => value.trim().toUpperCase())

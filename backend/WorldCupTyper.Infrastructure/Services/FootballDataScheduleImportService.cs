@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 using WorldCupTyper.Application.Abstractions;
 using WorldCupTyper.Application.DTOs;
 using WorldCupTyper.Application.Services.Interfaces;
@@ -15,6 +16,7 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
 {
     private static readonly IReadOnlyDictionary<string, string> FlagByCountryCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
+        ["ALG"] = "🇩🇿",
         ["ARG"] = "🇦🇷",
         ["AUS"] = "🇦🇺",
         ["AUT"] = "🇦🇹",
@@ -23,25 +25,37 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         ["BRA"] = "🇧🇷",
         ["CAN"] = "🇨🇦",
         ["CHI"] = "🇨🇱",
+        ["CIV"] = "🇨🇮",
         ["COL"] = "🇨🇴",
+        ["COD"] = "🇨🇩",
+        ["CPV"] = "🇨🇻",
         ["CRC"] = "🇨🇷",
         ["CRO"] = "🇭🇷",
+        ["CUW"] = "🇨🇼",
         ["CZE"] = "🇨🇿",
         ["DEN"] = "🇩🇰",
         ["ECU"] = "🇪🇨",
+        ["EGY"] = "🇪🇬",
         ["ENG"] = "🏴",
         ["ESP"] = "🇪🇸",
         ["FRA"] = "🇫🇷",
         ["GER"] = "🇩🇪",
         ["GHA"] = "🇬🇭",
+        ["HAI"] = "🇭🇹",
+        ["HON"] = "🇭🇳",
         ["IRN"] = "🇮🇷",
+        ["IRQ"] = "🇮🇶",
         ["ITA"] = "🇮🇹",
         ["JPN"] = "🇯🇵",
+        ["JOR"] = "🇯🇴",
         ["KOR"] = "🇰🇷",
+        ["KSA"] = "🇸🇦",
         ["MAR"] = "🇲🇦",
         ["MEX"] = "🇲🇽",
         ["NED"] = "🇳🇱",
+        ["NOR"] = "🇳🇴",
         ["NZL"] = "🇳🇿",
+        ["PAN"] = "🇵🇦",
         ["PAR"] = "🇵🇾",
         ["POL"] = "🇵🇱",
         ["POR"] = "🇵🇹",
@@ -50,12 +64,25 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         ["SCO"] = "🏴",
         ["SEN"] = "🇸🇳",
         ["SRB"] = "🇷🇸",
+        ["SWE"] = "🇸🇪",
         ["SUI"] = "🇨🇭",
         ["TUN"] = "🇹🇳",
+        ["TUR"] = "🇹🇷",
         ["URU"] = "🇺🇾",
+        ["URY"] = "🇺🇾",
         ["USA"] = "🇺🇸",
+        ["UZB"] = "🇺🇿",
         ["WAL"] = "🏴",
     };
+
+    private static readonly IReadOnlyDictionary<string, string> IsoRegionCodeByFifaCode = CultureInfo
+        .GetCultures(CultureTypes.SpecificCultures)
+        .Select(culture => new RegionInfo(culture.Name))
+        .GroupBy(region => region.ThreeLetterISORegionName, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(
+            group => group.Key,
+            group => group.First().TwoLetterISORegionName,
+            StringComparer.OrdinalIgnoreCase);
 
     private readonly IAppDbContext _dbContext;
     private readonly IFootballDataClient _client;
@@ -293,9 +320,32 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
 
     private static string? ResolveFlagEmoji(string countryCode)
     {
-        return FlagByCountryCode.TryGetValue(NormalizeCountryCode(countryCode), out var flagEmoji)
-            ? flagEmoji
+        var normalizedCountryCode = NormalizeCountryCode(countryCode);
+        if (FlagByCountryCode.TryGetValue(normalizedCountryCode, out var flagEmoji))
+        {
+            return flagEmoji;
+        }
+
+        if (normalizedCountryCode.Length == 2)
+        {
+            return BuildRegionalIndicatorFlag(normalizedCountryCode);
+        }
+
+        return IsoRegionCodeByFifaCode.TryGetValue(normalizedCountryCode, out var isoRegionCode)
+            ? BuildRegionalIndicatorFlag(isoRegionCode)
             : null;
+    }
+
+    private static string? BuildRegionalIndicatorFlag(string isoRegionCode)
+    {
+        const int regionalIndicatorOffset = 0x1F1E6 - 'A';
+        var normalizedRegionCode = isoRegionCode.Trim().ToUpperInvariant();
+        if (normalizedRegionCode.Length != 2 || !normalizedRegionCode.All(character => character is >= 'A' and <= 'Z'))
+        {
+            return null;
+        }
+
+        return string.Concat(normalizedRegionCode.Select(character => char.ConvertFromUtf32(character + regionalIndicatorOffset)));
     }
 
     private static string? ResolveGroupName(string? groupName, MatchPhase phase)

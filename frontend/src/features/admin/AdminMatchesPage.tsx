@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { adminApi, teamsApi } from '../../api/services'
 import type { AdminMatch, MatchPhase, MatchStatus } from '../../api/types'
-import { formatKickoff, formatMatchContext, formatTeamDisplayName, fromDateTimeLocalValue, toDateTimeLocalValue } from '../../app/formatters'
+import { formatKickoff, formatMatchContext, formatTeamDisplayName, fromDateTimeLocalValue, toDateTimeLocalValue, translateTeamName } from '../../app/formatters'
 import { FormField } from '../../components/FormField'
 import { InlineAlert } from '../../components/InlineAlert'
 import { Panel } from '../../components/Panel'
@@ -310,13 +310,13 @@ export const AdminMatchesPage = () => {
                 <FormField label="Drużyna gospodarzy">
                   <select className={inputClassName} value={matchForm.homeTeamId} onChange={(event) => setMatchForm((current) => ({ ...current, homeTeamId: event.target.value }))}>
                     <option value="">Wybierz drużynę</option>
-                    {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+                    {teams.map((team) => <option key={team.id} value={team.id}>{translateTeamName(team.name)}</option>)}
                   </select>
                 </FormField>
                 <FormField label="Drużyna gości">
                   <select className={inputClassName} value={matchForm.awayTeamId} onChange={(event) => setMatchForm((current) => ({ ...current, awayTeamId: event.target.value }))}>
                     <option value="">Wybierz drużynę</option>
-                    {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+                    {teams.map((team) => <option key={team.id} value={team.id}>{translateTeamName(team.name)}</option>)}
                   </select>
                 </FormField>
                 <FormField label="Grupa">
@@ -354,19 +354,19 @@ export const AdminMatchesPage = () => {
               {selectedMatch ? (
                 <>
                   <div className="rounded-3xl bg-slate-950/45 px-4 py-4 text-sm text-slate-300">
-                    Wybrany mecz: <strong className="text-white">{selectedMatch.homeTeam.name} vs {selectedMatch.awayTeam.name}</strong>
+                    Wybrany mecz: <strong className="text-white">{translateTeamName(selectedMatch.homeTeam.name)} vs {translateTeamName(selectedMatch.awayTeam.name)}</strong>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <FormField label={`${selectedMatch.homeTeam.name} (90 min)`}>
+                    <FormField label={`${translateTeamName(selectedMatch.homeTeam.name)} (90 min)`}>
                       <input type="number" min="0" step="1" className={inputClassName} value={resultForm.homeScore90} onChange={(event) => setResultForm((current) => ({ ...current, homeScore90: event.target.value }))} />
                     </FormField>
-                    <FormField label={`${selectedMatch.awayTeam.name} (90 min)`}>
+                    <FormField label={`${translateTeamName(selectedMatch.awayTeam.name)} (90 min)`}>
                       <input type="number" min="0" step="1" className={inputClassName} value={resultForm.awayScore90} onChange={(event) => setResultForm((current) => ({ ...current, awayScore90: event.target.value }))} />
                     </FormField>
-                    <FormField label={`${selectedMatch.homeTeam.name} (koniec meczu)`}>
+                    <FormField label={`${translateTeamName(selectedMatch.homeTeam.name)} (koniec meczu)`}>
                       <input type="number" min="0" step="1" className={inputClassName} value={resultForm.homeScoreFinal} onChange={(event) => setResultForm((current) => ({ ...current, homeScoreFinal: event.target.value }))} />
                     </FormField>
-                    <FormField label={`${selectedMatch.awayTeam.name} (koniec meczu)`}>
+                    <FormField label={`${translateTeamName(selectedMatch.awayTeam.name)} (koniec meczu)`}>
                       <input type="number" min="0" step="1" className={inputClassName} value={resultForm.awayScoreFinal} onChange={(event) => setResultForm((current) => ({ ...current, awayScoreFinal: event.target.value }))} />
                     </FormField>
                   </div>

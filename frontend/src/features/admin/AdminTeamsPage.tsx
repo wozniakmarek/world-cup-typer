@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { adminApi, teamsApi } from '../../api/services'
 import type { Team } from '../../api/types'
+import { formatTeamDisplayName, getTeamFlagEmoji, translateTeamName } from '../../app/formatters'
 import { FormField } from '../../components/FormField'
 import { InlineAlert } from '../../components/InlineAlert'
 import { Panel } from '../../components/Panel'
@@ -212,8 +213,8 @@ export const AdminTeamsPage = () => {
                       <tr key={team.id} className="border-t border-white/5">
                         <td className="px-4 py-4 text-white">
                           <span className="inline-flex items-center gap-2">
-                            {team.flagEmoji ? <span>{team.flagEmoji}</span> : null}
-                            <span>{team.name}</span>
+                            {getTeamFlagEmoji(team) ? <span>{getTeamFlagEmoji(team)}</span> : null}
+                            <span>{translateTeamName(team.name)}</span>
                           </span>
                         </td>
                         <td className="px-4 py-4 text-slate-300">{team.shortName}</td>
@@ -235,8 +236,7 @@ export const AdminTeamsPage = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-white">
-                      {team.flagEmoji ? `${team.flagEmoji} ` : ''}
-                      {team.name}
+                      {formatTeamDisplayName(team)}
                     </p>
                     <p className="mt-1 text-sm text-slate-400">
                       {team.shortName} / {team.countryCode}

@@ -30,8 +30,59 @@ const matches = [
     isSettled: false,
     homeScore90: null,
     awayScore90: null,
-    homeTeam: team('team-mex', 'Mexico', 'MEX', '🇲🇽', 'A'),
-    awayTeam: team('team-rsa', 'South Africa', 'RSA', '🇿🇦', 'A'),
+    homeTeam: team('team-mex', 'Mexico', 'MEX', 'MX', 'A'),
+    awayTeam: team('team-rsa', 'South Africa', 'RSA', 'ZA', 'A'),
+    myPrediction: null,
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
+    id: 'match-unlisted-flag',
+    matchNumber: 537328,
+    phase: 'GroupStage',
+    groupName: 'B',
+    kickoffTimeUtc: '2026-06-12T19:00:00Z',
+    venue: 'Arrowhead Stadium',
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-nga', 'Nigeria', 'NGA'),
+    awayTeam: team('team-nor', 'Norway', 'NOR'),
+    myPrediction: null,
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
+    id: 'match-fifa-aliases-one',
+    matchNumber: 537329,
+    phase: 'GroupStage',
+    groupName: 'H',
+    kickoffTimeUtc: '2026-06-13T19:00:00Z',
+    venue: null,
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-cpv', 'Cape Verde Islands', 'CPV', 'CPV', 'H'),
+    awayTeam: team('team-cod', 'Congo DR', 'COD', 'COD', 'H'),
+    myPrediction: null,
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
+    id: 'match-fifa-aliases-two',
+    matchNumber: 537330,
+    phase: 'GroupStage',
+    groupName: 'H',
+    kickoffTimeUtc: '2026-06-14T19:00:00Z',
+    venue: null,
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-ksa', 'Saudi Arabia', 'KSA', 'KSA', 'H'),
+    awayTeam: team('team-ury', 'Uruguay', 'URY', 'URY', 'H'),
     myPrediction: null,
     myPoints: null,
     canEditPrediction: true,
@@ -72,10 +123,36 @@ test.beforeEach(async ({ page }) => {
 test('player match list presents football-data schedule without API ids or unresolved knockout placeholders', async ({ page }) => {
   await page.goto('/matches')
 
-  await expect(page.getByText('Mexico')).toBeVisible()
-  await expect(page.getByText('South Africa')).toBeVisible()
+  await expect(page.getByText('🇲🇽 Meksyk')).toBeVisible()
+  await expect(page.getByText('🇿🇦 Republika Południowej Afryki')).toBeVisible()
   await expect(page.getByText('Faza grupowa · Grupa A')).toBeVisible()
   await expect(page.getByText('#537327')).toHaveCount(0)
   await expect(page.getByText('Unknown team')).toHaveCount(0)
   await expect(page.getByText('RoundOf32')).toHaveCount(0)
+})
+
+test('desktop match list derives missing flags and avoids horizontal overflow on laptop width', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 })
+
+  await page.goto('/matches')
+
+  await expect(page.getByText('🇳🇬 Nigeria')).toBeVisible()
+  await expect(page.getByText('🇳🇴 Norwegia')).toBeVisible()
+  await expect(page.getByText('🇨🇻 Republika Zielonego Przylądka')).toBeVisible()
+  await expect(page.getByText('🇨🇩 Demokratyczna Republika Konga')).toBeVisible()
+  await expect(page.getByText('🇸🇦 Arabia Saudyjska')).toBeVisible()
+  await expect(page.getByText('🇺🇾 Urugwaj')).toBeVisible()
+
+  const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+  expect(hasHorizontalOverflow).toBe(false)
+
+  const cardRects = await page.locator('article').evaluateAll((cards) =>
+    cards.map((card) => {
+      const rect = card.getBoundingClientRect()
+      return { top: Math.round(rect.top), width: Math.round(rect.width) }
+    }),
+  )
+  expect(cardRects.length).toBeGreaterThanOrEqual(2)
+  expect(cardRects[0].top).toBe(cardRects[1].top)
+  expect(Math.min(...cardRects.map((rect) => rect.width))).toBeGreaterThanOrEqual(560)
 })

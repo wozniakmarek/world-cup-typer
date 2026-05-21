@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
 import { matchesApi } from '../../api/services'
-import { formatLongDate } from '../../app/formatters'
+import { formatLongDate, formatTeamDisplayName, translateTeamName } from '../../app/formatters'
 import { EmptyState } from '../../components/EmptyState'
 import { FormField } from '../../components/FormField'
 import { InlineAlert } from '../../components/InlineAlert'
@@ -132,7 +132,7 @@ export const MatchDetailsPage = () => {
           <>
             <SectionHeading
               eyebrow="Szczegóły meczu"
-              title={`${match.homeTeam.name} vs ${match.awayTeam.name}`}
+              title={`${translateTeamName(match.homeTeam.name)} vs ${translateTeamName(match.awayTeam.name)}`}
               description={`Kickoff: ${formatLongDate(match.kickoffTimeUtc)}${match.venue ? ` • ${match.venue}` : ''}`}
             />
 
@@ -143,14 +143,14 @@ export const MatchDetailsPage = () => {
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Gospodarze</p>
                       <p className="mt-1 font-display text-2xl uppercase text-white md:text-3xl">
-                        {match.homeTeam.flagEmoji} {match.homeTeam.name}
+                        {formatTeamDisplayName(match.homeTeam)}
                       </p>
                     </div>
                     <p className="text-center font-display text-sm uppercase tracking-[0.3em] text-slate-500">vs</p>
                     <div className="md:text-right">
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Goście</p>
                       <p className="mt-1 font-display text-2xl uppercase text-white md:text-3xl">
-                        {match.awayTeam.flagEmoji} {match.awayTeam.name}
+                        {formatTeamDisplayName(match.awayTeam)}
                       </p>
                     </div>
                   </div>
@@ -191,7 +191,7 @@ export const MatchDetailsPage = () => {
               ) : null}
 
               <form className="grid gap-4 md:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => void handleSubmit(event)}>
-                <FormField label={`Typ: ${match.homeTeam.name}`}>
+                <FormField label={`Typ: ${translateTeamName(match.homeTeam.name)}`}>
                   <input
                     type="number"
                     min="0"
@@ -203,7 +203,7 @@ export const MatchDetailsPage = () => {
                     className={inputClassName}
                   />
                 </FormField>
-                <FormField label={`Typ: ${match.awayTeam.name}`}>
+                <FormField label={`Typ: ${translateTeamName(match.awayTeam.name)}`}>
                   <input
                     type="number"
                     min="0"
