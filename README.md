@@ -14,6 +14,7 @@ Prywatne MVP aplikacji webowej/PWA do typowania wyników meczów Mistrzostw Świ
 
 Przydatne dokumenty:
 - `docs/deployment-prep.md`
+- `docs/production-backups.md`
 - `docs/mvp-status.md`
 
 ## Co działa w MVP
