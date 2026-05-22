@@ -9,7 +9,7 @@ html {
 }
 
 body {
-  @apply m-0 min-h-screen bg-pitch-950 font-body text-slate-100 antialiased;
+  @apply m-0 min-h-screen overflow-x-hidden bg-pitch-950 font-body text-slate-100 antialiased;
 }
 
 #root {
