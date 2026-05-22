@@ -11,9 +11,9 @@ export const MatchCard = ({ match }: { match: MatchSummary }) => {
       : 'Typ zablokowany'
 
   return (
-    <article className="glass-card rounded-3xl p-4 sm:p-5">
+    <article className="glass-card min-w-0 overflow-hidden rounded-3xl p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <p className="font-display text-xs uppercase tracking-[0.28em] text-emerald-300/80 sm:text-sm">
             {formatMatchContext(match)}
           </p>
@@ -27,14 +27,14 @@ export const MatchCard = ({ match }: { match: MatchSummary }) => {
         <div className="grid gap-3 rounded-[1.75rem] bg-slate-950/45 px-4 py-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Gospodarze</p>
-            <p className="mt-1 font-display text-lg uppercase text-white sm:text-xl">
+            <p className="mt-1 break-words font-display text-lg uppercase text-white sm:text-xl">
               {formatTeamDisplayName(match.homeTeam)}
             </p>
           </div>
           <span className="text-center font-display text-sm uppercase tracking-[0.3em] text-slate-500">vs</span>
           <div className="text-left sm:text-right">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Goście</p>
-            <p className="mt-1 font-display text-lg uppercase text-white sm:text-xl">
+            <p className="mt-1 break-words font-display text-lg uppercase text-white sm:text-xl">
               {formatTeamDisplayName(match.awayTeam)}
             </p>
           </div>

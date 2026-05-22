@@ -43,8 +43,8 @@ export const ProfilePage = () => {
       />
 
       <Panel>
-        <div className="grid gap-5 lg:grid-cols-[auto_1fr] lg:items-center">
-          <div className="flex items-center gap-4">
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[auto_1fr] lg:items-center">
+          <div className="flex min-w-0 items-center gap-4">
             <UserAvatar displayName={user?.displayName ?? 'Gracz'} avatarUrl={user?.avatarUrl} size="lg" />
             <div className="min-w-0">
               <p className="truncate font-display text-2xl uppercase text-white">{user?.displayName}</p>
@@ -69,12 +69,12 @@ export const ProfilePage = () => {
               />
             </FormField>
 
-            <div className="flex items-end gap-2">
-              <button className={buttonClassName} type="submit" disabled={avatarMutation.isPending}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <button className={`${buttonClassName} w-full sm:w-auto`} type="submit" disabled={avatarMutation.isPending}>
                 Zapisz
               </button>
               <button
-                className={secondaryButtonClassName}
+                className={`${secondaryButtonClassName} w-full sm:w-auto`}
                 type="button"
                 disabled={avatarMutation.isPending}
                 onClick={() => {

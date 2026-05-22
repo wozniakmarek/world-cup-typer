@@ -51,14 +51,14 @@ export const DashboardPage = () => {
         </div>
       </QueryState>
 
-      <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[1.7fr_1fr]">
         <Panel className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="font-display text-2xl uppercase text-white">Najbliższe mecze</p>
               <p className="text-sm text-slate-400">Szybki dostęp do typowania i blokad kickoffu.</p>
             </div>
-            <Link className="text-sm font-semibold text-emerald-300 hover:text-emerald-200" to="/matches">
+            <Link className="shrink-0 text-sm font-semibold text-emerald-300 hover:text-emerald-200" to="/matches">
               Zobacz wszystkie
             </Link>
           </div>
@@ -81,7 +81,7 @@ export const DashboardPage = () => {
           </QueryState>
         </Panel>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Panel className="space-y-4">
             <p className="font-display text-2xl uppercase text-white">TOP 5 rankingu</p>
 
@@ -97,7 +97,7 @@ export const DashboardPage = () => {
             >
               <div className="space-y-3">
                 {topQuery.data?.map((entry) => (
-                  <div key={entry.userId} className="flex items-center justify-between rounded-2xl bg-slate-950/50 px-4 py-3">
+                    <div key={entry.userId} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-slate-950/50 px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <UserAvatar displayName={entry.displayName} avatarUrl={entry.avatarUrl} size="sm" />
                       <div className="min-w-0">
@@ -109,7 +109,7 @@ export const DashboardPage = () => {
                         </p>
                       </div>
                     </div>
-                    <p className="font-display text-2xl text-emerald-300">{entry.totalPoints}</p>
+                    <p className="shrink-0 font-display text-2xl text-emerald-300">{entry.totalPoints}</p>
                   </div>
                 ))}
               </div>

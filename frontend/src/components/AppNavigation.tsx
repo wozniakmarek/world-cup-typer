@@ -26,7 +26,7 @@ const navigationLinkClasses = (isActive: boolean, variant: 'desktop' | 'mobile' 
     variant === 'mobile' &&
       'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[0.7rem] font-semibold',
     variant === 'admin' &&
-      'inline-flex min-w-[7.25rem] shrink-0 items-center justify-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-semibold',
+      'flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1.5 py-2 text-center text-[0.65rem] font-semibold leading-tight',
     isActive
       ? 'bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-950/30'
       : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white',
@@ -85,12 +85,12 @@ export const AppNavigation = () => {
         </div>
       </header>
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-pitch-950/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-18px_45px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 overflow-x-hidden border-t border-white/10 bg-pitch-950/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-18px_45px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl sm:hidden"
         aria-label="Nawigacja mobilna gracza"
       >
         {isAdmin ? (
-          <div className="-mx-1 mb-2 overflow-x-auto px-1" aria-label="Nawigacja mobilna administratora">
-            <div className="flex gap-2">
+          <div className="mb-2" aria-label="Nawigacja mobilna administratora">
+            <div className="grid grid-cols-4 gap-1.5">
               {adminLinks.map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}

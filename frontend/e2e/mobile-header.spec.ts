@@ -7,8 +7,8 @@ const MAX_TITLE_Y_IN_FIRST_VIEWPORT = 260
 
 const currentUser = {
   id: 'user-1',
-  email: 'player@example.com',
-  displayName: 'Marek Wozniak',
+  email: 'marek.wozniak.with.long.email@example.com',
+  displayName: 'Marek Wozniak Bardzo Dlugie Nazwisko',
   role: 'Admin',
   isActive: true,
 }
@@ -46,6 +46,33 @@ const matches = [
   },
 ]
 
+const ranking = [
+  {
+    position: 1,
+    userId: currentUser.id,
+    displayName: currentUser.displayName,
+    totalPoints: 123,
+    exactScoreHits: 12,
+    correctOutcomeHits: 34,
+    predictionsCount: 56,
+    avatarUrl: null,
+    isCurrentUser: true,
+  },
+]
+
+const rankingProgress = [
+  {
+    matchId: 'match-1',
+    matchNumber: 1,
+    snapshotAtUtc: '2026-06-11T21:00:00Z',
+    totalPoints: 123,
+    exactScoreHits: 12,
+    correctOutcomeHits: 34,
+    predictionsCount: 56,
+    position: 1,
+  },
+]
+
 async function getVisibleBoundingBox(locator: Locator, message: string) {
   const box = await locator.boundingBox()
   expect(box, message).not.toBeNull()
@@ -62,12 +89,81 @@ test.beforeEach(async ({ page }) => {
   }, currentUser)
 
   await page.route('**/api/auth/me', async (route) => route.fulfill({ json: currentUser }))
+  await page.route('**/api/matches/match-1/predictions', async (route) =>
+    route.fulfill({
+      json: {
+        canViewAllPredictions: false,
+        predictions: [
+          {
+            predictionId: 'prediction-1',
+            userId: currentUser.id,
+            displayName: currentUser.displayName,
+            predictedHomeScore: 2,
+            predictedAwayScore: 1,
+            points: null,
+          },
+        ],
+      },
+    }),
+  )
+  await page.route('**/api/matches/match-1', async (route) =>
+    route.fulfill({
+      json: {
+        ...matches[0],
+        homeScoreFinal: null,
+        awayScoreFinal: null,
+        canViewPredictions: false,
+      },
+    }),
+  )
   await page.route('**/api/matches/upcoming', async (route) => route.fulfill({ json: matches }))
   await page.route('**/api/matches', async (route) => route.fulfill({ json: matches }))
-  await page.route('**/api/ranking/top', async (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/ranking/top', async (route) => route.fulfill({ json: ranking }))
+  await page.route('**/api/ranking/me', async (route) => route.fulfill({ json: ranking[0] }))
+  await page.route('**/api/ranking/progress', async (route) => route.fulfill({ json: rankingProgress }))
+  await page.route('**/api/ranking', async (route) => route.fulfill({ json: ranking }))
+  await page.route('**/api/predictions/my', async (route) =>
+    route.fulfill({
+      json: [
+        {
+          matchId: 'match-1',
+          homeTeamName: matches[0].homeTeam.name,
+          awayTeamName: matches[0].awayTeam.name,
+          kickoffTimeUtc: matches[0].kickoffTimeUtc,
+          prediction: {
+            id: 'prediction-1',
+            predictedHomeScore: 2,
+            predictedAwayScore: 1,
+            createdAtUtc: '2026-06-01T12:00:00Z',
+            points: null,
+          },
+        },
+      ],
+    }),
+  )
   await page.route('**/api/admin/players', async (route) => route.fulfill({ json: [] }))
   await page.route('**/api/teams', async (route) => route.fulfill({ json: [] }))
   await page.route('**/api/admin/matches', async (route) => route.fulfill({ json: [] }))
+})
+
+test('logged-in mobile pages do not create horizontal document scroll', async ({ page }) => {
+  for (const path of [
+    '/',
+    '/matches',
+    '/matches/match-1',
+    '/ranking',
+    '/profile',
+    '/admin',
+    '/admin/players',
+    '/admin/teams',
+    '/admin/matches',
+  ]) {
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(overflow, `${path} should fit a 390px viewport without horizontal scroll`).toBeLessThanOrEqual(1)
+  }
 })
 
 test('logged-in mobile shell keeps primary content high in the first viewport', async ({ page }) => {
