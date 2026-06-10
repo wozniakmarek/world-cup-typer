@@ -6,14 +6,14 @@ import { useAuth } from './AuthContext'
 import { buttonClassName, inputClassName } from '../../styles/ui'
 
 export const LoginPage = () => {
-  const { isAuthenticated, login } = useAuth()
+  const { isAuthenticated, login, requiresPasswordChange } = useAuth()
   const [loginValue, setLoginValue] = useState('admin@marekwozniak.me')
   const [password, setPassword] = useState('ChangeMe123!')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />
+    return <Navigate to={requiresPasswordChange ? '/change-password' : '/'} replace />
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

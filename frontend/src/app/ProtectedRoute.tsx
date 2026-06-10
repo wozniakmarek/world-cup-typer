@@ -4,11 +4,13 @@ import { useAuth } from '../features/auth/AuthContext'
 export const ProtectedRoute = ({
   children,
   requireAdmin = false,
+  allowPasswordChange = false,
 }: {
   children: React.ReactNode
   requireAdmin?: boolean
+  allowPasswordChange?: boolean
 }) => {
-  const { isAuthenticated, isAdmin, isInitializing } = useAuth()
+  const { isAuthenticated, isAdmin, isInitializing, requiresPasswordChange } = useAuth()
 
   if (isInitializing) {
     return (
@@ -20,6 +22,14 @@ export const ProtectedRoute = ({
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
+  }
+
+  if (requiresPasswordChange && !allowPasswordChange) {
+    return <Navigate to="/change-password" replace />
+  }
+
+  if (allowPasswordChange && !requiresPasswordChange) {
+    return <Navigate to="/" replace />
   }
 
   if (requireAdmin && !isAdmin) {

@@ -5,6 +5,7 @@ import { AdminDashboardPage } from '../features/admin/AdminDashboardPage'
 import { AdminMatchesPage } from '../features/admin/AdminMatchesPage'
 import { AdminPlayersPage } from '../features/admin/AdminPlayersPage'
 import { AdminTeamsPage } from '../features/admin/AdminTeamsPage'
+import { ChangePasswordPage } from '../features/auth/ChangePasswordPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { LoginPage } from '../features/auth/LoginPage'
 import { MatchDetailsPage } from '../features/matches/MatchDetailsPage'
@@ -17,6 +18,14 @@ export const AppRouter = () => {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute allowPasswordChange>
+              <ChangePasswordPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           element={
             <ProtectedRoute>

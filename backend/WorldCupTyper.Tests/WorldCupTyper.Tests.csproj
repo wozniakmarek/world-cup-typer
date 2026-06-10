@@ -23,7 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\WorldCupTyper.Application\WorldCupTyper.Application.csproj" />
+    <ProjectReference Include="..\WorldCupTyper.Api\WorldCupTyper.Api.csproj" />
     <ProjectReference Include="..\WorldCupTyper.Domain\WorldCupTyper.Domain.csproj" />
     <ProjectReference Include="..\WorldCupTyper.Infrastructure\WorldCupTyper.Infrastructure.csproj" />
   </ItemGroup>

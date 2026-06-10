@@ -89,8 +89,9 @@ export const AdminPlayersPage = () => {
 
   const resetMutation = useMutation({
     mutationFn: (playerId: string) => adminApi.resetPassword(playerId),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setFeedback({ tone: 'success', title: 'Hasło zresetowane', message: `Nowe hasło tymczasowe: ${data.temporaryPassword}` })
+      await refreshPlayers()
     },
     onError: (error) => setFeedback({ tone: 'error', title: 'Nie udało się zresetować hasła', message: getErrorMessage(error) }),
   })
@@ -202,6 +203,7 @@ export const AdminPlayersPage = () => {
                       <th className="px-4 py-4">Email</th>
                       <th className="px-4 py-4">Rola</th>
                       <th className="px-4 py-4">Status</th>
+                      <th className="px-4 py-4">Hasło</th>
                       <th className="px-4 py-4">Akcje</th>
                     </tr>
                   </thead>
@@ -212,6 +214,9 @@ export const AdminPlayersPage = () => {
                         <td className="px-4 py-4 text-slate-300">{player.email}</td>
                         <td className="px-4 py-4">{player.role}</td>
                         <td className="px-4 py-4">{player.isActive ? 'Aktywny' : 'Nieaktywny'}</td>
+                        <td className="px-4 py-4">
+                          {player.requiresPasswordChange ? 'Wymaga zmiany' : 'Ustawione'}
+                        </td>
                         <td className="px-4 py-4">
                           <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedPlayer(player)}>
                             Edytuj
@@ -240,6 +245,10 @@ export const AdminPlayersPage = () => {
                     <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Status</p>
                     <p className={player.isActive ? 'mt-1 text-emerald-200' : 'mt-1 text-slate-300'}>
                       {player.isActive ? 'Aktywny' : 'Nieaktywny'}
+                    </p>
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-500">Hasło</p>
+                    <p className={player.requiresPasswordChange ? 'mt-1 text-amber-200' : 'mt-1 text-slate-300'}>
+                      {player.requiresPasswordChange ? 'Wymaga zmiany' : 'Ustawione'}
                     </p>
                   </div>
                   <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedPlayer(player)}>
