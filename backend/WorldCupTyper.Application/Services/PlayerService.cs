@@ -27,6 +27,7 @@ public sealed class PlayerService : IPlayerService
     {
         var players = await _dbContext.Users
             .AsNoTracking()
+            .Where(user => user.IsActive)
             .OrderByDescending(user => user.Role == UserRole.Admin)
             .ThenBy(user => user.DisplayName)
             .ToListAsync(cancellationToken);
