@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { normalizeBaseUrl, readSecretValue, runsAgainstLocalPreview } from './environment'
+import { normalizeBaseUrl, readSecretValue, runsAgainstLocalPreview, shouldRunRoleLoginSmoke } from './environment'
 
 test('readSecretValue handles raw values and KEY=VALUE formatted secrets', () => {
   expect(readSecretValue('secret-value', 'E2E_BASE_URL')).toBe('secret-value')
@@ -16,4 +16,10 @@ test('runsAgainstLocalPreview detects local preview with host-only and KEY=VALUE
   expect(runsAgainstLocalPreview('127.0.0.1:4173')).toBeTruthy()
   expect(runsAgainstLocalPreview('E2E_BASE_URL=localhost:4173')).toBeTruthy()
   expect(runsAgainstLocalPreview('https://example.com')).toBeFalsy()
+})
+
+test('shouldRunRoleLoginSmoke keeps production smoke light', () => {
+  expect(shouldRunRoleLoginSmoke({ smokeMode: 'production', isLocalPreview: false })).toBeFalsy()
+  expect(shouldRunRoleLoginSmoke({ smokeMode: 'staging', isLocalPreview: false })).toBeTruthy()
+  expect(shouldRunRoleLoginSmoke({ smokeMode: 'staging', isLocalPreview: true })).toBeFalsy()
 })

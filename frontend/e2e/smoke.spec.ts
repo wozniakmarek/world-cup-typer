@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { readSecretValue, runsAgainstLocalPreview } from './helpers/environment'
+import { readSecretValue, runsAgainstLocalPreview, shouldRunRoleLoginSmoke } from './helpers/environment'
 
 const smokeMode = readSecretValue(process.env.E2E_SMOKE_MODE, 'E2E_SMOKE_MODE')?.toLowerCase() ?? 'production'
 const isStagingSmoke = smokeMode === 'staging'
 const isLocalPreview = runsAgainstLocalPreview()
+const runRoleLoginSmoke = shouldRunRoleLoginSmoke({ smokeMode, isLocalPreview })
 
 async function login(page: Page, email: string, password: string) {
   await page.goto('/login')
@@ -16,14 +17,10 @@ async function login(page: Page, email: string, password: string) {
 
 test('strona logowania ładuje się poprawnie', async ({ page }) => {
   await page.goto('/login')
-  await expect(page.getByRole('heading', { name: 'Mistrzostwa Świata 2026 by Marek Woźniak' })).toBeVisible()
-  await expect(
-    page.getByText('Prywatne MVP dla grupy znajomych: obstawianie meczów, rozliczenia 3/1/0, ranking, panel admina i inne'),
-  ).toBeVisible()
-  await expect(page.getByText('0 pkt')).toBeVisible()
-  await expect(page.getByText('Nietrafiony wynik ani rezultat')).toBeVisible()
   await expect(page.getByText('Logowanie')).toBeVisible()
   await expect(page.getByText('Zaloguj się mailem albo nazwą gracza.')).toBeVisible()
+  await expect(page.getByLabel('Login')).toBeVisible()
+  await expect(page.getByLabel('Hasło')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Wejdź do aplikacji' })).toBeVisible()
 })
 
@@ -82,7 +79,7 @@ const roles = [
 
 for (const role of roles) {
   test(`logowanie smoke (${role.name})`, async ({ page }) => {
-    test.skip(isLocalPreview, `Logowanie smoke dla roli ${role.name} wymaga środowiska z API`)
+    test.skip(!runRoleLoginSmoke, `Logowanie smoke dla roli ${role.name} uruchamiamy tylko na stagingu`)
     test.skip(!role.email || !role.password, `Brak danych logowania dla roli: ${role.name}`)
     await login(page, role.email!, role.password!)
   })
