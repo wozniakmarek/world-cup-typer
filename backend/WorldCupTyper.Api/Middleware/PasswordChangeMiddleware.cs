@@ -50,13 +50,14 @@ public sealed class PasswordChangeMiddleware
         });
     }
 
-private static bool IsAllowedPath(PathString requestPath)
-{
-    var normalizedRequestPath = requestPath.Value?.TrimEnd('/') ?? string.Empty;
+    private static bool IsAllowedPath(PathString requestPath)
+    {
+        var normalizedRequestPath = requestPath.Value?.TrimEnd('/') ?? string.Empty;
 
-    return AllowedPaths.Any(path =>
-        string.Equals(
-            normalizedRequestPath,
-            (path.Value ?? string.Empty).TrimEnd('/'),
-            StringComparison.OrdinalIgnoreCase));
+        return AllowedPaths.Any(path =>
+            string.Equals(
+                normalizedRequestPath,
+                (path.Value ?? string.Empty).TrimEnd('/'),
+                StringComparison.OrdinalIgnoreCase));
+    }
 }
