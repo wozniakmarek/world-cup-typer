@@ -5,6 +5,7 @@ import { AdminDashboardPage } from '../features/admin/AdminDashboardPage'
 import { AdminMatchesPage } from '../features/admin/AdminMatchesPage'
 import { AdminPlayersPage } from '../features/admin/AdminPlayersPage'
 import { AdminTeamsPage } from '../features/admin/AdminTeamsPage'
+import { ChangePasswordPage } from '../features/auth/ChangePasswordPage'
 import { useAuth } from '../features/auth/AuthContext'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { LoginPage } from '../features/auth/LoginPage'
@@ -15,7 +16,7 @@ import { PublicHomePage } from '../features/public/PublicHomePage'
 import { RankingPage } from '../features/ranking/RankingPage'
 
 const RootRoute = () => {
-  const { isAuthenticated, isInitializing } = useAuth()
+  const { isAuthenticated, isInitializing, requiresPasswordChange } = useAuth()
 
   if (isInitializing) {
     return (
@@ -29,6 +30,10 @@ const RootRoute = () => {
     return <PublicHomePage />
   }
 
+  if (requiresPasswordChange) {
+    return <Navigate to="/change-password" replace />
+  }
+
   return <AppShell />
 }
 
@@ -40,6 +45,14 @@ export const AppRouter = () => {
         <Route path="/" element={<RootRoute />}>
           <Route index element={<DashboardPage />} />
         </Route>
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute allowPasswordChange>
+              <ChangePasswordPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           element={
             <ProtectedRoute>

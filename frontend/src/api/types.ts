@@ -17,6 +17,7 @@ export interface CurrentUser {
   displayName: string
   role: UserRole
   isActive: boolean
+  requiresPasswordChange: boolean
   avatarUrl?: string | null
 }
 
@@ -92,6 +93,7 @@ export interface Player {
   displayName: string
   role: UserRole
   isActive: boolean
+  requiresPasswordChange: boolean
   createdAtUtc: string
   lastLoginAtUtc?: string | null
   avatarUrl?: string | null

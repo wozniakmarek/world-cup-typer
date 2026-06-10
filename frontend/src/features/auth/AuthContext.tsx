@@ -8,8 +8,10 @@ interface AuthContextValue {
   user: CurrentUser | null
   isAuthenticated: boolean
   isAdmin: boolean
+  requiresPasswordChange: boolean
   isInitializing: boolean
   login: (login: string, password: string) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<CurrentUser>
   logout: () => Promise<void>
   updateAvatar: (avatarUrl?: string | null) => Promise<CurrentUser>
 }
@@ -56,6 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       user,
       isAuthenticated: Boolean(token && user),
       isAdmin: user?.role === 'Admin',
+      requiresPasswordChange: Boolean(user?.requiresPasswordChange),
       isInitializing,
       login: async (loginValue, password) => {
         const response = await authApi.login({ login: loginValue, password })
@@ -63,6 +66,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(response.user)
         localStorage.setItem(TOKEN_KEY, response.token)
         localStorage.setItem(USER_KEY, JSON.stringify(response.user))
+      },
+      changePassword: async (currentPassword, newPassword) => {
+        const currentUser = await authApi.changePassword({ currentPassword, newPassword })
+        setUser(currentUser)
+        localStorage.setItem(USER_KEY, JSON.stringify(currentUser))
+
+        return currentUser
       },
       updateAvatar: async (avatarUrl) => {
         const currentUser = await authApi.updateAvatar({ avatarUrl })

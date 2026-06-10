@@ -11,6 +11,7 @@ public class ApplicationUser
     public string? AvatarUrl { get; set; }
     public UserRole Role { get; set; } = UserRole.Player;
     public bool IsActive { get; set; } = true;
+    public bool RequiresPasswordChange { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? LastLoginAtUtc { get; set; }
 

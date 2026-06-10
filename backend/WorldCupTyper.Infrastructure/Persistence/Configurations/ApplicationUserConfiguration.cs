@@ -17,6 +17,7 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
         builder.Property(user => user.AvatarUrl).HasMaxLength(500);
         builder.Property(user => user.Role).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(user => user.IsActive).IsRequired();
+        builder.Property(user => user.RequiresPasswordChange).IsRequired();
         builder.Property(user => user.CreatedAtUtc).IsRequired();
 
         builder.HasIndex(user => user.Email).IsUnique();

@@ -8,6 +8,7 @@ public sealed record PlayerDto(
     string DisplayName,
     UserRole Role,
     bool IsActive,
+    bool RequiresPasswordChange,
     DateTime CreatedAtUtc,
     DateTime? LastLoginAtUtc,
     string? AvatarUrl);

@@ -29,6 +29,11 @@ export interface UpdateAvatarPayload {
   avatarUrl?: string | null
 }
 
+export interface ChangePasswordPayload {
+  currentPassword: string
+  newPassword: string
+}
+
 export interface SavePlayerPayload {
   email: string
   displayName: string
@@ -70,6 +75,8 @@ export interface SetMatchResultPayload {
 export const authApi = {
   login: async (payload: LoginPayload) => (await apiClient.post<AuthResponse>('/auth/login', payload)).data,
   me: async () => (await apiClient.get<CurrentUser>('/auth/me')).data,
+  changePassword: async (payload: ChangePasswordPayload) =>
+    (await apiClient.post<CurrentUser>('/auth/change-password', payload)).data,
   updateAvatar: async (payload: UpdateAvatarPayload) =>
     (await apiClient.put<CurrentUser>('/auth/me/avatar', payload)).data,
   logout: async () => apiClient.post('/auth/logout'),

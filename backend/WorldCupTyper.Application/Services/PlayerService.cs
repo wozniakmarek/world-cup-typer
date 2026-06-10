@@ -51,6 +51,7 @@ public sealed class PlayerService : IPlayerService
             PasswordHash = _passwordHasher.Hash(password),
             Role = request.Role,
             IsActive = true,
+            RequiresPasswordChange = true,
             CreatedAtUtc = _dateTimeProvider.UtcNow,
         };
 
@@ -105,6 +106,7 @@ public sealed class PlayerService : IPlayerService
         EnsurePassword(password);
 
         user.PasswordHash = _passwordHasher.Hash(password);
+        user.RequiresPasswordChange = true;
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new ResetPasswordResponse(user.Id, password);
