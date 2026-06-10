@@ -11,7 +11,7 @@ import { StatCard } from '../../components/StatCard'
 import { FormField } from '../../components/FormField'
 import { InlineAlert } from '../../components/InlineAlert'
 import { UserAvatar } from '../../components/UserAvatar'
-import { buttonClassName, inputClassName } from '../../styles/ui'
+import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
 import { useAuth } from '../auth/AuthContext'
 
 export const ProfilePage = () => {
