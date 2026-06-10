@@ -10,8 +10,11 @@ public sealed record CurrentUserDto(
     string DisplayName,
     UserRole Role,
     bool IsActive,
+    bool RequiresPasswordChange,
     string? AvatarUrl);
 
 public sealed record AuthResponse(string Token, CurrentUserDto User);
+
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
 public sealed record UpdateAvatarRequest(string? AvatarUrl);

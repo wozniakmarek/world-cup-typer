@@ -150,6 +150,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<PasswordChangeMiddleware>();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {

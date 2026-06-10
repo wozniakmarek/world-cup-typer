@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
 import { useAuth } from './AuthContext'
-import { buttonClassName, inputClassName } from '../../styles/ui'
+import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
 
 export const LoginPage = () => {
-  const { isAuthenticated, login } = useAuth()
-  const [loginValue, setLoginValue] = useState('admin@marekwozniak.me')
-  const [password, setPassword] = useState('ChangeMe123!')
+  const { isAuthenticated, login, requiresPasswordChange } = useAuth()
+  const [loginValue, setLoginValue] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />
+    return <Navigate to={requiresPasswordChange ? '/change-password' : '/'} replace />
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -33,14 +33,14 @@ export const LoginPage = () => {
   return (
     <div className="relative min-h-screen overflow-hidden bg-pitch-950">
       <div className="absolute inset-0 bg-stadium opacity-90" />
-      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-center gap-10 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:gap-20 lg:px-8">
-        <div className="max-w-xl space-y-5">
+      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-center gap-10 px-4 py-10 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.78fr)] lg:items-center lg:gap-16 lg:px-8">
+        <div className="max-w-2xl space-y-5">
           <p className="font-display text-sm uppercase tracking-[0.32em] text-emerald-300/80">{'Typer Mistrzostw \u015Awiata'}</p>
-          <h1 className="font-display text-5xl font-bold uppercase leading-none text-white sm:text-6xl">
-            {'Wchodzisz na muraw\u0119. Typy, ranking i emocje w jednym miejscu.'}
+          <h1 className="font-display text-4xl font-bold uppercase leading-none text-white sm:text-5xl lg:text-6xl">
+            {'Mistrzostwa \u015Awiata 2026 by Marek Wo\u017Aniak'}
           </h1>
           <p className="max-w-lg text-base text-slate-300 sm:text-lg">
-            {'Prywatne MVP dla grupy znajomych: obstawianie mecz\u00F3w, rozliczenia 3/1/0, ranking i panel admina gotowe pod dalszy rozw\u00F3j PWA.'}
+            {'Prywatne MVP dla grupy znajomych: obstawianie mecz\u00F3w, rozliczenia 3/1/0, ranking, panel admina i inne'}
           </p>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="glass-card rounded-3xl p-4">
@@ -52,13 +52,18 @@ export const LoginPage = () => {
               <p className="mt-3 text-sm text-slate-200">{'Trafiony zwyci\u0119zca lub remis'}</p>
             </div>
             <div className="glass-card rounded-3xl p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">MVP</p>
-              <p className="mt-3 text-sm text-slate-200">Przygotowane pod deploy i PWA</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">0 pkt</p>
+              <p className="mt-3 text-sm text-slate-200">Nietrafiony wynik ani rezultat</p>
             </div>
           </div>
         </div>
 
         <div className="glass-card w-full max-w-md rounded-[2rem] p-6 sm:p-8">
+          <div className="mb-5 flex justify-end">
+            <Link to="/" className={secondaryButtonClassName}>
+              Strona główna i ranking
+            </Link>
+          </div>
           <div className="mb-6">
             <p className="font-display text-3xl uppercase text-white">Logowanie</p>
             <p className="mt-2 text-sm text-slate-400">{'Zaloguj si\u0119 mailem albo nazw\u0105 gracza.'}</p>

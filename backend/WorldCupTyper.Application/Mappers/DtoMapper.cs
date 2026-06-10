@@ -102,6 +102,7 @@ public static class DtoMapper
             user.DisplayName,
             user.Role,
             user.IsActive,
+            user.RequiresPasswordChange,
             user.CreatedAtUtc,
             user.LastLoginAtUtc,
             user.AvatarUrl);

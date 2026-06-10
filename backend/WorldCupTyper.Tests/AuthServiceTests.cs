@@ -12,6 +12,76 @@ namespace WorldCupTyper.Tests;
 public sealed class AuthServiceTests
 {
     [Fact]
+    public async Task Login_ShouldExposePasswordChangeRequirement()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var user = CreateUser();
+        user.RequiresPasswordChange = true;
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var response = await service.LoginAsync(new LoginRequest(user.Email, "hash"));
+
+        response.User.RequiresPasswordChange.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ChangePassword_ShouldReplacePasswordAndClearPasswordChangeRequirement()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var user = CreateUser();
+        user.RequiresPasswordChange = true;
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var currentUser = await service.ChangePasswordAsync(
+            user.Id,
+            new ChangePasswordRequest("hash", "NewPassword123!"));
+
+        currentUser.RequiresPasswordChange.Should().BeFalse();
+        dbContext.Users.Single().PasswordHash.Should().Be("NewPassword123!");
+        dbContext.Users.Single().RequiresPasswordChange.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ChangePassword_ShouldRejectCurrentPasswordMismatch()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var user = CreateUser();
+        user.RequiresPasswordChange = true;
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var act = () => service.ChangePasswordAsync(
+            user.Id,
+            new ChangePasswordRequest("wrong", "NewPassword123!"));
+
+        await act.Should().ThrowAsync<UnauthorizedAppException>();
+        dbContext.Users.Single().RequiresPasswordChange.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ChangePassword_ShouldRejectReusingCurrentPassword()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var user = CreateUser();
+        user.RequiresPasswordChange = true;
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var act = () => service.ChangePasswordAsync(
+            user.Id,
+            new ChangePasswordRequest("hash", "hash"));
+
+        await act.Should().ThrowAsync<BusinessRuleException>();
+        dbContext.Users.Single().RequiresPasswordChange.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task UpdateAvatar_ShouldStoreTrimmedAvatarUrl()
     {
         using var dbContext = TestDbContextFactory.Create();

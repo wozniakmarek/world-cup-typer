@@ -65,6 +65,37 @@ public sealed class AuthService : IAuthService
         return ToCurrentUserDto(user);
     }
 
+    public async Task<CurrentUserDto> ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(candidate => candidate.Id == userId && candidate.IsActive, cancellationToken);
+
+        if (user is null)
+        {
+            throw new UnauthorizedAppException("Użytkownik nie istnieje lub jest nieaktywny.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword) ||
+            !_passwordHasher.Verify(user.PasswordHash, request.CurrentPassword))
+        {
+            throw new UnauthorizedAppException("Obecne hasło jest nieprawidłowe.");
+        }
+
+        var newPassword = request.NewPassword?.Trim() ?? string.Empty;
+        EnsurePassword(newPassword);
+
+        if (_passwordHasher.Verify(user.PasswordHash, newPassword))
+        {
+            throw new BusinessRuleException("Nowe hasło musi różnić się od obecnego.");
+        }
+
+        user.PasswordHash = _passwordHasher.Hash(newPassword);
+        user.RequiresPasswordChange = false;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return ToCurrentUserDto(user);
+    }
+
     public async Task<CurrentUserDto> UpdateAvatarAsync(Guid userId, UpdateAvatarRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Users
@@ -87,7 +118,15 @@ public sealed class AuthService : IAuthService
     }
 
     private static CurrentUserDto ToCurrentUserDto(WorldCupTyper.Domain.Entities.ApplicationUser user) =>
-        new(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive, user.AvatarUrl);
+        new(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive, user.RequiresPasswordChange, user.AvatarUrl);
+
+    private static void EnsurePassword(string? password)
+    {
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
+        {
+            throw new BusinessRuleException("Hasło musi mieć co najmniej 8 znaków.");
+        }
+    }
 
     private static string? NormalizeAvatarUrl(string? avatarUrl)
     {

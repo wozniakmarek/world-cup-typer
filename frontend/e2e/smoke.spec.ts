@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { readSecretValue, runsAgainstLocalPreview } from './helpers/environment'
+import { readSecretValue, runsAgainstLocalPreview, shouldRunRoleLoginSmoke } from './helpers/environment'
 
 const smokeMode = readSecretValue(process.env.E2E_SMOKE_MODE, 'E2E_SMOKE_MODE')?.toLowerCase() ?? 'production'
 const isStagingSmoke = smokeMode === 'staging'
 const isLocalPreview = runsAgainstLocalPreview()
+const runRoleLoginSmoke = shouldRunRoleLoginSmoke({ smokeMode, isLocalPreview })
 
 async function login(page: Page, email: string, password: string) {
   await page.goto('/login')
@@ -18,7 +19,49 @@ test('strona logowania ładuje się poprawnie', async ({ page }) => {
   await page.goto('/login')
   await expect(page.getByText('Logowanie')).toBeVisible()
   await expect(page.getByText('Zaloguj się mailem albo nazwą gracza.')).toBeVisible()
+  await expect(page.getByLabel('Login')).toBeVisible()
+  await expect(page.getByLabel('Hasło')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Wejdź do aplikacji' })).toBeVisible()
+})
+
+test('publiczny home pokazuje landing z rankingiem przed logowaniem', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Publiczny landing z mockowanym API sprawdzamy lokalnie')
+
+  await page.route('**/api/ranking/top', async (route) =>
+    route.fulfill({
+      json: [
+        {
+          position: 1,
+          userId: 'user-1',
+          displayName: 'Marek',
+          totalPoints: 18,
+          exactScoreHits: 4,
+          correctOutcomeHits: 6,
+          predictionsCount: 12,
+          avatarUrl: null,
+          isCurrentUser: false,
+        },
+        {
+          position: 2,
+          userId: 'user-2',
+          displayName: 'Kuba',
+          totalPoints: 15,
+          exactScoreHits: 3,
+          correctOutcomeHits: 6,
+          predictionsCount: 11,
+          avatarUrl: null,
+          isCurrentUser: false,
+        },
+      ],
+    }),
+  )
+
+  await page.goto('/')
+
+  await expect(page.getByRole('heading', { name: 'Typer Mistrzostw Świata' })).toBeVisible()
+  await expect(page.getByText('Publiczny ranking')).toBeVisible()
+  await expect(page.locator('#ranking').getByText('Marek')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Przejdź do logowania' })).toHaveAttribute('href', '/login')
 })
 
 const roles = [
@@ -36,7 +79,7 @@ const roles = [
 
 for (const role of roles) {
   test(`logowanie smoke (${role.name})`, async ({ page }) => {
-    test.skip(isLocalPreview, `Logowanie smoke dla roli ${role.name} wymaga środowiska z API`)
+    test.skip(!runRoleLoginSmoke, `Logowanie smoke dla roli ${role.name} uruchamiamy tylko na stagingu`)
     test.skip(!role.email || !role.password, `Brak danych logowania dla roli: ${role.name}`)
     await login(page, role.email!, role.password!)
   })
