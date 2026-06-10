@@ -7,8 +7,8 @@ import { buttonClassName, inputClassName, secondaryButtonClassName } from '../..
 
 export const LoginPage = () => {
   const { isAuthenticated, login, requiresPasswordChange } = useAuth()
-  const [loginValue, setLoginValue] = useState('admin@marekwozniak.me')
-  const [password, setPassword] = useState('ChangeMe123!')
+  const [loginValue, setLoginValue] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
