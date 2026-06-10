@@ -44,3 +44,12 @@ export function runsAgainstLocalPreview(baseUrlValue = process.env.E2E_BASE_URL)
     return false
   }
 }
+
+type RoleLoginSmokeOptions = {
+  smokeMode: string
+  isLocalPreview: boolean
+}
+
+export function shouldRunRoleLoginSmoke({ smokeMode, isLocalPreview }: RoleLoginSmokeOptions): boolean {
+  return smokeMode.toLowerCase() === 'staging' && !isLocalPreview
+}
