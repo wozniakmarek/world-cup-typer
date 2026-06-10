@@ -11,6 +11,7 @@ import type {
   Player,
   PredictionSummary,
   RankingProgressPoint,
+  RankingProgressSeries,
   ResetPasswordResponse,
   Team,
 } from './types'
@@ -104,6 +105,7 @@ export const rankingApi = {
   getTop: async () => (await apiClient.get<LeaderboardEntry[]>('/ranking/top')).data,
   getMine: async () => (await apiClient.get<LeaderboardEntry>('/ranking/me')).data,
   getProgress: async () => (await apiClient.get<RankingProgressPoint[]>('/ranking/progress')).data,
+  getProgressForRanking: async () => (await apiClient.get<RankingProgressSeries[]>('/ranking/progress/all')).data,
 }
 
 export const teamsApi = {

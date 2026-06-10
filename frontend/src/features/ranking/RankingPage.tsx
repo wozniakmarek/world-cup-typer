@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { rankingApi } from '../../api/services'
@@ -7,10 +8,22 @@ import { ResponsiveTable } from '../../components/ResponsiveTable'
 import { SectionHeading } from '../../components/SectionHeading'
 import { UserAvatar } from '../../components/UserAvatar'
 import { mobileRecordClassName } from '../../styles/ui'
+import { RankingProgressChart } from './RankingProgressChart'
 
 export const RankingPage = () => {
+  const [focusedUserIds, setFocusedUserIds] = useState<string[]>([])
   const rankingQuery = useQuery({ queryKey: ['ranking'], queryFn: rankingApi.getAll })
+  const progressQuery = useQuery({ queryKey: ['ranking', 'progress', 'all'], queryFn: rankingApi.getProgressForRanking })
   const ranking = rankingQuery.data ?? []
+  const progress = progressQuery.data ?? []
+
+  const toggleFocusedPlayer = (userId: string) => {
+    setFocusedUserIds((current) =>
+      current.includes(userId)
+        ? current.filter((focusedUserId) => focusedUserId !== userId)
+        : [...current, userId],
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -49,7 +62,23 @@ export const RankingPage = () => {
                     {ranking.map((entry) => (
                       <tr
                         key={entry.userId}
-                        className={entry.isCurrentUser ? 'border-t border-emerald-400/20 bg-emerald-400/12' : 'border-t border-white/5'}
+                        className={`cursor-pointer border-t transition ${
+                          focusedUserIds.includes(entry.userId)
+                            ? 'border-emerald-300/40 bg-emerald-300/12'
+                            : entry.isCurrentUser
+                              ? 'border-emerald-400/20 bg-emerald-400/12'
+                              : 'border-white/5 hover:bg-white/[0.03]'
+                        }`}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={focusedUserIds.includes(entry.userId)}
+                        onClick={() => toggleFocusedPlayer(entry.userId)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            toggleFocusedPlayer(entry.userId)
+                          }
+                        }}
                       >
                         <td className="px-4 py-4 font-display text-xl text-white">#{entry.position}</td>
                         <td className="px-4 py-4 text-white">
@@ -73,7 +102,23 @@ export const RankingPage = () => {
             cards={ranking.map((entry) => (
               <article
                 key={entry.userId}
-                className={`${mobileRecordClassName} ${entry.isCurrentUser ? 'border-emerald-400/30 bg-emerald-400/10' : ''}`}
+                className={`${mobileRecordClassName} cursor-pointer transition ${
+                  focusedUserIds.includes(entry.userId)
+                    ? 'border-emerald-300/50 bg-emerald-300/12'
+                    : entry.isCurrentUser
+                      ? 'border-emerald-400/30 bg-emerald-400/10'
+                      : 'hover:bg-white/[0.03]'
+                }`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={focusedUserIds.includes(entry.userId)}
+                onClick={() => toggleFocusedPlayer(entry.userId)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    toggleFocusedPlayer(entry.userId)
+                  }
+                }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
@@ -109,6 +154,23 @@ export const RankingPage = () => {
             ))}
           />
         </Panel>
+      </QueryState>
+
+      <QueryState
+        isLoading={progressQuery.isLoading}
+        isError={progressQuery.isError}
+        errorMessage={getErrorMessage(progressQuery.error)}
+        isEmpty={progress.length === 0}
+        emptyTitle="Brak progresu punktów"
+        emptyDescription="Wykres pojawi się po pierwszych rozliczonych meczach."
+        loadingTitle="Ładowanie progresu"
+        loadingDescription="Pobieram historię punktów po meczach."
+      >
+        <RankingProgressChart
+          series={progress}
+          focusedUserIds={focusedUserIds}
+          onFocusedUserIdsChange={setFocusedUserIds}
+        />
       </QueryState>
     </div>
   )
