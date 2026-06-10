@@ -43,4 +43,10 @@ public sealed class RankingController : ControllerBase
     {
         return Ok(await _rankingService.GetProgressAsync(User.GetUserId(), cancellationToken));
     }
+
+    [HttpGet("progress/all")]
+    public async Task<ActionResult<IReadOnlyCollection<RankingProgressSeriesDto>>> GetProgressForRanking(CancellationToken cancellationToken)
+    {
+        return Ok(await _rankingService.GetProgressForRankingAsync(User.GetUserId(), cancellationToken));
+    }
 }

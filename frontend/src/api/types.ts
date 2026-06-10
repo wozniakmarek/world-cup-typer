@@ -143,10 +143,19 @@ export interface LeaderboardEntry {
 export interface RankingProgressPoint {
   matchId: string
   matchNumber: number
+  matchLabel: string
   snapshotAtUtc: string
   totalPoints: number
   exactScoreHits: number
   correctOutcomeHits: number
   predictionsCount: number
   position: number
+}
+
+export interface RankingProgressSeries {
+  userId: string
+  displayName: string
+  avatarUrl?: string | null
+  isCurrentUser: boolean
+  points: RankingProgressPoint[]
 }

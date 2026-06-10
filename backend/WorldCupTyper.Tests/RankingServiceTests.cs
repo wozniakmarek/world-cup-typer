@@ -69,6 +69,28 @@ public sealed class RankingServiceTests
         ranking.Single(entry => entry.UserId == marek.Id).AvatarUrl.Should().Be("https://cdn.example.com/marek.jpg");
     }
 
+    [Fact]
+    public async Task ProgressForRanking_ShouldGroupSnapshotsByPlayerWithMatchLabels()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var kuba, out _);
+        var matchOne = AddSettledMatch(dbContext, 1, "POL", "GER", DateTime.UtcNow.AddDays(-2));
+        var matchTwo = AddSettledMatch(dbContext, 2, "FRA", "ESP", DateTime.UtcNow.AddDays(-1));
+        AddSnapshot(dbContext, matchOne.Id, marek.Id, totalPoints: 3, position: 1);
+        AddSnapshot(dbContext, matchTwo.Id, marek.Id, totalPoints: 4, position: 2);
+        AddSnapshot(dbContext, matchOne.Id, kuba.Id, totalPoints: 1, position: 2);
+        AddSnapshot(dbContext, matchTwo.Id, kuba.Id, totalPoints: 6, position: 1);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var progress = await service.GetProgressForRankingAsync(marek.Id);
+
+        progress.Select(series => series.DisplayName).Should().Equal("Kuba", "Marek");
+        progress.First().Points.Select(point => point.MatchLabel).Should().Equal("POL-GER", "FRA-ESP");
+        progress.First().Points.Select(point => point.TotalPoints).Should().Equal(1, 6);
+        progress.Single(series => series.UserId == marek.Id).IsCurrentUser.Should().BeTrue();
+    }
+
     private static RankingService CreateService(WorldCupTyperDbContext dbContext)
     {
         var builder = new LeaderboardBuilder(dbContext);
@@ -119,5 +141,58 @@ public sealed class RankingServiceTests
         };
 
         dbContext.Predictions.Add(prediction);
+    }
+
+    private static Match AddSettledMatch(WorldCupTyperDbContext dbContext, int matchNumber, string homeShortName, string awayShortName, DateTime kickoffTimeUtc)
+    {
+        var homeTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = homeShortName,
+            ShortName = homeShortName,
+            CountryCode = homeShortName,
+        };
+        var awayTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = awayShortName,
+            ShortName = awayShortName,
+            CountryCode = awayShortName,
+        };
+        var match = new Match
+        {
+            Id = Guid.NewGuid(),
+            MatchNumber = matchNumber,
+            Phase = MatchPhase.GroupStage,
+            HomeTeamId = homeTeam.Id,
+            AwayTeamId = awayTeam.Id,
+            KickoffTimeUtc = kickoffTimeUtc,
+            Status = MatchStatus.Settled,
+            HomeScore90 = 1,
+            AwayScore90 = 0,
+            IsSettled = true,
+            CreatedAtUtc = kickoffTimeUtc.AddDays(-1),
+        };
+
+        dbContext.Teams.AddRange(homeTeam, awayTeam);
+        dbContext.Matches.Add(match);
+
+        return match;
+    }
+
+    private static void AddSnapshot(WorldCupTyperDbContext dbContext, Guid matchId, Guid userId, int totalPoints, int position)
+    {
+        dbContext.LeaderboardSnapshots.Add(new LeaderboardSnapshot
+        {
+            Id = Guid.NewGuid(),
+            MatchId = matchId,
+            UserId = userId,
+            TotalPoints = totalPoints,
+            ExactScoreHits = totalPoints / 3,
+            CorrectOutcomeHits = totalPoints,
+            PredictionsCount = 1,
+            Position = position,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
     }
 }

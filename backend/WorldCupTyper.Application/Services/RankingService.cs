@@ -3,6 +3,7 @@ using WorldCupTyper.Application.Abstractions;
 using WorldCupTyper.Application.DTOs;
 using WorldCupTyper.Application.Exceptions;
 using WorldCupTyper.Application.Services.Interfaces;
+using WorldCupTyper.Domain.Enums;
 
 namespace WorldCupTyper.Application.Services;
 
@@ -46,6 +47,9 @@ public sealed class RankingService : IRankingService
             .AsNoTracking()
             .Where(snapshot => snapshot.UserId == userId)
             .Include(snapshot => snapshot.Match)
+            .ThenInclude(match => match.HomeTeam)
+            .Include(snapshot => snapshot.Match)
+            .ThenInclude(match => match.AwayTeam)
             .OrderBy(snapshot => snapshot.Match.KickoffTimeUtc)
             .ThenBy(snapshot => snapshot.Match.MatchNumber)
             .ToListAsync(cancellationToken);
@@ -53,6 +57,7 @@ public sealed class RankingService : IRankingService
         return snapshots.Select(snapshot => new RankingProgressPointDto(
             snapshot.MatchId,
             snapshot.Match.MatchNumber,
+            BuildMatchLabel(snapshot),
             snapshot.CreatedAtUtc,
             snapshot.TotalPoints,
             snapshot.ExactScoreHits,
@@ -60,5 +65,69 @@ public sealed class RankingService : IRankingService
             snapshot.PredictionsCount,
             snapshot.Position))
             .ToList();
+    }
+
+    public async Task<IReadOnlyCollection<RankingProgressSeriesDto>> GetProgressForRankingAsync(Guid? currentUserId = null, CancellationToken cancellationToken = default)
+    {
+        var snapshots = await _dbContext.LeaderboardSnapshots
+            .AsNoTracking()
+            .Where(snapshot => snapshot.User.IsActive && snapshot.User.Role == UserRole.Player)
+            .Include(snapshot => snapshot.User)
+            .Include(snapshot => snapshot.Match)
+            .ThenInclude(match => match.HomeTeam)
+            .Include(snapshot => snapshot.Match)
+            .ThenInclude(match => match.AwayTeam)
+            .OrderBy(snapshot => snapshot.Match.KickoffTimeUtc)
+            .ThenBy(snapshot => snapshot.Match.MatchNumber)
+            .ThenBy(snapshot => snapshot.Position)
+            .ToListAsync(cancellationToken);
+
+        return snapshots
+            .GroupBy(snapshot => snapshot.UserId)
+            .Select(group =>
+            {
+                var orderedSnapshots = group
+                    .OrderBy(snapshot => snapshot.Match.KickoffTimeUtc)
+                    .ThenBy(snapshot => snapshot.Match.MatchNumber)
+                    .ToList();
+                var latestSnapshot = orderedSnapshots.Last();
+                var user = latestSnapshot.User;
+
+                return new
+                {
+                    LatestPosition = latestSnapshot.Position,
+                    user.DisplayName,
+                    Series = new RankingProgressSeriesDto(
+                        user.Id,
+                        user.DisplayName,
+                        user.AvatarUrl,
+                        currentUserId.HasValue && currentUserId.Value == user.Id,
+                        orderedSnapshots.Select(snapshot => new RankingProgressPointDto(
+                            snapshot.MatchId,
+                            snapshot.Match.MatchNumber,
+                            BuildMatchLabel(snapshot),
+                            snapshot.CreatedAtUtc,
+                            snapshot.TotalPoints,
+                            snapshot.ExactScoreHits,
+                            snapshot.CorrectOutcomeHits,
+                            snapshot.PredictionsCount,
+                            snapshot.Position))
+                            .ToList())
+                };
+            })
+            .OrderBy(entry => entry.LatestPosition)
+            .ThenBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(entry => entry.Series)
+            .ToList();
+    }
+
+    private static string BuildMatchLabel(WorldCupTyper.Domain.Entities.LeaderboardSnapshot snapshot)
+    {
+        var home = snapshot.Match.HomeTeam.ShortName.Trim();
+        var away = snapshot.Match.AwayTeam.ShortName.Trim();
+
+        return string.IsNullOrWhiteSpace(home) || string.IsNullOrWhiteSpace(away)
+            ? $"M{snapshot.Match.MatchNumber}"
+            : $"{home}-{away}";
     }
 }
