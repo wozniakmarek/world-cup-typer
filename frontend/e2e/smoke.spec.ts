@@ -16,9 +16,55 @@ async function login(page: Page, email: string, password: string) {
 
 test('strona logowania ładuje się poprawnie', async ({ page }) => {
   await page.goto('/login')
+  await expect(page.getByRole('heading', { name: 'Mistrzostwa Świata 2026 by Marek Woźniak' })).toBeVisible()
+  await expect(
+    page.getByText('Prywatne MVP dla grupy znajomych: obstawianie meczów, rozliczenia 3/1/0, ranking, panel admina i inne'),
+  ).toBeVisible()
+  await expect(page.getByText('0 pkt')).toBeVisible()
+  await expect(page.getByText('Nietrafiony wynik ani rezultat')).toBeVisible()
   await expect(page.getByText('Logowanie')).toBeVisible()
   await expect(page.getByText('Zaloguj się mailem albo nazwą gracza.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Wejdź do aplikacji' })).toBeVisible()
+})
+
+test('publiczny home pokazuje landing z rankingiem przed logowaniem', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Publiczny landing z mockowanym API sprawdzamy lokalnie')
+
+  await page.route('**/api/ranking/top', async (route) =>
+    route.fulfill({
+      json: [
+        {
+          position: 1,
+          userId: 'user-1',
+          displayName: 'Marek',
+          totalPoints: 18,
+          exactScoreHits: 4,
+          correctOutcomeHits: 6,
+          predictionsCount: 12,
+          avatarUrl: null,
+          isCurrentUser: false,
+        },
+        {
+          position: 2,
+          userId: 'user-2',
+          displayName: 'Kuba',
+          totalPoints: 15,
+          exactScoreHits: 3,
+          correctOutcomeHits: 6,
+          predictionsCount: 11,
+          avatarUrl: null,
+          isCurrentUser: false,
+        },
+      ],
+    }),
+  )
+
+  await page.goto('/')
+
+  await expect(page.getByRole('heading', { name: 'Typer Mistrzostw Świata' })).toBeVisible()
+  await expect(page.getByText('Publiczny ranking')).toBeVisible()
+  await expect(page.locator('#ranking').getByText('Marek')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Przejdź do logowania' })).toHaveAttribute('href', '/login')
 })
 
 const roles = [

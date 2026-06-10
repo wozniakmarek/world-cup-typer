@@ -5,18 +5,41 @@ import { AdminDashboardPage } from '../features/admin/AdminDashboardPage'
 import { AdminMatchesPage } from '../features/admin/AdminMatchesPage'
 import { AdminPlayersPage } from '../features/admin/AdminPlayersPage'
 import { AdminTeamsPage } from '../features/admin/AdminTeamsPage'
+import { useAuth } from '../features/auth/AuthContext'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { LoginPage } from '../features/auth/LoginPage'
 import { MatchDetailsPage } from '../features/matches/MatchDetailsPage'
 import { MatchesPage } from '../features/matches/MatchesPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
+import { PublicHomePage } from '../features/public/PublicHomePage'
 import { RankingPage } from '../features/ranking/RankingPage'
+
+const RootRoute = () => {
+  const { isAuthenticated, isInitializing } = useAuth()
+
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-pitch-950 text-slate-100">
+        Ładowanie aplikacji...
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <PublicHomePage />
+  }
+
+  return <AppShell />
+}
 
 export const AppRouter = () => {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<RootRoute />}>
+          <Route index element={<DashboardPage />} />
+        </Route>
         <Route
           element={
             <ProtectedRoute>
@@ -24,7 +47,6 @@ export const AppRouter = () => {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<DashboardPage />} />
           <Route path="/matches" element={<MatchesPage />} />
           <Route path="/matches/:matchId" element={<MatchDetailsPage />} />
           <Route path="/ranking" element={<RankingPage />} />

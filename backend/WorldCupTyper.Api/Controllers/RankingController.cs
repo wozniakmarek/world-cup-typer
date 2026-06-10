@@ -25,9 +25,11 @@ public sealed class RankingController : ControllerBase
     }
 
     [HttpGet("top")]
+    [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyCollection<LeaderboardEntryDto>>> GetTop(CancellationToken cancellationToken)
     {
-        return Ok(await _rankingService.GetTopAsync(5, User.GetUserId(), cancellationToken));
+        Guid? currentUserId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : null;
+        return Ok(await _rankingService.GetTopAsync(5, currentUserId, cancellationToken));
     }
 
     [HttpGet("me")]
