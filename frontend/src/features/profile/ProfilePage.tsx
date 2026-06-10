@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { predictionsApi, rankingApi } from '../../api/services'
@@ -15,8 +16,14 @@ import { useAuth } from '../auth/AuthContext'
 
 export const ProfilePage = () => {
   const queryClient = useQueryClient()
-  const { user, updateAvatar } = useAuth()
+  const { user, updateAvatar, changePassword } = useAuth()
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
   const myRankingQuery = useQuery({ queryKey: ['ranking', 'me'], queryFn: rankingApi.getMine })
   const progressQuery = useQuery({ queryKey: ['ranking', 'progress'], queryFn: rankingApi.getProgress })
   const predictionsQuery = useQuery({ queryKey: ['predictions', 'mine'], queryFn: predictionsApi.getMine })
@@ -33,6 +40,30 @@ export const ProfilePage = () => {
   useEffect(() => {
     setAvatarUrl(user?.avatarUrl ?? '')
   }, [user?.avatarUrl])
+
+  const handlePasswordChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPasswordError(null)
+    setPasswordSuccess(false)
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Powtórzone hasło musi być takie samo jak nowe hasło.')
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      await changePassword(currentPassword, newPassword)
+      setPasswordSuccess(true)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      setPasswordError(getErrorMessage(err))
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -179,6 +210,57 @@ export const ProfilePage = () => {
           </Panel>
         </QueryState>
       </div>
+
+      <Panel>
+        <p className="font-display text-2xl uppercase text-white">Zmiana hasła</p>
+        <p className="mt-1 text-sm text-slate-400">Nowe hasło musi mieć co najmniej 8 znaków.</p>
+
+        {passwordError ? <InlineAlert tone="error" message={passwordError} className="mt-4" /> : null}
+        {passwordSuccess ? <InlineAlert tone="success" message="Hasło zostało zmienione." className="mt-4" /> : null}
+
+        <form className="mt-5 grid gap-4 sm:grid-cols-3" onSubmit={(event) => void handlePasswordChange(event)}>
+          <label className="block space-y-2">
+            <span className="text-sm text-slate-300">Obecne hasło</span>
+            <input
+              type="password"
+              className={inputClassName}
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+          <label className="block space-y-2">
+            <span className="text-sm text-slate-300">Nowe hasło</span>
+            <input
+              type="password"
+              className={inputClassName}
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </label>
+          <label className="block space-y-2">
+            <span className="text-sm text-slate-300">Powtórz nowe hasło</span>
+            <input
+              type="password"
+              className={inputClassName}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </label>
+          <div className="sm:col-span-3">
+            <button type="submit" disabled={isChangingPassword} className={`${buttonClassName} w-full sm:w-auto`}>
+              {isChangingPassword ? 'Zapisywanie...' : 'Zmień hasło'}
+            </button>
+          </div>
+        </form>
+      </Panel>
     </div>
   )
 }
