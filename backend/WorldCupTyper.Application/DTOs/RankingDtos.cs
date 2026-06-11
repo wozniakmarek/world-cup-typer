@@ -14,9 +14,17 @@ public sealed record LeaderboardEntryDto(
 public sealed record RankingProgressPointDto(
     Guid MatchId,
     int MatchNumber,
+    string MatchLabel,
     DateTime SnapshotAtUtc,
     int TotalPoints,
     int ExactScoreHits,
     int CorrectOutcomeHits,
     int PredictionsCount,
     int Position);
+
+public sealed record RankingProgressSeriesDto(
+    Guid UserId,
+    string DisplayName,
+    string? AvatarUrl,
+    bool IsCurrentUser,
+    IReadOnlyCollection<RankingProgressPointDto> Points);
