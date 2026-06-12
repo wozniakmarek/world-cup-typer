@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
 import { matchesApi } from '../../api/services'
-import { canEditMatchPrediction, formatLongDate, formatTeamDisplayName, translateTeamName } from '../../app/formatters'
+import { canEditMatchPrediction, formatLongDate, formatTeamDisplayName, getPresentationMatchStatus, translateTeamName } from '../../app/formatters'
 import { EmptyState } from '../../components/EmptyState'
 import { FormField } from '../../components/FormField'
 import { InlineAlert } from '../../components/InlineAlert'
@@ -115,9 +115,14 @@ export const MatchDetailsPage = () => {
   }
 
   const match = matchQuery.data
+  const presentationStatus = match ? getPresentationMatchStatus(match) : null
   const canEditPrediction = match ? canEditMatchPrediction(match) : false
   const isLocked = Boolean(match && !canEditPrediction && !match.isSettled)
-  const scoreAvailable = match ? match.homeScore90 != null || match.awayScore90 != null : false
+  const scoreAvailable = Boolean(
+    match
+      && (match.isSettled || presentationStatus === 'Finished' || presentationStatus === 'Settled')
+      && (match.homeScore90 != null || match.awayScore90 != null),
+  )
   const predictionInfoMessage = match?.canViewPredictions
     ? 'Kickoff minął, więc typy pozostałych graczy są już widoczne.'
     : 'Przed kickoffem widzisz wyłącznie swój typ.'
@@ -187,8 +192,8 @@ export const MatchDetailsPage = () => {
               {isLocked ? (
                 <InlineAlert
                   tone="warning"
-                  title="Typowanie zostało zablokowane"
-                  message="Po kickoffie backend blokuje edycję typu niezależnie od stanu formularza."
+                  title="Typowanie zablokowane"
+                  message="Typy można zapisywać i edytować tylko przed kickoffem."
                 />
               ) : null}
 
