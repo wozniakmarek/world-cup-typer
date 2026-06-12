@@ -144,7 +144,7 @@ export const MatchDetailsPage = () => {
             <SectionHeading
               eyebrow="Szczegóły meczu"
               title={`${translateTeamName(match.homeTeam.name)} vs ${translateTeamName(match.awayTeam.name)}`}
-              description={`Kickoff: ${formatLongDate(match.kickoffTimeUtc)}${match.venue ? ` • ${match.venue}` : ''}`}
+              description={`Kickoff: ${formatLongDate(match.kickoffTimeUtc)} • ${match.venue ?? 'Miejsce do potwierdzenia'}`}
             />
 
             <Panel className="space-y-5">

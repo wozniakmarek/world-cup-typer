@@ -269,7 +269,7 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         match.HomeTeamId = homeTeamId;
         match.AwayTeamId = awayTeamId;
         match.KickoffTimeUtc = providerMatch.KickoffTimeUtc;
-        match.Venue = providerMatch.Venue;
+        match.Venue = providerMatch.Venue ?? match.Venue;
         match.Status = match.IsSettled ? MatchStatus.Settled : providerMatch.Status;
         if (providerMatch.HomeScore90.HasValue && providerMatch.AwayScore90.HasValue)
         {
