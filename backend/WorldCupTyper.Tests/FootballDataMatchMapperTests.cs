@@ -33,6 +33,26 @@ public sealed class FootballDataMatchMapperTests
     }
 
     [Fact]
+    public void Map_WithInPlayFullTimeScore_ShouldNotTreatLiveScoreAsFinalResult()
+    {
+        var match = CreateMatch(
+            status: "IN_PLAY",
+            duration: "REGULAR",
+            fullHome: 0,
+            fullAway: 1);
+
+        var result = FootballDataMatchMapper.Map(match);
+
+        result.Should().NotBeNull();
+        result!.Status.Should().Be(MatchStatus.InProgress);
+        result.HomeScore90.Should().BeNull();
+        result.AwayScore90.Should().BeNull();
+        result.HomeScoreFinal.Should().BeNull();
+        result.AwayScoreFinal.Should().BeNull();
+        result.CanSettle.Should().BeFalse();
+    }
+
+    [Fact]
     public void Map_WithRegularTimeScore_ShouldUseRegularTimeForScore90()
     {
         var match = CreateMatch(
