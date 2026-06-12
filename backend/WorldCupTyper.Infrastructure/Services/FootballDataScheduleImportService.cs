@@ -179,6 +179,48 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         ["URU-ESP"] = "Estadio Akron",
     };
 
+    private static readonly IReadOnlyDictionary<DateTime, string> VenueByKickoff = new Dictionary<DateTime, string>
+    {
+        // Round of 32
+        [new DateTime(2026, 6, 28, 19,  0, 0, DateTimeKind.Utc)] = "SoFi Stadium",              // M73
+        [new DateTime(2026, 6, 29, 20, 30, 0, DateTimeKind.Utc)] = "Gillette Stadium",           // M74
+        [new DateTime(2026, 6, 29, 17,  0, 0, DateTimeKind.Utc)] = "NRG Stadium",                // M76
+        [new DateTime(2026, 6, 30,  1,  0, 0, DateTimeKind.Utc)] = "Estadio BBVA",              // M75
+        [new DateTime(2026, 6, 30, 17,  0, 0, DateTimeKind.Utc)] = "AT&T Stadium",              // M78
+        [new DateTime(2026, 6, 30, 21,  0, 0, DateTimeKind.Utc)] = "MetLife Stadium",           // M77
+        [new DateTime(2026, 7,  1,  1,  0, 0, DateTimeKind.Utc)] = "Estadio Azteca",            // M79
+        [new DateTime(2026, 7,  1, 16,  0, 0, DateTimeKind.Utc)] = "Mercedes-Benz Stadium",     // M80
+        [new DateTime(2026, 7,  1, 20,  0, 0, DateTimeKind.Utc)] = "Lumen Field",               // M82
+        [new DateTime(2026, 7,  2,  0,  0, 0, DateTimeKind.Utc)] = "Levi's Stadium",            // M81
+        [new DateTime(2026, 7,  2, 19,  0, 0, DateTimeKind.Utc)] = "SoFi Stadium",              // M84
+        [new DateTime(2026, 7,  2, 23,  0, 0, DateTimeKind.Utc)] = "BMO Field",                 // M83
+        [new DateTime(2026, 7,  3,  3,  0, 0, DateTimeKind.Utc)] = "BC Place",                  // M85
+        [new DateTime(2026, 7,  3, 18,  0, 0, DateTimeKind.Utc)] = "AT&T Stadium",              // M88
+        [new DateTime(2026, 7,  3, 22,  0, 0, DateTimeKind.Utc)] = "Hard Rock Stadium",         // M86
+        [new DateTime(2026, 7,  4,  1, 30, 0, DateTimeKind.Utc)] = "Arrowhead Stadium",         // M87
+        // Round of 16
+        [new DateTime(2026, 7,  4, 17,  0, 0, DateTimeKind.Utc)] = "NRG Stadium",               // M90
+        [new DateTime(2026, 7,  4, 21,  0, 0, DateTimeKind.Utc)] = "Lincoln Financial Field",   // M89
+        [new DateTime(2026, 7,  5, 20,  0, 0, DateTimeKind.Utc)] = "MetLife Stadium",           // M91
+        [new DateTime(2026, 7,  6,  0,  0, 0, DateTimeKind.Utc)] = "Estadio Azteca",            // M92
+        [new DateTime(2026, 7,  6, 19,  0, 0, DateTimeKind.Utc)] = "AT&T Stadium",              // M93
+        [new DateTime(2026, 7,  7,  0,  0, 0, DateTimeKind.Utc)] = "Lumen Field",               // M94
+        [new DateTime(2026, 7,  7, 16,  0, 0, DateTimeKind.Utc)] = "Mercedes-Benz Stadium",     // M95
+        [new DateTime(2026, 7,  7, 20,  0, 0, DateTimeKind.Utc)] = "BC Place",                  // M96
+        // Quarter-finals
+        [new DateTime(2026, 7,  9, 20,  0, 0, DateTimeKind.Utc)] = "Gillette Stadium",          // M97
+        [new DateTime(2026, 7, 10, 19,  0, 0, DateTimeKind.Utc)] = "SoFi Stadium",              // M98
+        [new DateTime(2026, 7, 11, 21,  0, 0, DateTimeKind.Utc)] = "Hard Rock Stadium",         // M99
+        [new DateTime(2026, 7, 12,  1,  0, 0, DateTimeKind.Utc)] = "Arrowhead Stadium",         // M100
+        // Semi-finals
+        [new DateTime(2026, 7, 14, 19,  0, 0, DateTimeKind.Utc)] = "AT&T Stadium",              // M101
+        [new DateTime(2026, 7, 15, 19,  0, 0, DateTimeKind.Utc)] = "Mercedes-Benz Stadium",     // M102
+        // Third Place
+        [new DateTime(2026, 7, 18, 21,  0, 0, DateTimeKind.Utc)] = "Hard Rock Stadium",         // M103
+        // Final
+        [new DateTime(2026, 7, 19, 19,  0, 0, DateTimeKind.Utc)] = "MetLife Stadium",           // M104
+    };
+
     private static readonly IReadOnlyDictionary<string, string> IsoRegionCodeByFifaCode = CultureInfo
         .GetCultures(CultureTypes.SpecificCultures)
         .Select(culture => new RegionInfo(culture.Name))
@@ -375,6 +417,7 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         match.KickoffTimeUtc = providerMatch.KickoffTimeUtc;
         match.Venue = providerMatch.Venue
             ?? GetStaticVenue(providerMatch.HomeTeam.CountryCode, providerMatch.AwayTeam.CountryCode)
+            ?? GetStaticVenueByKickoff(providerMatch.KickoffTimeUtc)
             ?? match.Venue;
         match.Status = match.IsSettled ? MatchStatus.Settled : providerMatch.Status;
         if (providerMatch.HomeScore90.HasValue && providerMatch.AwayScore90.HasValue)
@@ -464,6 +507,11 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
     private static string? GetStaticVenue(string homeCode, string awayCode)
     {
         return VenueByMatchup.TryGetValue($"{homeCode}-{awayCode}", out var venue) ? venue : null;
+    }
+
+    private static string? GetStaticVenueByKickoff(DateTime kickoffTimeUtc)
+    {
+        return VenueByKickoff.TryGetValue(kickoffTimeUtc, out var venue) ? venue : null;
     }
 
     private void ClearTrackedChangesAfterFailure()
