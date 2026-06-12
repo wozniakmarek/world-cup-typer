@@ -87,7 +87,6 @@ const CustomTooltip = ({
   const visiblePayload = payload
     .filter((item) => typeof item.value === 'number')
     .sort((first, second) => Number(second.value) - Number(first.value))
-    .slice(0, 8)
 
   return (
     <div className="max-w-xs rounded-2xl border border-white/10 bg-slate-950/95 p-3 text-sm shadow-2xl">

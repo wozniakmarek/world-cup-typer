@@ -91,6 +91,25 @@ public sealed class RankingServiceTests
         progress.Single(series => series.UserId == marek.Id).IsCurrentUser.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task ProgressForRanking_ShouldIncludeActiveAdminsWithSnapshots()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out _, out _);
+        var admin = CreateUser("Marco", UserRole.Admin);
+        var match = AddSettledMatch(dbContext, 1, "KOR", "CZE", DateTime.UtcNow.AddDays(-1));
+        dbContext.Users.Add(admin);
+        AddSnapshot(dbContext, match.Id, marek.Id, totalPoints: 3, position: 1);
+        AddSnapshot(dbContext, match.Id, admin.Id, totalPoints: 3, position: 2);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var progress = await service.GetProgressForRankingAsync(admin.Id);
+
+        progress.Select(series => series.DisplayName).Should().Contain("Marco");
+        progress.Single(series => series.UserId == admin.Id).IsCurrentUser.Should().BeTrue();
+    }
+
     private static RankingService CreateService(WorldCupTyperDbContext dbContext)
     {
         var builder = new LeaderboardBuilder(dbContext);
@@ -106,7 +125,7 @@ public sealed class RankingServiceTests
         dbContext.Users.AddRange(marek, kuba, bartek);
     }
 
-    private static ApplicationUser CreateUser(string displayName)
+    private static ApplicationUser CreateUser(string displayName, UserRole role = UserRole.Player)
     {
         return new ApplicationUser
         {
@@ -114,7 +133,7 @@ public sealed class RankingServiceTests
             Email = $"{displayName.ToLowerInvariant()}@test.local",
             DisplayName = displayName,
             PasswordHash = "hash",
-            Role = UserRole.Player,
+            Role = role,
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
