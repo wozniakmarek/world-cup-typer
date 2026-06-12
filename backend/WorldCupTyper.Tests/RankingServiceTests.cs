@@ -70,6 +70,25 @@ public sealed class RankingServiceTests
     }
 
     [Fact]
+    public async Task Ranking_ShouldIgnoreResultsFromUnsettledMatches()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out _, out _);
+        var settledMatch = AddSettledMatch(dbContext, 1, "POL", "GER", DateTime.UtcNow.AddDays(-2));
+        var recalculationPendingMatch = AddSettledMatch(dbContext, 2, "FRA", "ESP", DateTime.UtcNow.AddDays(-1));
+        recalculationPendingMatch.IsSettled = false;
+        recalculationPendingMatch.Status = MatchStatus.Finished;
+        AddSettledPrediction(dbContext, marek.Id, settledMatch.Id, 3, true, true);
+        AddSettledPrediction(dbContext, marek.Id, recalculationPendingMatch.Id, 3, true, true);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var ranking = await service.GetRankingAsync();
+
+        ranking.Single(entry => entry.UserId == marek.Id).TotalPoints.Should().Be(3);
+    }
+
+    [Fact]
     public async Task ProgressForRanking_ShouldGroupSnapshotsByPlayerWithMatchLabels()
     {
         using var dbContext = TestDbContextFactory.Create();
@@ -141,11 +160,23 @@ public sealed class RankingServiceTests
 
     private static void AddSettledPrediction(WorldCupTyperDbContext dbContext, Guid userId, int points, bool exact, bool outcome)
     {
+        var match = AddSettledMatch(
+            dbContext,
+            Random.Shared.Next(10_000, 99_999),
+            "AAA",
+            "BBB",
+            DateTime.UtcNow.AddDays(-1));
+
+        AddSettledPrediction(dbContext, userId, match.Id, points, exact, outcome);
+    }
+
+    private static void AddSettledPrediction(WorldCupTyperDbContext dbContext, Guid userId, Guid matchId, int points, bool exact, bool outcome)
+    {
         var prediction = new Prediction
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            MatchId = Guid.NewGuid(),
+            MatchId = matchId,
             PredictedHomeScore = 1,
             PredictedAwayScore = 0,
             CreatedAtUtc = DateTime.UtcNow,
