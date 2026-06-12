@@ -75,6 +75,152 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         ["WAL"] = "🏴",
     };
 
+    private static readonly IReadOnlyDictionary<string, string> VenueByMatchup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        // Group A: Mexico, South Africa, Korea Republic, Czechia
+        ["MEX-RSA"] = "Estadio Azteca",
+        ["KOR-CZE"] = "Estadio Akron",
+        ["CZE-RSA"] = "Mercedes-Benz Stadium",
+        ["MEX-KOR"] = "Estadio Akron",
+        ["CZE-MEX"] = "Estadio Azteca",
+        ["RSA-KOR"] = "Estadio BBVA",
+
+        // Group B: Canada, Bosnia and Herzegovina, Switzerland, Qatar
+        ["CAN-BIH"] = "BMO Field",
+        ["QAT-SUI"] = "Levi's Stadium",
+        ["SUI-BIH"] = "SoFi Stadium",
+        ["CAN-QAT"] = "BC Place",
+        ["SUI-CAN"] = "BC Place",
+        ["BIH-QAT"] = "Lumen Field",
+
+        // Group C: Brazil, Scotland, Morocco, Haiti
+        ["HAI-SCO"] = "Gillette Stadium",
+        ["BRA-MAR"] = "MetLife Stadium",
+        ["BRA-HAI"] = "Lincoln Financial Field",
+        ["SCO-MAR"] = "Gillette Stadium",
+        ["SCO-BRA"] = "Hard Rock Stadium",
+        ["MAR-HAI"] = "Mercedes-Benz Stadium",
+
+        // Group D: United States, Paraguay, Australia, Türkiye
+        ["USA-PAR"] = "SoFi Stadium",
+        ["AUS-TUR"] = "BC Place",
+        ["TUR-PAR"] = "Levi's Stadium",
+        ["USA-AUS"] = "Lumen Field",
+        ["TUR-USA"] = "SoFi Stadium",
+        ["PAR-AUS"] = "Levi's Stadium",
+
+        // Group E: Germany, Côte d'Ivoire, Ecuador, Curaçao
+        ["CIV-ECU"] = "Lincoln Financial Field",
+        ["GER-CUW"] = "NRG Stadium",
+        ["GER-CIV"] = "BMO Field",
+        ["ECU-CUW"] = "Arrowhead Stadium",
+        ["CUW-CIV"] = "Lincoln Financial Field",
+        ["ECU-GER"] = "MetLife Stadium",
+
+        // Group F: Netherlands, Japan, Sweden, Tunisia
+        ["NED-JPN"] = "AT&T Stadium",
+        ["SWE-TUN"] = "Estadio BBVA",
+        ["NED-SWE"] = "NRG Stadium",
+        ["TUN-JPN"] = "Estadio BBVA",
+        ["JPN-SWE"] = "AT&T Stadium",
+        ["TUN-NED"] = "Arrowhead Stadium",
+
+        // Group G: Belgium, Iran, New Zealand, Egypt
+        ["IRN-NZL"] = "SoFi Stadium",
+        ["BEL-EGY"] = "Lumen Field",
+        ["BEL-IRN"] = "SoFi Stadium",
+        ["NZL-EGY"] = "BC Place",
+        ["EGY-IRN"] = "Lumen Field",
+        ["NZL-BEL"] = "BC Place",
+
+        // Group H: Spain, Saudi Arabia, Uruguay, Cabo Verde
+        ["KSA-URY"] = "Hard Rock Stadium",
+        ["ESP-CPV"] = "Mercedes-Benz Stadium",
+        ["URY-CPV"] = "Hard Rock Stadium",
+        ["ESP-KSA"] = "Mercedes-Benz Stadium",
+        ["CPV-KSA"] = "NRG Stadium",
+        ["URY-ESP"] = "Estadio Akron",
+
+        // Group I: France, Senegal, Iraq, Norway
+        ["FRA-SEN"] = "MetLife Stadium",
+        ["IRQ-NOR"] = "Gillette Stadium",
+        ["NOR-SEN"] = "MetLife Stadium",
+        ["FRA-IRQ"] = "Lincoln Financial Field",
+        ["NOR-FRA"] = "Gillette Stadium",
+        ["SEN-IRQ"] = "BMO Field",
+
+        // Group J: Argentina, Algeria, Austria, Jordan
+        ["ARG-ALG"] = "Arrowhead Stadium",
+        ["AUT-JOR"] = "Levi's Stadium",
+        ["ARG-AUT"] = "AT&T Stadium",
+        ["JOR-ALG"] = "Levi's Stadium",
+        ["ALG-AUT"] = "Arrowhead Stadium",
+        ["JOR-ARG"] = "AT&T Stadium",
+
+        // Group K: Portugal, Colombia, Congo DR, Uzbekistan
+        ["POR-COD"] = "NRG Stadium",
+        ["UZB-COL"] = "Estadio Azteca",
+        ["POR-UZB"] = "NRG Stadium",
+        ["COL-COD"] = "Estadio Akron",
+        ["COL-POR"] = "Hard Rock Stadium",
+        ["COD-UZB"] = "Mercedes-Benz Stadium",
+
+        // Group L: England, Panama, Croatia, Ghana
+        ["GHA-PAN"] = "BMO Field",
+        ["ENG-CRO"] = "AT&T Stadium",
+        ["ENG-GHA"] = "Gillette Stadium",
+        ["PAN-CRO"] = "BMO Field",
+        ["PAN-ENG"] = "MetLife Stadium",
+        ["CRO-GHA"] = "Lincoln Financial Field",
+
+        // Uruguay alternate code used by some data providers
+        ["KSA-URU"] = "Hard Rock Stadium",
+        ["URU-CPV"] = "Hard Rock Stadium",
+        ["URU-ESP"] = "Estadio Akron",
+    };
+
+    private static readonly IReadOnlyDictionary<DateTime, string> VenueByKickoff = new Dictionary<DateTime, string>
+    {
+        // Round of 32
+        [new DateTime(2026, 6, 28, 19,  0, 0, DateTimeKind.Utc)] = "SoFi Stadium",              // M73
+        [new DateTime(2026, 6, 29, 20, 30, 0, DateTimeKind.Utc)] = "Gillette Stadium",           // M74
+        [new DateTime(2026, 6, 29, 17,  0, 0, DateTimeKind.Utc)] = "NRG Stadium",                // M76
+        [new DateTime(2026, 6, 30,  1,  0, 0, DateTimeKind.Utc)] = "Estadio BBVA",              // M75
+        [new DateTime(2026, 6, 30, 17,  0, 0, DateTimeKind.Utc)] = "AT&T Stadium",              // M78
+        [new DateTime(2026, 6, 30, 21,  0, 0, DateTimeKind.Utc)] = "MetLife Stadium",           // M77
+        [new DateTime(2026, 7,  1,  1,  0, 0, DateTimeKind.Utc)] = "Estadio Azteca",            // M79
+        [new DateTime(2026, 7,  1, 16,  0, 0, DateTimeKind.Utc)] = "Mercedes-Benz Stadium",     // M80
+        [new DateTime(2026, 7,  1, 20,  0, 0, DateTimeKind.Utc)] = "Lumen Field",               // M82
+        [new DateTime(2026, 7,  2,  0,  0, 0, DateTimeKind.Utc)] = "Levi's Stadium",            // M81
+        [new DateTime(2026, 7,  2, 19,  0, 0, DateTimeKind.Utc)] = "SoFi Stadium",              // M84
+        [new DateTime(2026, 7,  2, 23,  0, 0, DateTimeKind.Utc)] = "BMO Field",                 // M83
+        [new DateTime(2026, 7,  3,  3,  0, 0, DateTimeKind.Utc)] = "BC Place",                  // M85
+        [new DateTime(2026, 7,  3, 18,  0, 0, DateTimeKind.Utc)] = "AT&T Stadium",              // M88
+        [new DateTime(2026, 7,  3, 22,  0, 0, DateTimeKind.Utc)] = "Hard Rock Stadium",         // M86
+        [new DateTime(2026, 7,  4,  1, 30, 0, DateTimeKind.Utc)] = "Arrowhead Stadium",         // M87
+        // Round of 16
+        [new DateTime(2026, 7,  4, 17,  0, 0, DateTimeKind.Utc)] = "NRG Stadium",               // M90
+        [new DateTime(2026, 7,  4, 21,  0, 0, DateTimeKind.Utc)] = "Lincoln Financial Field",   // M89
+        [new DateTime(2026, 7,  5, 20,  0, 0, DateTimeKind.Utc)] = "MetLife Stadium",           // M91
+        [new DateTime(2026, 7,  6,  0,  0, 0, DateTimeKind.Utc)] = "Estadio Azteca",            // M92
+        [new DateTime(2026, 7,  6, 19,  0, 0, DateTimeKind.Utc)] = "AT&T Stadium",              // M93
+        [new DateTime(2026, 7,  7,  0,  0, 0, DateTimeKind.Utc)] = "Lumen Field",               // M94
+        [new DateTime(2026, 7,  7, 16,  0, 0, DateTimeKind.Utc)] = "Mercedes-Benz Stadium",     // M95
+        [new DateTime(2026, 7,  7, 20,  0, 0, DateTimeKind.Utc)] = "BC Place",                  // M96
+        // Quarter-finals
+        [new DateTime(2026, 7,  9, 20,  0, 0, DateTimeKind.Utc)] = "Gillette Stadium",          // M97
+        [new DateTime(2026, 7, 10, 19,  0, 0, DateTimeKind.Utc)] = "SoFi Stadium",              // M98
+        [new DateTime(2026, 7, 11, 21,  0, 0, DateTimeKind.Utc)] = "Hard Rock Stadium",         // M99
+        [new DateTime(2026, 7, 12,  1,  0, 0, DateTimeKind.Utc)] = "Arrowhead Stadium",         // M100
+        // Semi-finals
+        [new DateTime(2026, 7, 14, 19,  0, 0, DateTimeKind.Utc)] = "AT&T Stadium",              // M101
+        [new DateTime(2026, 7, 15, 19,  0, 0, DateTimeKind.Utc)] = "Mercedes-Benz Stadium",     // M102
+        // Third Place
+        [new DateTime(2026, 7, 18, 21,  0, 0, DateTimeKind.Utc)] = "Hard Rock Stadium",         // M103
+        // Final
+        [new DateTime(2026, 7, 19, 19,  0, 0, DateTimeKind.Utc)] = "MetLife Stadium",           // M104
+    };
+
     private static readonly IReadOnlyDictionary<string, string> IsoRegionCodeByFifaCode = CultureInfo
         .GetCultures(CultureTypes.SpecificCultures)
         .Select(culture => new RegionInfo(culture.Name))
@@ -269,7 +415,10 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         match.HomeTeamId = homeTeamId;
         match.AwayTeamId = awayTeamId;
         match.KickoffTimeUtc = providerMatch.KickoffTimeUtc;
-        match.Venue = providerMatch.Venue ?? match.Venue;
+        match.Venue = providerMatch.Venue
+            ?? GetStaticVenue(providerMatch.HomeTeam.CountryCode, providerMatch.AwayTeam.CountryCode)
+            ?? GetStaticVenueByKickoff(providerMatch.KickoffTimeUtc)
+            ?? match.Venue;
         match.Status = match.IsSettled ? MatchStatus.Settled : providerMatch.Status;
         if (providerMatch.HomeScore90.HasValue && providerMatch.AwayScore90.HasValue)
         {
@@ -353,6 +502,16 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         return phase == MatchPhase.GroupStage && !string.IsNullOrWhiteSpace(groupName)
             ? groupName.Trim()
             : null;
+    }
+
+    private static string? GetStaticVenue(string homeCode, string awayCode)
+    {
+        return VenueByMatchup.TryGetValue($"{homeCode}-{awayCode}", out var venue) ? venue : null;
+    }
+
+    private static string? GetStaticVenueByKickoff(DateTime kickoffTimeUtc)
+    {
+        return VenueByKickoff.TryGetValue(kickoffTimeUtc, out var venue) ? venue : null;
     }
 
     private void ClearTrackedChangesAfterFailure()

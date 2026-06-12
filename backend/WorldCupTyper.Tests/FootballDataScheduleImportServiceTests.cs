@@ -255,6 +255,45 @@ public sealed class FootballDataScheduleImportServiceTests
     }
 
     [Fact]
+    public async Task ImportScheduleAsync_WhenProviderVenueIsNullAndKickoffMatchesKnownSlot_ShouldUseStaticVenueByKickoff()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        var service = CreateService(
+            dbContext,
+            dateTimeProvider,
+            Match(
+                status: MatchStatus.Scheduled,
+                venue: null,
+                kickoffTimeUtc: new DateTime(2026, 7, 19, 19, 0, 0, DateTimeKind.Utc)));
+
+        await service.ImportScheduleAsync();
+
+        var savedMatch = dbContext.Matches.Single();
+        savedMatch.Venue.Should().Be("MetLife Stadium");
+    }
+
+    [Fact]
+    public async Task ImportScheduleAsync_WhenProviderVenueIsNullAndMatchupIsKnown_ShouldUseStaticVenue()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        var service = CreateService(
+            dbContext,
+            dateTimeProvider,
+            Match(
+                status: MatchStatus.Scheduled,
+                venue: null,
+                homeTeam: new FootballDataTeamSyncModel("football-data:795", "Mexico", "MEX", "MEX"),
+                awayTeam: new FootballDataTeamSyncModel("football-data:793", "South Africa", "RSA", "RSA")));
+
+        await service.ImportScheduleAsync();
+
+        var savedMatch = dbContext.Matches.Single();
+        savedMatch.Venue.Should().Be("Estadio Azteca");
+    }
+
+    [Fact]
     public async Task ImportScheduleAsync_WhenProviderVenueIsNull_ShouldPreserveExistingVenue()
     {
         using var dbContext = TestDbContextFactory.Create();
@@ -309,7 +348,8 @@ public sealed class FootballDataScheduleImportServiceTests
         string? groupName = "Group A",
         FootballDataTeamSyncModel? homeTeam = null,
         FootballDataTeamSyncModel? awayTeam = null,
-        string? venue = "MetLife Stadium")
+        string? venue = "MetLife Stadium",
+        DateTime? kickoffTimeUtc = null)
     {
         return new FootballDataMatchSyncModel(
             ExternalId: $"football-data:{matchNumber}",
@@ -318,7 +358,7 @@ public sealed class FootballDataScheduleImportServiceTests
             GroupName: groupName,
             HomeTeam: homeTeam ?? new FootballDataTeamSyncModel("football-data:794", "Poland", "POL", "POL"),
             AwayTeam: awayTeam ?? new FootballDataTeamSyncModel("football-data:759", "Germany", "GER", "GER"),
-            KickoffTimeUtc: new DateTime(2026, 6, 18, 18, 0, 0, DateTimeKind.Utc),
+            KickoffTimeUtc: kickoffTimeUtc ?? new DateTime(2026, 6, 18, 18, 0, 0, DateTimeKind.Utc),
             Venue: venue,
             Status: status,
             HomeScore90: homeScore90,

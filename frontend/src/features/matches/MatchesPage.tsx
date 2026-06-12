@@ -10,6 +10,8 @@ import { filterButtonClassName } from '../../styles/ui'
 
 const filters = [
   { key: 'all', label: 'Wszystkie' },
+  { key: 'today', label: 'Dzisiaj' },
+  { key: 'tomorrow', label: 'Jutro' },
   { key: 'open', label: 'Do obstawienia' },
   { key: 'locked', label: 'Zablokowane' },
   { key: 'settled', label: 'Rozliczone' },
@@ -21,6 +23,17 @@ export const MatchesPage = () => {
 
   const matches = (matchesQuery.data ?? []).filter((match) => shouldShowMatchToPlayer(match)).filter((match) => {
     const canEditPrediction = canEditMatchPrediction(match)
+
+    if (filter === 'today' || filter === 'tomorrow') {
+      const kickoff = new Date(match.kickoffTimeUtc)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const target = new Date(today)
+      if (filter === 'tomorrow') target.setDate(target.getDate() + 1)
+      const next = new Date(target)
+      next.setDate(next.getDate() + 1)
+      return kickoff >= target && kickoff < next
+    }
 
     if (filter === 'open') {
       return canEditPrediction
