@@ -3,7 +3,6 @@ using WorldCupTyper.Application.Abstractions;
 using WorldCupTyper.Application.DTOs;
 using WorldCupTyper.Application.Exceptions;
 using WorldCupTyper.Application.Services.Interfaces;
-using WorldCupTyper.Domain.Enums;
 
 namespace WorldCupTyper.Application.Services;
 
@@ -71,7 +70,7 @@ public sealed class RankingService : IRankingService
     {
         var snapshots = await _dbContext.LeaderboardSnapshots
             .AsNoTracking()
-            .Where(snapshot => snapshot.User.IsActive && snapshot.User.Role == UserRole.Player)
+            .Where(snapshot => snapshot.User.IsActive)
             .Include(snapshot => snapshot.User)
             .Include(snapshot => snapshot.Match)
             .ThenInclude(match => match.HomeTeam)
