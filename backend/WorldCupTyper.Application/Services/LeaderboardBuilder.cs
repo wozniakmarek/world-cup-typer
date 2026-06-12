@@ -24,7 +24,7 @@ public sealed class LeaderboardBuilder
         var userIds = users.Select(user => user.Id).ToList();
         var settledPredictions = await _dbContext.Predictions
             .AsNoTracking()
-            .Where(prediction => userIds.Contains(prediction.UserId) && prediction.Result != null)
+            .Where(prediction => userIds.Contains(prediction.UserId) && prediction.Result != null && prediction.Match.IsSettled)
             .Select(prediction => new
             {
                 prediction.UserId,
