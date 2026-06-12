@@ -54,6 +54,33 @@ const matches = [
     canEditPrediction: true,
   },
   {
+    id: 'match-in-progress',
+    matchNumber: 537331,
+    phase: 'GroupStage',
+    groupName: 'C',
+    kickoffTimeUtc: '2026-06-11T18:00:00Z',
+    venue: 'MetLife Stadium',
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-eng', 'England', 'ENG'),
+    awayTeam: team('team-usa', 'United States', 'USA'),
+    myPrediction: {
+      id: 'prediction-in-progress',
+      predictedHomeScore: 2,
+      predictedAwayScore: 1,
+      createdAtUtc: '2026-06-10T12:00:00Z',
+      updatedAtUtc: null,
+      lockedAtUtc: '2026-06-11T18:00:00Z',
+      points: null,
+      isExactScore: null,
+      isCorrectOutcome: null,
+    },
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
     id: 'match-fifa-aliases-one',
     matchNumber: 537329,
     phase: 'GroupStage',
@@ -155,4 +182,20 @@ test('desktop match list derives missing flags and avoids horizontal overflow on
   expect(cardRects.length).toBeGreaterThanOrEqual(2)
   expect(cardRects[0].top).toBe(cardRects[1].top)
   expect(Math.min(...cardRects.map((rect) => rect.width))).toBeGreaterThanOrEqual(560)
+})
+
+test('player match list labels locked post-kickoff scheduled match as in progress', async ({ page }) => {
+  await page.goto('/matches')
+
+  const inProgressCard = page.locator('article').filter({ hasText: 'Anglia' }).filter({ hasText: 'Stany Zjednoczone' })
+
+  await expect(inProgressCard.getByText('W trakcie')).toBeVisible()
+  await expect(inProgressCard.getByText('Typ zablokowany')).toBeVisible()
+  await expect(inProgressCard.getByText('Zaplanowany')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Do obstawienia' }).click()
+  await expect(inProgressCard).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Zablokowane' }).click()
+  await expect(inProgressCard.getByText('W trakcie')).toBeVisible()
 })
