@@ -15,11 +15,36 @@ export const fromDateTimeLocalValue = (value: string) => new Date(value).toISOSt
 
 export const matchStatusLabel: Record<MatchStatus, string> = {
   Scheduled: 'Zaplanowany',
-  InProgress: 'Trwa',
+  InProgress: 'W trakcie',
   Finished: 'Po 90 min',
   Settled: 'Rozliczony',
   Cancelled: 'Anulowany',
 }
+
+type MatchStatusContext = {
+  status: MatchStatus
+  isSettled: boolean
+  kickoffTimeUtc: string
+}
+
+type MatchPredictionEditContext = MatchStatusContext & {
+  canEditPrediction: boolean
+}
+
+export const getPresentationMatchStatus = (match: MatchStatusContext, now = new Date()): MatchStatus => {
+  if (
+    match.status === 'Scheduled'
+    && !match.isSettled
+    && new Date(match.kickoffTimeUtc) <= now
+  ) {
+    return 'InProgress'
+  }
+
+  return match.status
+}
+
+export const canEditMatchPrediction = (match: MatchPredictionEditContext, now = new Date()) =>
+  match.canEditPrediction && getPresentationMatchStatus(match, now) === 'Scheduled'
 
 export const getPredictionLabel = (prediction?: PredictionSummary | null) =>
   prediction ? `${prediction.predictedHomeScore}:${prediction.predictedAwayScore}` : 'Brak typu'
