@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import type { MatchSummary } from '../api/types'
-import { formatKickoff, formatMatchContext, formatTeamDisplayName, getPredictionLabel } from '../app/formatters'
+import { canEditMatchPrediction, formatKickoff, formatMatchContext, formatTeamDisplayName, getPredictionLabel } from '../app/formatters'
 import { StatusPill } from './StatusPill'
 
 export const MatchCard = ({ match }: { match: MatchSummary }) => {
+  const canEditPrediction = canEditMatchPrediction(match)
   const statusMessage = match.isSettled
     ? `Punkty: ${match.myPoints ?? 0}`
-    : match.canEditPrediction
+    : canEditPrediction
       ? 'Typowanie otwarte'
       : 'Typ zablokowany'
 
@@ -20,7 +21,11 @@ export const MatchCard = ({ match }: { match: MatchSummary }) => {
           <p className="text-sm text-slate-400">{formatKickoff(match.kickoffTimeUtc)}</p>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{match.venue || 'Miejsce do potwierdzenia'}</p>
         </div>
-        <StatusPill status={match.status} isSettled={match.isSettled} />
+        <StatusPill
+          status={match.status}
+          isSettled={match.isSettled}
+          kickoffTimeUtc={match.kickoffTimeUtc}
+        />
       </div>
 
       <div className="mt-5 space-y-3">
