@@ -17,7 +17,12 @@ public static class FootballDataMatchMapper
             return null;
         }
 
-        var (homeScore90, awayScore90) = ResolveScore90(match.Score);
+        var (homeScore90, awayScore90) = status.Value == MatchStatus.Finished
+            ? ResolveScore90(match.Score)
+            : (null, null);
+        var (homeScoreFinal, awayScoreFinal) = status.Value == MatchStatus.Finished && HasBothScores(match.Score.FullTime)
+            ? (match.Score.FullTime.Home, match.Score.FullTime.Away)
+            : (null, null);
 
         return new FootballDataMatchSyncModel(
             ExternalId: BuildExternalId(match.Id),
@@ -31,8 +36,8 @@ public static class FootballDataMatchMapper
             Status: status.Value,
             HomeScore90: homeScore90,
             AwayScore90: awayScore90,
-            HomeScoreFinal: match.Score.FullTime.Home,
-            AwayScoreFinal: match.Score.FullTime.Away);
+            HomeScoreFinal: homeScoreFinal,
+            AwayScoreFinal: awayScoreFinal);
     }
 
     public static string BuildExternalId(int id) => $"{ProviderPrefix}:{id}";

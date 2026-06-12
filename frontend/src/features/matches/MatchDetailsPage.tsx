@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
 import { matchesApi } from '../../api/services'
-import { formatLongDate, formatTeamDisplayName, translateTeamName } from '../../app/formatters'
+import { canEditMatchPrediction, formatLongDate, formatTeamDisplayName, getPresentationMatchStatus, translateTeamName } from '../../app/formatters'
 import { EmptyState } from '../../components/EmptyState'
 import { FormField } from '../../components/FormField'
 import { InlineAlert } from '../../components/InlineAlert'
@@ -98,6 +98,11 @@ export const MatchDetailsPage = () => {
     event.preventDefault()
     setFeedback(null)
 
+    if (!canEditPrediction) {
+      setFeedback({ tone: 'error', message: 'Nie można zmienić typu po rozpoczęciu meczu.' })
+      return
+    }
+
     const parsedHomeScore = parseScoreValue(homeScore)
     const parsedAwayScore = parseScoreValue(awayScore)
 
@@ -110,8 +115,14 @@ export const MatchDetailsPage = () => {
   }
 
   const match = matchQuery.data
-  const isLocked = Boolean(match && !match.canEditPrediction && !match.isSettled)
-  const scoreAvailable = match ? match.homeScore90 != null || match.awayScore90 != null : false
+  const presentationStatus = match ? getPresentationMatchStatus(match) : null
+  const canEditPrediction = match ? canEditMatchPrediction(match) : false
+  const isLocked = Boolean(match && !canEditPrediction && !match.isSettled)
+  const scoreAvailable = Boolean(
+    match
+      && (match.isSettled || presentationStatus === 'Finished' || presentationStatus === 'Settled')
+      && (match.homeScore90 != null || match.awayScore90 != null),
+  )
   const predictionInfoMessage = match?.canViewPredictions
     ? 'Kickoff minął, więc typy pozostałych graczy są już widoczne.'
     : 'Przed kickoffem widzisz wyłącznie swój typ.'
@@ -155,7 +166,11 @@ export const MatchDetailsPage = () => {
                     </div>
                   </div>
                 </div>
-                <StatusPill status={match.status} isSettled={match.isSettled} />
+                <StatusPill
+                  status={match.status}
+                  isSettled={match.isSettled}
+                  kickoffTimeUtc={match.kickoffTimeUtc}
+                />
               </div>
 
               {scoreAvailable ? (
@@ -166,7 +181,7 @@ export const MatchDetailsPage = () => {
                 />
               ) : null}
 
-              {match.canEditPrediction ? (
+              {canEditPrediction ? (
                 <InlineAlert
                   tone="info"
                   title="Typowanie jest otwarte"
@@ -177,8 +192,8 @@ export const MatchDetailsPage = () => {
               {isLocked ? (
                 <InlineAlert
                   tone="warning"
-                  title="Typowanie zostało zablokowane"
-                  message="Po kickoffie backend blokuje edycję typu niezależnie od stanu formularza."
+                  title="Typowanie zablokowane"
+                  message="Typy można zapisywać i edytować tylko przed kickoffem."
                 />
               ) : null}
 
@@ -199,7 +214,7 @@ export const MatchDetailsPage = () => {
                     inputMode="numeric"
                     value={homeScore}
                     onChange={(event) => setHomeScore(event.target.value)}
-                    disabled={!match.canEditPrediction || savePredictionMutation.isPending}
+                    disabled={!canEditPrediction || savePredictionMutation.isPending}
                     className={inputClassName}
                   />
                 </FormField>
@@ -211,14 +226,14 @@ export const MatchDetailsPage = () => {
                     inputMode="numeric"
                     value={awayScore}
                     onChange={(event) => setAwayScore(event.target.value)}
-                    disabled={!match.canEditPrediction || savePredictionMutation.isPending}
+                    disabled={!canEditPrediction || savePredictionMutation.isPending}
                     className={inputClassName}
                   />
                 </FormField>
                 <div className="flex items-end">
                   <button
                     type="submit"
-                    disabled={!match.canEditPrediction || savePredictionMutation.isPending}
+                    disabled={!canEditPrediction || savePredictionMutation.isPending}
                     className={`${buttonClassName} w-full md:w-auto`}
                   >
                     {match.myPrediction ? 'Zapisz zmianę' : 'Zapisz typ'}

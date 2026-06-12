@@ -54,6 +54,33 @@ const matches = [
     canEditPrediction: true,
   },
   {
+    id: 'match-in-progress',
+    matchNumber: 537331,
+    phase: 'GroupStage',
+    groupName: 'C',
+    kickoffTimeUtc: '2026-06-11T18:00:00Z',
+    venue: 'MetLife Stadium',
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-eng', 'England', 'ENG'),
+    awayTeam: team('team-usa', 'United States', 'USA'),
+    myPrediction: {
+      id: 'prediction-in-progress',
+      predictedHomeScore: 2,
+      predictedAwayScore: 1,
+      createdAtUtc: '2026-06-10T12:00:00Z',
+      updatedAtUtc: null,
+      lockedAtUtc: '2026-06-11T18:00:00Z',
+      points: null,
+      isExactScore: null,
+      isCorrectOutcome: null,
+    },
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
     id: 'match-fifa-aliases-one',
     matchNumber: 537329,
     phase: 'GroupStage',
@@ -117,6 +144,22 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/auth/me', async (route) => route.fulfill({ json: currentUser }))
   await page.route('**/api/matches/upcoming', async (route) => route.fulfill({ json: [matches[0]] }))
   await page.route('**/api/matches', async (route) => route.fulfill({ json: matches }))
+  await page.route('**/api/matches/match-in-progress', async (route) => route.fulfill({
+    json: {
+      ...matches[2],
+      homeScore90: 0,
+      awayScore90: 1,
+      homeScoreFinal: 0,
+      awayScoreFinal: 1,
+      canViewPredictions: true,
+    },
+  }))
+  await page.route('**/api/matches/match-in-progress/predictions', async (route) => route.fulfill({
+    json: {
+      canViewAllPredictions: true,
+      predictions: [],
+    },
+  }))
   await page.route('**/api/ranking/top', async (route) => route.fulfill({ json: [] }))
 })
 
@@ -155,4 +198,29 @@ test('desktop match list derives missing flags and avoids horizontal overflow on
   expect(cardRects.length).toBeGreaterThanOrEqual(2)
   expect(cardRects[0].top).toBe(cardRects[1].top)
   expect(Math.min(...cardRects.map((rect) => rect.width))).toBeGreaterThanOrEqual(560)
+})
+
+test('player match list labels locked post-kickoff scheduled match as in progress', async ({ page }) => {
+  await page.goto('/matches')
+
+  const inProgressCard = page.locator('article').filter({ hasText: 'Anglia' }).filter({ hasText: 'Stany Zjednoczone' })
+
+  await expect(inProgressCard.getByText('W trakcie')).toBeVisible()
+  await expect(inProgressCard.getByText('Typ zablokowany')).toBeVisible()
+  await expect(inProgressCard.getByText('Zaplanowany')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Do obstawienia' }).click()
+  await expect(inProgressCard).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Zablokowane' }).click()
+  await expect(inProgressCard.getByText('W trakcie')).toBeVisible()
+})
+
+test('player match details hide unsafe in-progress score from the 90 minute result block', async ({ page }) => {
+  await page.goto('/matches/match-in-progress')
+
+  await expect(page.getByText('W trakcie')).toBeVisible()
+  await expect(page.getByText('Wynik po 90 minutach')).toHaveCount(0)
+  await expect(page.getByText('0 : 1')).toHaveCount(0)
+  await expect(page.getByText('Po kickoffie backend blokuje')).toHaveCount(0)
 })
