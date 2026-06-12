@@ -75,6 +75,110 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         ["WAL"] = "🏴",
     };
 
+    private static readonly IReadOnlyDictionary<string, string> VenueByMatchup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        // Group A: Mexico, South Africa, Korea Republic, Czechia
+        ["MEX-RSA"] = "Estadio Azteca",
+        ["KOR-CZE"] = "Estadio Akron",
+        ["CZE-RSA"] = "Mercedes-Benz Stadium",
+        ["MEX-KOR"] = "Estadio Akron",
+        ["CZE-MEX"] = "Estadio Azteca",
+        ["RSA-KOR"] = "Estadio BBVA",
+
+        // Group B: Canada, Bosnia and Herzegovina, Switzerland, Qatar
+        ["CAN-BIH"] = "BMO Field",
+        ["QAT-SUI"] = "Levi's Stadium",
+        ["SUI-BIH"] = "SoFi Stadium",
+        ["CAN-QAT"] = "BC Place",
+        ["SUI-CAN"] = "BC Place",
+        ["BIH-QAT"] = "Lumen Field",
+
+        // Group C: Brazil, Scotland, Morocco, Haiti
+        ["HAI-SCO"] = "Gillette Stadium",
+        ["BRA-MAR"] = "MetLife Stadium",
+        ["BRA-HAI"] = "Lincoln Financial Field",
+        ["SCO-MAR"] = "Gillette Stadium",
+        ["SCO-BRA"] = "Hard Rock Stadium",
+        ["MAR-HAI"] = "Mercedes-Benz Stadium",
+
+        // Group D: United States, Paraguay, Australia, Türkiye
+        ["USA-PAR"] = "SoFi Stadium",
+        ["AUS-TUR"] = "BC Place",
+        ["TUR-PAR"] = "Levi's Stadium",
+        ["USA-AUS"] = "Lumen Field",
+        ["TUR-USA"] = "SoFi Stadium",
+        ["PAR-AUS"] = "Levi's Stadium",
+
+        // Group E: Germany, Côte d'Ivoire, Ecuador, Curaçao
+        ["CIV-ECU"] = "Lincoln Financial Field",
+        ["GER-CUW"] = "NRG Stadium",
+        ["GER-CIV"] = "BMO Field",
+        ["ECU-CUW"] = "Arrowhead Stadium",
+        ["CUW-CIV"] = "Lincoln Financial Field",
+        ["ECU-GER"] = "MetLife Stadium",
+
+        // Group F: Netherlands, Japan, Sweden, Tunisia
+        ["NED-JPN"] = "AT&T Stadium",
+        ["SWE-TUN"] = "Estadio BBVA",
+        ["NED-SWE"] = "NRG Stadium",
+        ["TUN-JPN"] = "Estadio BBVA",
+        ["JPN-SWE"] = "AT&T Stadium",
+        ["TUN-NED"] = "Arrowhead Stadium",
+
+        // Group G: Belgium, Iran, New Zealand, Egypt
+        ["IRN-NZL"] = "SoFi Stadium",
+        ["BEL-EGY"] = "Lumen Field",
+        ["BEL-IRN"] = "SoFi Stadium",
+        ["NZL-EGY"] = "BC Place",
+        ["EGY-IRN"] = "Lumen Field",
+        ["NZL-BEL"] = "BC Place",
+
+        // Group H: Spain, Saudi Arabia, Uruguay, Cabo Verde
+        ["KSA-URY"] = "Hard Rock Stadium",
+        ["ESP-CPV"] = "Mercedes-Benz Stadium",
+        ["URY-CPV"] = "Hard Rock Stadium",
+        ["ESP-KSA"] = "Mercedes-Benz Stadium",
+        ["CPV-KSA"] = "NRG Stadium",
+        ["URY-ESP"] = "Estadio Akron",
+
+        // Group I: France, Senegal, Iraq, Norway
+        ["FRA-SEN"] = "MetLife Stadium",
+        ["IRQ-NOR"] = "Gillette Stadium",
+        ["NOR-SEN"] = "MetLife Stadium",
+        ["FRA-IRQ"] = "Lincoln Financial Field",
+        ["NOR-FRA"] = "Gillette Stadium",
+        ["SEN-IRQ"] = "BMO Field",
+
+        // Group J: Argentina, Algeria, Austria, Jordan
+        ["ARG-ALG"] = "Arrowhead Stadium",
+        ["AUT-JOR"] = "Levi's Stadium",
+        ["ARG-AUT"] = "AT&T Stadium",
+        ["JOR-ALG"] = "Levi's Stadium",
+        ["ALG-AUT"] = "Arrowhead Stadium",
+        ["JOR-ARG"] = "AT&T Stadium",
+
+        // Group K: Portugal, Colombia, Congo DR, Uzbekistan
+        ["POR-COD"] = "NRG Stadium",
+        ["UZB-COL"] = "Estadio Azteca",
+        ["POR-UZB"] = "NRG Stadium",
+        ["COL-COD"] = "Estadio Akron",
+        ["COL-POR"] = "Hard Rock Stadium",
+        ["COD-UZB"] = "Mercedes-Benz Stadium",
+
+        // Group L: England, Panama, Croatia, Ghana
+        ["GHA-PAN"] = "BMO Field",
+        ["ENG-CRO"] = "AT&T Stadium",
+        ["ENG-GHA"] = "Gillette Stadium",
+        ["PAN-CRO"] = "BMO Field",
+        ["PAN-ENG"] = "MetLife Stadium",
+        ["CRO-GHA"] = "Lincoln Financial Field",
+
+        // Uruguay alternate code used by some data providers
+        ["KSA-URU"] = "Hard Rock Stadium",
+        ["URU-CPV"] = "Hard Rock Stadium",
+        ["URU-ESP"] = "Estadio Akron",
+    };
+
     private static readonly IReadOnlyDictionary<string, string> IsoRegionCodeByFifaCode = CultureInfo
         .GetCultures(CultureTypes.SpecificCultures)
         .Select(culture => new RegionInfo(culture.Name))
@@ -269,7 +373,9 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         match.HomeTeamId = homeTeamId;
         match.AwayTeamId = awayTeamId;
         match.KickoffTimeUtc = providerMatch.KickoffTimeUtc;
-        match.Venue = providerMatch.Venue ?? match.Venue;
+        match.Venue = providerMatch.Venue
+            ?? GetStaticVenue(providerMatch.HomeTeam.CountryCode, providerMatch.AwayTeam.CountryCode)
+            ?? match.Venue;
         match.Status = match.IsSettled ? MatchStatus.Settled : providerMatch.Status;
         if (providerMatch.HomeScore90.HasValue && providerMatch.AwayScore90.HasValue)
         {
@@ -353,6 +459,11 @@ public sealed class FootballDataScheduleImportService : IScheduleImportService
         return phase == MatchPhase.GroupStage && !string.IsNullOrWhiteSpace(groupName)
             ? groupName.Trim()
             : null;
+    }
+
+    private static string? GetStaticVenue(string homeCode, string awayCode)
+    {
+        return VenueByMatchup.TryGetValue($"{homeCode}-{awayCode}", out var venue) ? venue : null;
     }
 
     private void ClearTrackedChangesAfterFailure()

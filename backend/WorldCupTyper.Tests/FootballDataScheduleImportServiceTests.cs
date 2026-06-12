@@ -255,6 +255,26 @@ public sealed class FootballDataScheduleImportServiceTests
     }
 
     [Fact]
+    public async Task ImportScheduleAsync_WhenProviderVenueIsNullAndMatchupIsKnown_ShouldUseStaticVenue()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        var service = CreateService(
+            dbContext,
+            dateTimeProvider,
+            Match(
+                status: MatchStatus.Scheduled,
+                venue: null,
+                homeTeam: new FootballDataTeamSyncModel("football-data:795", "Mexico", "MEX", "MEX"),
+                awayTeam: new FootballDataTeamSyncModel("football-data:793", "South Africa", "RSA", "RSA")));
+
+        await service.ImportScheduleAsync();
+
+        var savedMatch = dbContext.Matches.Single();
+        savedMatch.Venue.Should().Be("Estadio Azteca");
+    }
+
+    [Fact]
     public async Task ImportScheduleAsync_WhenProviderVenueIsNull_ShouldPreserveExistingVenue()
     {
         using var dbContext = TestDbContextFactory.Create();
