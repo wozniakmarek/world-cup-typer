@@ -20,6 +20,13 @@ export const DashboardPage = () => {
   const upcomingMatches = upcomingQuery.data ?? []
   const openMatchesWithoutPrediction = matches.filter((match) => match.canEditPrediction && !match.myPrediction).length
 
+  const now = new Date()
+  const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  const matchesNext24hCount = matches.filter((match) => {
+    const kickoff = new Date(match.kickoffTimeUtc)
+    return kickoff >= now && kickoff < next24h
+  }).length
+
   const summaryIsLoading = matchesQuery.isLoading || upcomingQuery.isLoading
   const summaryIsError = matchesQuery.isError || upcomingQuery.isError
   const summaryErrorMessage = matchesQuery.isError
@@ -46,7 +53,7 @@ export const DashboardPage = () => {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Mecze bez typu" value={openMatchesWithoutPrediction} accent="text-emerald-300" />
           <StatCard label="Wszystkie mecze" value={matches.length} />
-          <StatCard label="Najbliższe mecze" value={upcomingMatches.length} />
+          <StatCard label="Najbliższe mecze" value={matchesNext24hCount} />
           <StatCard label="Zasady" value="3 / 1 / 0" />
         </div>
       </QueryState>
