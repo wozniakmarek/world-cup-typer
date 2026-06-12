@@ -254,6 +254,31 @@ public sealed class FootballDataScheduleImportServiceTests
         savedMatch.WinnerTeamId.Should().Be(homeTeam.Id);
     }
 
+    [Fact]
+    public async Task ImportScheduleAsync_WhenProviderVenueIsNull_ShouldPreserveExistingVenue()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider();
+        var homeTeam = CreateTeam("football-data:794", "Poland", "POL");
+        var awayTeam = CreateTeam("football-data:759", "Germany", "GER");
+        var match = CreateMatch("football-data:1001", homeTeam.Id, awayTeam.Id);
+        match.Venue = "MetLife Stadium";
+
+        dbContext.Teams.AddRange(homeTeam, awayTeam);
+        dbContext.Matches.Add(match);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(
+            dbContext,
+            dateTimeProvider,
+            Match(status: MatchStatus.Scheduled, venue: null));
+
+        await service.ImportScheduleAsync();
+
+        var savedMatch = dbContext.Matches.Single(candidate => candidate.Id == match.Id);
+        savedMatch.Venue.Should().Be("MetLife Stadium");
+    }
+
     private static FootballDataScheduleImportService CreateService(
         WorldCupTyper.Infrastructure.Persistence.WorldCupTyperDbContext dbContext,
         TestDateTimeProvider dateTimeProvider,
@@ -283,7 +308,8 @@ public sealed class FootballDataScheduleImportServiceTests
         int matchNumber = 1,
         string? groupName = "Group A",
         FootballDataTeamSyncModel? homeTeam = null,
-        FootballDataTeamSyncModel? awayTeam = null)
+        FootballDataTeamSyncModel? awayTeam = null,
+        string? venue = "MetLife Stadium")
     {
         return new FootballDataMatchSyncModel(
             ExternalId: $"football-data:{matchNumber}",
@@ -293,7 +319,7 @@ public sealed class FootballDataScheduleImportServiceTests
             HomeTeam: homeTeam ?? new FootballDataTeamSyncModel("football-data:794", "Poland", "POL", "POL"),
             AwayTeam: awayTeam ?? new FootballDataTeamSyncModel("football-data:759", "Germany", "GER", "GER"),
             KickoffTimeUtc: new DateTime(2026, 6, 18, 18, 0, 0, DateTimeKind.Utc),
-            Venue: "MetLife Stadium",
+            Venue: venue,
             Status: status,
             HomeScore90: homeScore90,
             AwayScore90: awayScore90,
