@@ -149,8 +149,10 @@ export const RankingProgressChart = ({
   const CHART_MARGIN_TOP = 24
   const CHART_MARGIN_BOTTOM = 72
   const PX_PER_10 = 40
-  const chartHeight =
-    ((yDomainMax - yDomainMin) / 10) * PX_PER_10 + CHART_MARGIN_TOP + CHART_MARGIN_BOTTOM
+  const chartHeight = Math.max(
+    400,
+    ((yDomainMax - yDomainMin) / 10) * PX_PER_10 + CHART_MARGIN_TOP + CHART_MARGIN_BOTTOM,
+  )
 
   const showDots = matchCount <= 40
   const hasFocusedLine = playerLines.some((player) => focusedUserIdSet.has(player.userId))
