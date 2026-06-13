@@ -127,7 +127,7 @@ export const RankingProgressChart = ({
   // >15 matches: fixed per-match width with horizontal scrolling
   const needsScroll = matchCount > 15
   const perMatchWidth = matchCount > 60 ? 40 : matchCount > 30 ? 52 : 72
-  const chartWidth = Math.max(600, matchCount * perMatchWidth)
+  const chartWidth = needsScroll ? Math.max(600, matchCount * perMatchWidth) : undefined
 
   // Auto-scroll to latest only when the chart overflows
   useEffect(() => {
@@ -191,7 +191,7 @@ export const RankingProgressChart = ({
       </div>
 
       <div ref={scrollRef} className="overflow-x-auto pb-3">
-        <div style={{ width: chartWidth, height: chartHeight, ...(needsScroll ? {} : { maxWidth: '100%' }) }}>
+        <div style={{ width: chartWidth ?? '100%', height: chartHeight }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartRows}
