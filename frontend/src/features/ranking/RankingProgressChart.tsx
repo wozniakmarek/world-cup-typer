@@ -122,15 +122,19 @@ export const RankingProgressChart = ({
   const focusedUserIdSet = useMemo(() => new Set(focusedUserIds), [focusedUserIds])
 
   const matchCount = chartRows.length
+
+  // ≤15 matches: fill container width (no horizontal scroll on mobile)
+  // >15 matches: fixed per-match width with horizontal scrolling
+  const needsScroll = matchCount > 15
   const perMatchWidth = matchCount > 60 ? 40 : matchCount > 30 ? 52 : 72
   const chartWidth = Math.max(600, matchCount * perMatchWidth)
 
-  // Auto-scroll to rightmost (latest matches) whenever data changes
+  // Auto-scroll to latest only when the chart overflows
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && needsScroll) {
       scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
     }
-  }, [chartRows.length])
+  }, [chartRows.length, needsScroll])
 
   // Y-axis: 5-pt intervals for small ranges, 10-pt for large; height grows with range
   const allValues = chartRows.flatMap((row) =>
@@ -145,13 +149,14 @@ export const RankingProgressChart = ({
     (_, i) => i * tickInterval,
   )
 
-  // 40px per tick interval + fixed top/bottom margins
+  // 40px per tick interval + margins (includes XAxis height=88 which is inside the chart area)
   const CHART_MARGIN_TOP = 24
   const CHART_MARGIN_BOTTOM = 72
+  const XAXIS_HEIGHT = 88
   const PX_PER_INTERVAL = 40
   const chartHeight = Math.max(
     400,
-    (yDomainMax / tickInterval) * PX_PER_INTERVAL + CHART_MARGIN_TOP + CHART_MARGIN_BOTTOM,
+    (yDomainMax / tickInterval) * PX_PER_INTERVAL + CHART_MARGIN_TOP + CHART_MARGIN_BOTTOM + XAXIS_HEIGHT,
   )
 
   const showDots = matchCount <= 40
@@ -186,7 +191,7 @@ export const RankingProgressChart = ({
       </div>
 
       <div ref={scrollRef} className="overflow-x-auto pb-3">
-        <div style={{ width: chartWidth, height: chartHeight }}>
+        <div style={{ width: chartWidth, height: chartHeight, ...(needsScroll ? {} : { maxWidth: '100%' }) }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartRows}
