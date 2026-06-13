@@ -136,13 +136,12 @@ export const RankingProgressChart = ({
   const allValues = chartRows.flatMap((row) =>
     playerLines.map((p) => row[p.userId]),
   ).filter((v): v is number => typeof v === 'number')
-  const minValue = allValues.length > 0 ? Math.min(...allValues) : 0
   const maxValue = allValues.length > 0 ? Math.max(...allValues) : 10
-  const yDomainMin = Math.floor(minValue / 10) * 10
+  const yDomainMin = 0
   const yDomainMax = Math.ceil(maxValue / 10) * 10
   const yTicks = Array.from(
-    { length: (yDomainMax - yDomainMin) / 10 + 1 },
-    (_, i) => yDomainMin + i * 10,
+    { length: yDomainMax / 10 + 1 },
+    (_, i) => i * 10,
   )
 
   // 40px per 10-point interval + fixed top/bottom margins
