@@ -132,25 +132,26 @@ export const RankingProgressChart = ({
     }
   }, [chartRows.length])
 
-  // Y-axis: fixed 10-point intervals, height grows with range
+  // Y-axis: 5-pt intervals for small ranges, 10-pt for large; height grows with range
   const allValues = chartRows.flatMap((row) =>
     playerLines.map((p) => row[p.userId]),
   ).filter((v): v is number => typeof v === 'number')
   const maxValue = allValues.length > 0 ? Math.max(...allValues) : 10
   const yDomainMin = 0
-  const yDomainMax = Math.ceil(maxValue / 10) * 10
+  const tickInterval = maxValue > 50 ? 10 : 5
+  const yDomainMax = Math.ceil(maxValue / tickInterval) * tickInterval
   const yTicks = Array.from(
-    { length: yDomainMax / 10 + 1 },
-    (_, i) => i * 10,
+    { length: yDomainMax / tickInterval + 1 },
+    (_, i) => i * tickInterval,
   )
 
-  // 40px per 10-point interval + fixed top/bottom margins
+  // 40px per tick interval + fixed top/bottom margins
   const CHART_MARGIN_TOP = 24
   const CHART_MARGIN_BOTTOM = 72
-  const PX_PER_10 = 40
+  const PX_PER_INTERVAL = 40
   const chartHeight = Math.max(
     400,
-    ((yDomainMax - yDomainMin) / 10) * PX_PER_10 + CHART_MARGIN_TOP + CHART_MARGIN_BOTTOM,
+    (yDomainMax / tickInterval) * PX_PER_INTERVAL + CHART_MARGIN_TOP + CHART_MARGIN_BOTTOM,
   )
 
   const showDots = matchCount <= 40
