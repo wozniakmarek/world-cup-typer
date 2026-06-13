@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -115,11 +115,46 @@ export const RankingProgressChart = ({
   focusedUserIds: string[]
   onFocusedUserIdsChange: (userIds: string[]) => void
 }) => {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   const chartRows = useMemo(() => buildChartRows(series), [series])
   const playerLines = useMemo(() => buildPlayerLines(series), [series])
   const focusedUserIdSet = useMemo(() => new Set(focusedUserIds), [focusedUserIds])
-  const chartWidth = Math.max(1040, chartRows.length * 72)
-  const showDots = chartRows.length <= 40
+
+  const matchCount = chartRows.length
+  const perMatchWidth = matchCount > 60 ? 40 : matchCount > 30 ? 52 : 72
+  const chartWidth = Math.max(600, matchCount * perMatchWidth)
+
+  // Auto-scroll to rightmost (latest matches) whenever data changes
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
+    }
+  }, [chartRows.length])
+
+  // Y-axis: fixed 10-point intervals, height grows with range
+  const allValues = chartRows.flatMap((row) =>
+    playerLines.map((p) => row[p.userId]),
+  ).filter((v): v is number => typeof v === 'number')
+  const minValue = allValues.length > 0 ? Math.min(...allValues) : 0
+  const maxValue = allValues.length > 0 ? Math.max(...allValues) : 10
+  const yDomainMin = Math.floor(minValue / 10) * 10
+  const yDomainMax = Math.ceil(maxValue / 10) * 10
+  const yTicks = Array.from(
+    { length: (yDomainMax - yDomainMin) / 10 + 1 },
+    (_, i) => yDomainMin + i * 10,
+  )
+
+  // 40px per 10-point interval + fixed top/bottom margins
+  const CHART_MARGIN_TOP = 24
+  const CHART_MARGIN_BOTTOM = 72
+  const PX_PER_10 = 40
+  const chartHeight = Math.max(
+    400,
+    ((yDomainMax - yDomainMin) / 10) * PX_PER_10 + CHART_MARGIN_TOP + CHART_MARGIN_BOTTOM,
+  )
+
+  const showDots = matchCount <= 40
   const hasFocusedLine = playerLines.some((player) => focusedUserIdSet.has(player.userId))
 
   const toggleFocusedPlayer = (userId: string) => {
@@ -150,10 +185,13 @@ export const RankingProgressChart = ({
         ) : null}
       </div>
 
-      <div className="overflow-x-auto pb-2">
-        <div className="h-[440px]" style={{ width: chartWidth }}>
+      <div ref={scrollRef} className="overflow-x-auto pb-3">
+        <div style={{ width: chartWidth, height: chartHeight }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartRows} margin={{ top: 24, right: 36, bottom: 72, left: 4 }}>
+            <LineChart
+              data={chartRows}
+              margin={{ top: CHART_MARGIN_TOP, right: 36, bottom: CHART_MARGIN_BOTTOM, left: 4 }}
+            >
               <CartesianGrid stroke="rgba(148, 163, 184, 0.16)" strokeDasharray="4 4" />
               <XAxis
                 dataKey="matchLabel"
@@ -181,6 +219,8 @@ export const RankingProgressChart = ({
               <YAxis
                 allowDecimals={false}
                 width={42}
+                domain={[yDomainMin, yDomainMax]}
+                ticks={yTicks}
                 tick={{ fill: 'rgb(148 163 184)', fontSize: 12 }}
                 tickLine={{ stroke: 'rgba(148, 163, 184, 0.28)' }}
                 axisLine={{ stroke: 'rgba(148, 163, 184, 0.22)' }}
