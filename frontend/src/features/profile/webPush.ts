@@ -4,9 +4,19 @@ const PUSH_SERVICE_WORKER_URL = '/push-sw.js'
 
 export type PushSupportState = NotificationPermission | 'unsupported' | 'ios-install-required'
 
+const normalizeVapidPublicKey = (value: string) => {
+  const publicKey = value.replace(/[\uFEFF\s]/g, '')
+  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(publicKey)) {
+    throw new Error('Klucz publiczny VAPID ma nieprawidlowy format.')
+  }
+
+  return publicKey
+}
+
 const base64UrlToUint8Array = (value: string) => {
-  const padding = '='.repeat((4 - (value.length % 4)) % 4)
-  const base64 = `${value}${padding}`.replace(/-/g, '+').replace(/_/g, '/')
+  const normalizedValue = normalizeVapidPublicKey(value)
+  const padding = '='.repeat((4 - (normalizedValue.length % 4)) % 4)
+  const base64 = `${normalizedValue}${padding}`.replace(/-/g, '+').replace(/_/g, '/')
   const raw = window.atob(base64)
   const output = new Uint8Array(raw.length)
 

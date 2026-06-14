@@ -128,3 +128,65 @@ test('iPhone w Safari dostaje instrukcje instalacji PWA zamiast braku wsparcia',
   await expect(page.getByText('Na iPhonie powiadomienia dzialaja po otwarciu aplikacji z ikony na ekranie poczatkowym.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Wlacz na tym urzadzeniu' })).toBeDisabled()
 })
+
+test('wlaczenie powiadomien ignoruje niewidoczny BOM w kluczu VAPID', async ({ page }) => {
+  await page.context().grantPermissions(['notifications'], {
+    origin: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173',
+  })
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'Notification', {
+      value: class Notification {
+        static permission = 'default'
+        static requestPermission = async () => 'granted'
+      },
+      configurable: true,
+    })
+    const subscription = {
+      endpoint: 'https://push.example/current-device',
+      toJSON: () => ({
+        endpoint: 'https://push.example/current-device',
+        keys: {
+          p256dh: 'p256dh-key',
+          auth: 'auth-key',
+        },
+      }),
+    }
+    const registration = {
+      pushManager: {
+        getSubscription: async () => null,
+        subscribe: async (options: PushSubscriptionOptionsInit) => {
+          window.localStorage.setItem('typer.push.keyLength', String(options.applicationServerKey?.byteLength ?? 0))
+          return subscription
+        },
+      },
+    }
+
+    Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true })
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        register: async () => registration,
+        ready: Promise.resolve(registration),
+        getRegistration: async () => registration,
+      },
+      configurable: true,
+    })
+  })
+
+  await signIn(page)
+  await mockProfileApis(page)
+  await mockNotificationSettings(page)
+  await page.route('**/api/notifications/vapid-public-key', async (route) =>
+    route.fulfill({
+      json: {
+        publicKey: '\uFEFFBC7iL_awOuAHTawclVSrRpA7mraA5lIL4V5kpg7VE2FeRQ-B01x3B_mI3X5nM-dQcNtX6h-8HNX4MaSMHo1MNNc',
+      },
+    }),
+  )
+  await page.route('**/api/notifications/subscriptions', async (route) => route.fulfill({ status: 204 }))
+
+  await page.goto('/profile')
+  await page.getByRole('button', { name: 'Wlacz na tym urzadzeniu' }).click()
+
+  await expect(page.getByText('Powiadomienia zostaly wlaczone na tym urzadzeniu.')).toBeVisible()
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('typer.push.keyLength'))).toBe('65')
+})
