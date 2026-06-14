@@ -20,4 +20,5 @@
 ## Kierunek rozwoju
 - `LeaderboardSnapshot` umożliwia późniejszy wykres progresu.
 - Interfejsy `INotificationService`, `IScheduleImportService` i `IKnockoutResolverService` zostawiają miejsce na następne etapy bez przebudowy obecnych usług.
+- `NotificationsController` i encje `PushSubscription`, `NotificationPreference`, `NotificationDelivery` tworzą fundament pod web push bez realnej wysyłki w MVP.
 - Model `Match` ma pola pod fazę pucharową, wynik po 90 minutach i wynik końcowy.

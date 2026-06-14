@@ -72,10 +72,48 @@
 - `Position`
 - `CreatedAtUtc`
 
+### PushSubscription
+- `Id`
+- `UserId`
+- `Endpoint`
+- `P256dh`
+- `Auth`
+- `UserAgent`
+- `CreatedAtUtc`
+- `LastSeenAtUtc`
+- `RevokedAtUtc`
+- `FailureCount`
+- `LastFailureAtUtc`
+
+### NotificationPreference
+- `UserId`
+- `MorningDigestEnabled`
+- `MissingPrediction2hEnabled`
+- `MissingPrediction30mEnabled`
+- `RankingUpdatedEnabled`
+- `QuietHoursStartLocal`
+- `QuietHoursEndLocal`
+- `UpdatedAtUtc`
+
+### NotificationDelivery
+- `Id`
+- `UserId`
+- `PushSubscriptionId`
+- `MatchId`
+- `SubjectKey`
+- `Type`
+- `ScheduledForUtc`
+- `SentAtUtc`
+- `Status`
+- `ErrorCode`
+- `CreatedAtUtc`
+
 ## Ograniczenia
 - unikalny email użytkownika,
 - unikalna nazwa wyświetlana użytkownika,
 - unikalny skrót i nazwa drużyny,
 - unikalny numer meczu,
 - unikalny typ `UserId + MatchId`,
-- unikalny snapshot `MatchId + UserId`.
+- unikalny snapshot `MatchId + UserId`,
+- unikalny endpoint subskrypcji push,
+- unikalna dostawa powiadomienia `UserId + PushSubscriptionId + Type + SubjectKey + ScheduledForUtc`.
