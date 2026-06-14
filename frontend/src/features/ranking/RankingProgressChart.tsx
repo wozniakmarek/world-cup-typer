@@ -63,7 +63,7 @@ const buildChartRows = (series: RankingProgressSeries[]) => {
     }
   }
 
-  return [...rowsByMatch.values()].sort((first, second) => first.matchNumber - second.matchNumber)
+  return [...rowsByMatch.values()]
 }
 
 const buildPlayerLines = (series: RankingProgressSeries[]) =>

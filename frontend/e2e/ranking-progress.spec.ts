@@ -44,14 +44,14 @@ const progress = ranking.map((player, index) => ({
   ],
 }))
 
-async function mockLoggedInRanking(page: Page) {
+async function mockLoggedInRanking(page: Page, progressResponse = progress) {
   await page.addInitScript((user) => {
     window.localStorage.setItem('typer.auth.token', 'test-token')
     window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
   }, currentUser)
 
   await page.route('**/api/auth/me', async (route) => route.fulfill({ json: currentUser }))
-  await page.route('**/api/ranking/progress/all', async (route) => route.fulfill({ json: progress }))
+  await page.route('**/api/ranking/progress/all', async (route) => route.fulfill({ json: progressResponse }))
   await page.route('**/api/ranking', async (route) => route.fulfill({ json: ranking }))
 }
 
@@ -74,4 +74,59 @@ test('ranking progress tooltip shows every player with points for hovered match'
 
   const tooltip = page.locator('.recharts-tooltip-wrapper')
   await expect(tooltip.getByText('Player 10')).toBeVisible()
+})
+
+test('ranking progress chart orders matches by snapshot chronology instead of match number', async ({ page }) => {
+  test.skip(!runsAgainstLocalPreview(), 'Ranking progress regression requires local preview with PR code')
+
+  const chronologicalProgress = [
+    {
+      userId: 'user-1',
+      displayName: 'Player 1',
+      avatarUrl: null,
+      isCurrentUser: true,
+      points: [
+        {
+          matchId: 'usa-par',
+          matchNumber: 50,
+          matchLabel: 'USA-PAR',
+          snapshotAtUtc: '2026-06-13T21:00:00Z',
+          totalPoints: 3,
+          exactScoreHits: 1,
+          correctOutcomeHits: 1,
+          predictionsCount: 1,
+          position: 1,
+        },
+        {
+          matchId: 'qat-sui',
+          matchNumber: 40,
+          matchLabel: 'QAT-SUI',
+          snapshotAtUtc: '2026-06-14T21:00:00Z',
+          totalPoints: 6,
+          exactScoreHits: 2,
+          correctOutcomeHits: 2,
+          predictionsCount: 2,
+          position: 1,
+        },
+      ],
+    },
+  ]
+
+  await mockLoggedInRanking(page, chronologicalProgress)
+  await page.goto('/ranking')
+
+  await expect(page.locator('.recharts-wrapper').first()).toBeVisible()
+
+  const orderedLabels = await page.locator('.recharts-xAxis text').evaluateAll((nodes) =>
+    nodes
+      .map((node) => ({
+        label: node.textContent ?? '',
+        x: Number(node.getAttribute('x')),
+      }))
+      .filter((item) => item.label === 'USA-PAR' || item.label === 'QAT-SUI')
+      .sort((first, second) => first.x - second.x)
+      .map((item) => item.label),
+  )
+
+  expect(orderedLabels).toEqual(['USA-PAR', 'QAT-SUI'])
 })
