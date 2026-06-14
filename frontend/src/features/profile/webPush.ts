@@ -2,6 +2,8 @@ import { notificationsApi } from '../../api/services'
 
 const PUSH_SERVICE_WORKER_URL = '/push-sw.js'
 
+export type PushSupportState = NotificationPermission | 'unsupported' | 'ios-install-required'
+
 const base64UrlToUint8Array = (value: string) => {
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
   const base64 = `${value}${padding}`.replace(/-/g, '+').replace(/_/g, '/')
@@ -15,8 +17,26 @@ const base64UrlToUint8Array = (value: string) => {
   return output
 }
 
+const isIosDevice = () => {
+  const platform = navigator.platform || ''
+  const userAgent = navigator.userAgent || ''
+  const maxTouchPoints = navigator.maxTouchPoints || 0
+
+  return /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && maxTouchPoints > 1)
+}
+
+const isStandaloneWebApp = () => {
+  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
+
+  return window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true
+}
+
 export const getPushSupportState = () => {
-  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+  if (isIosDevice() && !isStandaloneWebApp()) {
+    return 'ios-install-required' as const
+  }
+
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || typeof window.PushManager === 'undefined') {
     return 'unsupported' as const
   }
 

@@ -101,16 +101,22 @@ export const NotificationSettingsPanel = () => {
   const isSaving = saveSettingsMutation.isPending
   const isDevicePending = enableDeviceMutation.isPending || disableDeviceMutation.isPending
   const isUnsupported = supportState === 'unsupported'
+  const needsIosInstall = supportState === 'ios-install-required'
   const isDenied = supportState === 'denied'
   const hasActiveSubscription = Boolean(settingsQuery.data?.hasActiveSubscription)
 
-  const statusLabel = isUnsupported
-    ? 'Brak wsparcia w przegladarce'
-    : isDenied
+  const statusLabel = needsIosInstall
+    ? 'Dodaj aplikacje do ekranu poczatkowego'
+    : isUnsupported
+      ? 'Brak wsparcia w przegladarce'
+      : isDenied
       ? 'Zablokowane w przegladarce'
       : hasActiveSubscription
         ? 'Aktywne na tym urzadzeniu'
         : 'Nieaktywne na tym urzadzeniu'
+  const statusDetail = needsIosInstall
+    ? 'Na iPhonie powiadomienia dzialaja po otwarciu aplikacji z ikony na ekranie poczatkowym.'
+    : 'Ustawienia dotycza konta, aktywacja dotyczy tej przegladarki.'
 
   return (
     <Panel className="space-y-5">
@@ -129,7 +135,7 @@ export const NotificationSettingsPanel = () => {
 
         <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm">
           <p className="font-semibold text-white">{statusLabel}</p>
-          <p className="mt-1 text-slate-400">Ustawienia dotycza konta, aktywacja dotyczy tej przegladarki.</p>
+          <p className="mt-1 text-slate-400">{statusDetail}</p>
         </div>
       </div>
 
@@ -140,6 +146,12 @@ export const NotificationSettingsPanel = () => {
       {deviceSuccess ? <InlineAlert tone="success" message={deviceSuccess} /> : null}
       {isDenied ? (
         <InlineAlert tone="warning" message="Przegladarka blokuje powiadomienia. Zmien zgode w ustawieniach strony, zeby wlaczyc push." />
+      ) : null}
+      {needsIosInstall ? (
+        <InlineAlert
+          tone="warning"
+          message="Na iPhonie stuknij Udostepnij, wybierz Dodaj do ekranu poczatkowego, potem otworz Typer MS z nowej ikony i wlacz powiadomienia."
+        />
       ) : null}
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -194,7 +206,7 @@ export const NotificationSettingsPanel = () => {
           <button
             type="button"
             className={`${secondaryButtonClassName} w-full sm:w-auto`}
-            disabled={isUnsupported || isDenied || isDevicePending}
+            disabled={needsIosInstall || isUnsupported || isDenied || isDevicePending}
             onClick={() => enableDeviceMutation.mutate()}
           >
             {enableDeviceMutation.isPending ? 'Wlaczanie...' : 'Wlacz na tym urzadzeniu'}

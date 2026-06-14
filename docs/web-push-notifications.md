@@ -141,6 +141,13 @@ Backend potrzebuje:
 
 Klucz publiczny moze byc zwracany frontendowi przez `GET /api/notifications/vapid-public-key`, a prywatny klucz pozostaje w konfiguracji hostingu.
 
+Na produkcji workflow DigitalOcean App Platform mapuje te wartosci z GitHub:
+- secret `WEB_PUSH_PUBLIC_KEY` -> `WebPush__PublicKey`,
+- secret `WEB_PUSH_PRIVATE_KEY` -> `WebPush__PrivateKey`,
+- variable `WEB_PUSH_SUBJECT` -> `WebPush__Subject`.
+
+Klucze VAPID nie sa zapisywane w repozytorium.
+
 ## Flow zgody po stronie frontend
 1. Po zalogowaniu frontend sprawdza `Notification` i `serviceWorker` w przegladarce.
 2. UI pokazuje spokojny prompt w profilu albo dashboardzie, bez blokowania glownego workflow.
@@ -149,6 +156,15 @@ Klucz publiczny moze byc zwracany frontendowi przez `GET /api/notifications/vapi
 5. Subskrypcja trafia do `POST /api/notifications/subscriptions`.
 6. Uzytkownik moze zmienic preferencje przez `PUT /api/notifications/settings`.
 7. Dla `denied` frontend nie ponawia natretnie prompta. Pokazuje tylko pasywny stan w profilu.
+
+### iOS/iPadOS
+iOS/iPadOS wspiera Web Push dla aplikacji dodanych do ekranu poczatkowego, nie dla zwyklej karty Safari. Frontend wykrywa iPhone/iPad poza trybem standalone i pokazuje instrukcje:
+1. stuknij `Udostepnij`,
+2. wybierz `Dodaj do ekranu poczatkowego`,
+3. otworz `Typer MS` z nowej ikony,
+4. w profilu wlacz powiadomienia na tym urzadzeniu.
+
+Android, desktop Chrome/Edge oraz Safari macOS korzystaja ze standardowego flow `Notification` + `ServiceWorker` + `PushManager`.
 
 Service worker powinien obslugiwac `push` i `notificationclick`. Klikniecie w powiadomienie prowadzi do:
 - `/matches/{matchId}` dla przypomnien meczowych,

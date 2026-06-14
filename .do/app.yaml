@@ -79,3 +79,15 @@ services:
         value: "true"
         scope: RUN_TIME
         type: GENERAL
+      - key: WebPush__Subject
+        value: ${WEB_PUSH_SUBJECT}
+        scope: RUN_TIME
+        type: GENERAL
+      - key: WebPush__PublicKey
+        value: ${WEB_PUSH_PUBLIC_KEY}
+        scope: RUN_TIME
+        type: GENERAL
+      - key: WebPush__PrivateKey
+        value: ${WEB_PUSH_PRIVATE_KEY}
+        scope: RUN_TIME
+        type: SECRET
