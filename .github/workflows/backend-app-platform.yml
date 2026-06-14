@@ -57,6 +57,9 @@ jobs:
           DEFAULT_CONNECTION: ${{ secrets.DEFAULT_CONNECTION }}
           JWT_KEY: ${{ secrets.JWT_KEY }}
           FOOTBALL_DATA_API_TOKEN: ${{ secrets.FOOTBALL_DATA_API_TOKEN }}
+          WEB_PUSH_PUBLIC_KEY: ${{ secrets.WEB_PUSH_PUBLIC_KEY }}
+          WEB_PUSH_PRIVATE_KEY: ${{ secrets.WEB_PUSH_PRIVATE_KEY }}
+          WEB_PUSH_SUBJECT: ${{ vars.WEB_PUSH_SUBJECT || 'https://typer.marekwozniak.me' }}
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           app_spec_location: .do/app.yaml
