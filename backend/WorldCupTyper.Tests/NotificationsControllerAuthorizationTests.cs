@@ -16,11 +16,11 @@ public sealed class NotificationsControllerAuthorizationTests
     }
 
     [Fact]
-    public void GetVapidPublicKey_ShouldBeAvailableForAuthenticatedUsers()
+    public void GetVapidPublicKey_ShouldAllowAnonymousAccess()
     {
         var method = typeof(NotificationsController).GetMethod("GetVapidPublicKey");
 
         method.Should().NotBeNull();
-        method!.GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: true).Should().BeEmpty();
+        method!.GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: true).Should().NotBeEmpty();
     }
 }

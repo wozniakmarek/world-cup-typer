@@ -62,6 +62,7 @@ public sealed class NotificationsController : ControllerBase
         return NoContent();
     }
 
+    [AllowAnonymous]
     [HttpGet("vapid-public-key")]
     public ActionResult<WebPushPublicKeyResponse> GetVapidPublicKey()
     {
