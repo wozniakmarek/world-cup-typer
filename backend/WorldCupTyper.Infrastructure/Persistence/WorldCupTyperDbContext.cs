@@ -17,6 +17,9 @@ public sealed class WorldCupTyperDbContext : DbContext, IAppDbContext
     public DbSet<Prediction> Predictions => Set<Prediction>();
     public DbSet<PredictionResult> PredictionResults => Set<PredictionResult>();
     public DbSet<LeaderboardSnapshot> LeaderboardSnapshots => Set<LeaderboardSnapshot>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

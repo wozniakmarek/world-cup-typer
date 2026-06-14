@@ -13,6 +13,7 @@ import { InlineAlert } from '../../components/InlineAlert'
 import { UserAvatar } from '../../components/UserAvatar'
 import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
 import { useAuth } from '../auth/AuthContext'
+import { NotificationSettingsPanel } from './NotificationSettingsPanel'
 
 export const ProfilePage = () => {
   const queryClient = useQueryClient()
@@ -146,6 +147,8 @@ export const ProfilePage = () => {
           </div>
         ) : null}
       </QueryState>
+
+      <NotificationSettingsPanel />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1.3fr]">
         <QueryState

@@ -17,4 +17,7 @@ public class ApplicationUser
 
     public ICollection<Prediction> Predictions { get; set; } = new List<Prediction>();
     public ICollection<LeaderboardSnapshot> LeaderboardSnapshots { get; set; } = new List<LeaderboardSnapshot>();
+    public NotificationPreference? NotificationPreference { get; set; }
+    public ICollection<PushSubscription> PushSubscriptions { get; set; } = new List<PushSubscription>();
+    public ICollection<NotificationDelivery> NotificationDeliveries { get; set; } = new List<NotificationDelivery>();
 }

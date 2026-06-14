@@ -38,6 +38,14 @@
 - `PUT /api/matches/{matchId}/prediction`
 - `GET /api/matches/{matchId}/predictions`
 
+## Notifications
+- `GET /api/notifications/settings`
+- `PUT /api/notifications/settings`
+- `GET /api/notifications/vapid-public-key`
+- `POST /api/notifications/subscriptions`
+- `DELETE /api/notifications/subscriptions/{id}`
+- `DELETE /api/notifications/subscriptions/current`
+
 ## Ranking
 - `GET /api/ranking`
 - `GET /api/ranking/top`

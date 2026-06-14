@@ -14,6 +14,8 @@ import type {
   RankingProgressSeries,
   ResetPasswordResponse,
   Team,
+  NotificationSettings,
+  WebPushPublicKey,
 } from './types'
 
 export interface LoginPayload {
@@ -33,6 +35,26 @@ export interface UpdateAvatarPayload {
 export interface ChangePasswordPayload {
   currentPassword: string
   newPassword: string
+}
+
+export interface UpdateNotificationSettingsPayload {
+  morningDigestEnabled: boolean
+  missingPrediction2hEnabled: boolean
+  missingPrediction30mEnabled: boolean
+  rankingUpdatedEnabled: boolean
+}
+
+export interface SavePushSubscriptionPayload {
+  endpoint: string
+  keys: {
+    p256dh: string
+    auth: string
+  }
+  userAgent?: string
+}
+
+export interface RevokePushSubscriptionPayload {
+  endpoint: string
 }
 
 export interface SavePlayerPayload {
@@ -106,6 +128,17 @@ export const rankingApi = {
   getMine: async () => (await apiClient.get<LeaderboardEntry>('/ranking/me')).data,
   getProgress: async () => (await apiClient.get<RankingProgressPoint[]>('/ranking/progress')).data,
   getProgressForRanking: async () => (await apiClient.get<RankingProgressSeries[]>('/ranking/progress/all')).data,
+}
+
+export const notificationsApi = {
+  getSettings: async () => (await apiClient.get<NotificationSettings>('/notifications/settings')).data,
+  updateSettings: async (payload: UpdateNotificationSettingsPayload) =>
+    (await apiClient.put<NotificationSettings>('/notifications/settings', payload)).data,
+  getVapidPublicKey: async () => (await apiClient.get<WebPushPublicKey>('/notifications/vapid-public-key')).data,
+  saveSubscription: async (payload: SavePushSubscriptionPayload) =>
+    apiClient.post('/notifications/subscriptions', payload),
+  revokeCurrentSubscription: async (payload: RevokePushSubscriptionPayload) =>
+    apiClient.delete('/notifications/subscriptions/current', { data: payload }),
 }
 
 export const teamsApi = {

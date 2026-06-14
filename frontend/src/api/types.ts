@@ -159,3 +159,15 @@ export interface RankingProgressSeries {
   isCurrentUser: boolean
   points: RankingProgressPoint[]
 }
+
+export interface NotificationSettings {
+  morningDigestEnabled: boolean
+  missingPrediction2hEnabled: boolean
+  missingPrediction30mEnabled: boolean
+  rankingUpdatedEnabled: boolean
+  hasActiveSubscription: boolean
+}
+
+export interface WebPushPublicKey {
+  publicKey: string
+}

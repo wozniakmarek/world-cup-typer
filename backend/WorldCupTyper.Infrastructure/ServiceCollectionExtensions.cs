@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions
         services.Configure<DevelopmentSeedOptions>(configuration.GetSection(DevelopmentSeedOptions.SectionName));
         services.Configure<DatabaseStartupOptions>(configuration.GetSection(DatabaseStartupOptions.SectionName));
         services.Configure<FootballDataOptions>(configuration.GetSection(FootballDataOptions.SectionName));
+        services.Configure<WebPushOptions>(configuration.GetSection(WebPushOptions.SectionName));
 
         services.AddDbContext<WorldCupTyperDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<WorldCupTyperDbContext>());
@@ -49,6 +50,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITeamService, TeamService>();
         services.AddScoped<IMatchService, MatchService>();
         services.AddScoped<IPredictionService, PredictionService>();
+        services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
+        services.AddScoped<INotificationSubscriptionService, NotificationSubscriptionService>();
         services.AddScoped<IScoringService, ScoringService>();
         services.AddScoped<IRankingService, RankingService>();
         services.AddScoped<IMatchSettlementService, MatchSettlementService>();
