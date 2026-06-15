@@ -82,6 +82,33 @@ const mockNotificationSettings = async (page: Parameters<Parameters<typeof test>
   }
 }
 
+const mockPushSupportWithoutCurrentSubscription = async (page: Parameters<Parameters<typeof test>[1]>[0]['page']) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'Notification', {
+      value: class Notification {
+        static permission = 'granted'
+        static requestPermission = async () => 'granted'
+      },
+      configurable: true,
+    })
+
+    const registration = {
+      pushManager: {
+        getSubscription: async () => null,
+      },
+    }
+
+    Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true })
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        getRegistration: async () => registration,
+        ready: Promise.resolve(registration),
+      },
+      configurable: true,
+    })
+  })
+}
+
 test('profil pozwala wlaczyc i zmienic ustawienia powiadomien', async ({ page }) => {
   await page.context().grantPermissions(['notifications'], {
     origin: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173',
@@ -127,6 +154,28 @@ test('iPhone w Safari dostaje instrukcje instalacji PWA zamiast braku wsparcia',
   await expect(page.getByText('Dodaj aplikacje do ekranu poczatkowego')).toBeVisible()
   await expect(page.getByText('Na iPhonie powiadomienia dzialaja po otwarciu aplikacji z ikony na ekranie poczatkowym.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Wlacz na tym urzadzeniu' })).toBeDisabled()
+})
+
+test('konto z aktywna subskrypcja na innym urzadzeniu nadal pozwala wlaczyc obecna przegladarke', async ({ page }) => {
+  await mockPushSupportWithoutCurrentSubscription(page)
+  await signIn(page)
+  await mockProfileApis(page)
+  await page.route('**/api/notifications/settings', async (route) => {
+    await route.fulfill({
+      json: {
+        morningDigestEnabled: true,
+        missingPrediction2hEnabled: true,
+        missingPrediction30mEnabled: true,
+        rankingUpdatedEnabled: true,
+        hasActiveSubscription: true,
+      },
+    })
+  })
+
+  await page.goto('/profile')
+
+  await expect(page.getByText('Aktywne na innym urzadzeniu')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Wlacz na tym urzadzeniu' })).toBeEnabled()
 })
 
 test('wlaczenie powiadomien ignoruje niewidoczny BOM w kluczu VAPID', async ({ page }) => {
