@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using WorldCupTyper.Api.Extensions;
+using WorldCupTyper.Application.Abstractions;
 using WorldCupTyper.Application.DTOs;
 using WorldCupTyper.Application.Services.Interfaces;
 using WorldCupTyper.Infrastructure.Options;
@@ -15,15 +16,18 @@ public sealed class NotificationsController : ControllerBase
 {
     private readonly INotificationPreferenceService _preferenceService;
     private readonly INotificationSubscriptionService _subscriptionService;
+    private readonly INotificationService _notificationService;
     private readonly WebPushOptions _webPushOptions;
 
     public NotificationsController(
         INotificationPreferenceService preferenceService,
         INotificationSubscriptionService subscriptionService,
+        INotificationService notificationService,
         IOptions<WebPushOptions> webPushOptions)
     {
         _preferenceService = preferenceService;
         _subscriptionService = subscriptionService;
+        _notificationService = notificationService;
         _webPushOptions = webPushOptions.Value;
     }
 
@@ -60,6 +64,12 @@ public sealed class NotificationsController : ControllerBase
     {
         await _subscriptionService.RevokeCurrentSubscriptionAsync(User.GetUserId(), request, cancellationToken);
         return NoContent();
+    }
+
+    [HttpPost("test")]
+    public async Task<ActionResult<TestNotificationResponse>> SendTestNotification(CancellationToken cancellationToken)
+    {
+        return Ok(await _notificationService.SendTestNotificationAsync(User.GetUserId(), cancellationToken));
     }
 
     [AllowAnonymous]

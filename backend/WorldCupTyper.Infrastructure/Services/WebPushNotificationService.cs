@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WebPush;
 using WorldCupTyper.Application.Abstractions;
+using WorldCupTyper.Application.DTOs;
 using WorldCupTyper.Domain.Entities;
 using WorldCupTyper.Domain.Enums;
 using WorldCupTyper.Infrastructure.Options;
@@ -62,14 +63,57 @@ public sealed class WebPushNotificationService : INotificationService
                     subscription.User.NotificationPreference.RankingUpdatedEnabled))
             .ToListAsync(cancellationToken);
 
+        await SendToSubscriptionsAsync(
+            subscriptions,
+            BuildRankingUpdatedPayload(match),
+            NotificationType.RankingUpdated,
+            $"ranking:{matchId:N}",
+            matchId,
+            cancellationToken);
+    }
+
+    public async Task<TestNotificationResponse> SendTestNotificationAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured(_options))
+        {
+            _logger.LogWarning("Web push test notification skipped because VAPID options are not configured.");
+            return new TestNotificationResponse(0, 0, 0, 0);
+        }
+
+        var subscriptions = await _dbContext.PushSubscriptions
+            .Include(subscription => subscription.User)
+            .Where(subscription =>
+                subscription.UserId == userId &&
+                subscription.RevokedAtUtc == null &&
+                subscription.User.IsActive)
+            .ToListAsync(cancellationToken);
+
+        return await SendToSubscriptionsAsync(
+            subscriptions,
+            BuildTestPayload(),
+            NotificationType.Test,
+            $"test:{userId:N}",
+            null,
+            cancellationToken);
+    }
+
+    private async Task<TestNotificationResponse> SendToSubscriptionsAsync(
+        List<WorldCupTyper.Domain.Entities.PushSubscription> subscriptions,
+        string payload,
+        NotificationType type,
+        string subjectKey,
+        Guid? matchId,
+        CancellationToken cancellationToken)
+    {
         if (subscriptions.Count == 0)
         {
-            return;
+            return new TestNotificationResponse(0, 0, 0, 0);
         }
 
         var nowUtc = _dateTimeProvider.UtcNow;
-        var payload = BuildRankingUpdatedPayload(match);
-        var subjectKey = $"ranking:{matchId:N}";
+        var sent = 0;
+        var failed = 0;
+        var revoked = 0;
 
         foreach (var subscription in subscriptions)
         {
@@ -80,7 +124,7 @@ public sealed class WebPushNotificationService : INotificationService
                 PushSubscriptionId = subscription.Id,
                 MatchId = matchId,
                 SubjectKey = subjectKey,
-                Type = NotificationType.RankingUpdated,
+                Type = type,
                 ScheduledForUtc = nowUtc,
                 CreatedAtUtc = nowUtc,
                 Status = NotificationDeliveryStatus.Pending,
@@ -98,6 +142,7 @@ public sealed class WebPushNotificationService : INotificationService
                 subscription.LastFailureAtUtc = null;
                 delivery.Status = NotificationDeliveryStatus.Sent;
                 delivery.SentAtUtc = nowUtc;
+                sent++;
             }
             catch (WebPushException exception) when (IsExpiredSubscription(exception.StatusCode))
             {
@@ -106,6 +151,8 @@ public sealed class WebPushNotificationService : INotificationService
                 subscription.RevokedAtUtc = nowUtc;
                 delivery.Status = NotificationDeliveryStatus.Failed;
                 delivery.ErrorCode = $"WebPush:{(int)exception.StatusCode}";
+                failed++;
+                revoked++;
 
                 _logger.LogInformation(
                     exception,
@@ -122,6 +169,7 @@ public sealed class WebPushNotificationService : INotificationService
                 subscription.LastFailureAtUtc = nowUtc;
                 delivery.Status = NotificationDeliveryStatus.Failed;
                 delivery.ErrorCode = exception.GetType().Name;
+                failed++;
 
                 _logger.LogWarning(
                     exception,
@@ -131,6 +179,7 @@ public sealed class WebPushNotificationService : INotificationService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        return new TestNotificationResponse(subscriptions.Count, sent, failed, revoked);
     }
 
     private static string BuildRankingUpdatedPayload(Match? match)
@@ -146,6 +195,17 @@ public sealed class WebPushNotificationService : INotificationService
             url = "/ranking",
             type = "RankingUpdated",
             matchId = match?.Id,
+        });
+    }
+
+    private static string BuildTestPayload()
+    {
+        return JsonSerializer.Serialize(new
+        {
+            title = "Test powiadomień",
+            body = "Jeśli to widzisz, push działa na tym urządzeniu.",
+            url = "/profile",
+            type = "Test",
         });
     }
 

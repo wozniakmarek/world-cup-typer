@@ -185,6 +185,48 @@ public sealed class NotificationServiceTests
             delivery.SentAtUtc == dateTimeProvider.UtcNow);
     }
 
+    [Fact]
+    public async Task SendTestNotificationAsync_WithCurrentUserSubscription_ShouldSendOnlyToThatUser()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider { UtcNow = new DateTime(2026, 6, 15, 23, 10, 0, DateTimeKind.Utc) };
+        var currentUser = CreateUser("current@test.local", "Current User");
+        var otherUser = CreateUser("other@test.local", "Other User");
+        var currentSubscription = CreateSubscription(currentUser.Id, "https://push.example/current-test");
+        var otherSubscription = CreateSubscription(otherUser.Id, "https://push.example/other-test");
+
+        dbContext.Users.AddRange(currentUser, otherUser);
+        dbContext.PushSubscriptions.AddRange(currentSubscription, otherSubscription);
+        await dbContext.SaveChangesAsync();
+
+        var sender = new FakeWebPushSender();
+        var service = new WebPushNotificationService(
+            dbContext,
+            dateTimeProvider,
+            Options.Create(new WebPushOptions
+            {
+                PublicKey = "public-key",
+                PrivateKey = "private-key",
+                Subject = "mailto:test@example.com",
+            }),
+            sender,
+            NullLogger<WebPushNotificationService>.Instance);
+
+        var response = await service.SendTestNotificationAsync(currentUser.Id);
+
+        response.Should().BeEquivalentTo(new TestNotificationResponse(Attempted: 1, Sent: 1, Failed: 0, Revoked: 0));
+        sender.Requests.Should().ContainSingle(request => request.Endpoint == currentSubscription.Endpoint);
+        var payload = JsonSerializer.Deserialize<Dictionary<string, string>>(sender.Requests.Single().Payload);
+        payload.Should().Contain("title", "Test powiadomień");
+        payload.Should().Contain("url", "/profile");
+        dbContext.NotificationDeliveries.Should().ContainSingle(delivery =>
+            delivery.UserId == currentUser.Id &&
+            delivery.PushSubscriptionId == currentSubscription.Id &&
+            delivery.Type == NotificationType.Test &&
+            delivery.SubjectKey == $"test:{currentUser.Id:N}" &&
+            delivery.Status == NotificationDeliveryStatus.Sent);
+    }
+
     private static ApplicationUser CreateUser(
         string email = "player@test.local",
         string displayName = "Player") =>

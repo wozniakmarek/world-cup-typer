@@ -171,3 +171,10 @@ export interface NotificationSettings {
 export interface WebPushPublicKey {
   publicKey: string
 }
+
+export interface TestNotificationResult {
+  attempted: number
+  sent: number
+  failed: number
+  revoked: number
+}

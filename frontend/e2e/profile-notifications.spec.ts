@@ -109,6 +109,36 @@ const mockPushSupportWithoutCurrentSubscription = async (page: Parameters<Parame
   })
 }
 
+const mockPushSupportWithCurrentSubscription = async (page: Parameters<Parameters<typeof test>[1]>[0]['page']) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'Notification', {
+      value: class Notification {
+        static permission = 'granted'
+        static requestPermission = async () => 'granted'
+      },
+      configurable: true,
+    })
+
+    const subscription = {
+      endpoint: 'https://push.example/current-device',
+    }
+    const registration = {
+      pushManager: {
+        getSubscription: async () => subscription,
+      },
+    }
+
+    Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true })
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        getRegistration: async () => registration,
+        ready: Promise.resolve(registration),
+      },
+      configurable: true,
+    })
+  })
+}
+
 test('profil pozwala wlaczyc i zmienic ustawienia powiadomien', async ({ page }) => {
   await page.context().grantPermissions(['notifications'], {
     origin: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173',
@@ -176,6 +206,40 @@ test('konto z aktywna subskrypcja na innym urzadzeniu nadal pozwala wlaczyc obec
 
   await expect(page.getByText('Aktywne na innym urzadzeniu')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Wlacz na tym urzadzeniu' })).toBeEnabled()
+})
+
+test('aktywne urzadzenie pozwala wyslac testowe powiadomienie', async ({ page }) => {
+  await mockPushSupportWithCurrentSubscription(page)
+  await signIn(page)
+  await mockProfileApis(page)
+  await page.route('**/api/notifications/settings', async (route) => {
+    await route.fulfill({
+      json: {
+        morningDigestEnabled: true,
+        missingPrediction2hEnabled: true,
+        missingPrediction30mEnabled: true,
+        rankingUpdatedEnabled: true,
+        hasActiveSubscription: true,
+      },
+    })
+  })
+  await page.route('**/api/notifications/test', async (route) => {
+    await route.fulfill({
+      json: {
+        attempted: 1,
+        sent: 1,
+        failed: 0,
+        revoked: 0,
+      },
+    })
+  })
+
+  await page.goto('/profile')
+  await expect(page.getByText('Aktywne na tym urzadzeniu')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Wyslij test' }).click()
+
+  await expect(page.getByText('Test wyslany: 1/1. Bledy: 0, wygasle: 0.')).toBeVisible()
 })
 
 test('wlaczenie powiadomien ignoruje niewidoczny BOM w kluczu VAPID', async ({ page }) => {
