@@ -39,7 +39,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddScoped<IPasswordHasher, PasswordHasherAdapter>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
-        services.AddScoped<INotificationService, NoopNotificationService>();
+        services.AddSingleton<IWebPushSender, WebPushSender>();
+        services.AddScoped<INotificationService, WebPushNotificationService>();
         services.AddScoped<IScheduleImportService, FootballDataScheduleImportService>();
         services.AddScoped<IKnockoutResolverService, StubKnockoutResolverService>();
         services.AddHostedService<FootballDataSyncWorker>();
