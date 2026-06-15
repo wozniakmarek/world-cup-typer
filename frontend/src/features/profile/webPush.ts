@@ -1,6 +1,6 @@
 import { notificationsApi } from '../../api/services'
 
-const PUSH_SERVICE_WORKER_URL = '/push-sw.js'
+const PUSH_SERVICE_WORKER_URL = '/sw.js'
 
 export type PushSupportState = NotificationPermission | 'unsupported' | 'ios-install-required'
 
