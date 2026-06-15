@@ -89,6 +89,11 @@ public sealed class MatchSettlementServiceTests
             return Task.CompletedTask;
         }
 
+        public Task<TestNotificationResponse> NotifyDueMatchRemindersAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new TestNotificationResponse(0, 0, 0, 0));
+        }
+
         public Task NotifyRankingUpdatedAsync(Guid matchId, CancellationToken cancellationToken = default)
         {
             RankingUpdatedMatchIds.Add(matchId);

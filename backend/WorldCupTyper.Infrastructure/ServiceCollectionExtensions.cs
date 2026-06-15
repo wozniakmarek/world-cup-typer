@@ -26,7 +26,11 @@ public static class ServiceCollectionExtensions
         services.Configure<DevelopmentSeedOptions>(configuration.GetSection(DevelopmentSeedOptions.SectionName));
         services.Configure<DatabaseStartupOptions>(configuration.GetSection(DatabaseStartupOptions.SectionName));
         services.Configure<FootballDataOptions>(configuration.GetSection(FootballDataOptions.SectionName));
-        services.Configure<WebPushOptions>(configuration.GetSection(WebPushOptions.SectionName));
+        services.Configure<NotificationReminderOptions>(configuration.GetSection(NotificationReminderOptions.SectionName));
+        services.AddOptions<WebPushOptions>()
+            .Bind(configuration.GetSection(WebPushOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<WebPushOptions>, WebPushOptionsValidator>();
 
         services.AddDbContext<WorldCupTyperDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<WorldCupTyperDbContext>());
@@ -44,6 +48,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IScheduleImportService, FootballDataScheduleImportService>();
         services.AddScoped<IKnockoutResolverService, StubKnockoutResolverService>();
         services.AddHostedService<FootballDataSyncWorker>();
+        services.AddHostedService<NotificationReminderWorker>();
 
         services.AddScoped<LeaderboardBuilder>();
         services.AddScoped<IAuthService, AuthService>();

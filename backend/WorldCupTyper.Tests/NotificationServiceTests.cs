@@ -227,6 +227,170 @@ public sealed class NotificationServiceTests
             delivery.Status == NotificationDeliveryStatus.Sent);
     }
 
+    [Theory]
+    [InlineData(NotificationType.MissingPrediction2h, 120, "Typowanie zamyka sie za 2h")]
+    [InlineData(NotificationType.MissingPrediction30m, 30, "Ostatnie 30 minut na typ")]
+    public async Task NotifyDueMatchRemindersAsync_WithMissingPredictionReminder_ShouldSendOnlyToUsersWithoutPrediction(
+        NotificationType expectedType,
+        int minutesUntilKickoff,
+        string expectedTitle)
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider { UtcNow = new DateTime(2026, 6, 15, 10, 0, 0, DateTimeKind.Utc) };
+        var homeTeam = CreateTeam("Poland", "POL");
+        var awayTeam = CreateTeam("Germany", "GER");
+        var match = CreateMatch(homeTeam.Id, awayTeam.Id);
+        match.KickoffTimeUtc = dateTimeProvider.UtcNow.AddMinutes(minutesUntilKickoff);
+        match.Status = MatchStatus.Scheduled;
+        match.IsSettled = false;
+        match.HomeScore90 = null;
+        match.AwayScore90 = null;
+        var missingUser = CreateUser("missing@test.local", "Missing");
+        var predictedUser = CreateUser("predicted@test.local", "Predicted");
+        var optedOutUser = CreateUser("optedout@test.local", "Opted Out");
+        var missingSubscription = CreateSubscription(missingUser.Id, "https://push.example/missing");
+        var predictedSubscription = CreateSubscription(predictedUser.Id, "https://push.example/predicted");
+        var optedOutSubscription = CreateSubscription(optedOutUser.Id, "https://push.example/opted-out");
+
+        dbContext.Teams.AddRange(homeTeam, awayTeam);
+        dbContext.Matches.Add(match);
+        dbContext.Users.AddRange(missingUser, predictedUser, optedOutUser);
+        dbContext.Predictions.Add(new Prediction
+        {
+            Id = Guid.NewGuid(),
+            UserId = predictedUser.Id,
+            MatchId = match.Id,
+            PredictedHomeScore = 2,
+            PredictedAwayScore = 1,
+            CreatedAtUtc = dateTimeProvider.UtcNow.AddHours(-1),
+        });
+        dbContext.NotificationPreferences.Add(new NotificationPreference
+        {
+            UserId = optedOutUser.Id,
+            MissingPrediction2hEnabled = expectedType != NotificationType.MissingPrediction2h,
+            MissingPrediction30mEnabled = expectedType != NotificationType.MissingPrediction30m,
+            UpdatedAtUtc = dateTimeProvider.UtcNow,
+        });
+        dbContext.PushSubscriptions.AddRange(missingSubscription, predictedSubscription, optedOutSubscription);
+        await dbContext.SaveChangesAsync();
+
+        var sender = new FakeWebPushSender();
+        var service = CreateWebPushService(dbContext, dateTimeProvider, sender);
+
+        var response = await service.NotifyDueMatchRemindersAsync();
+
+        response.Should().BeEquivalentTo(new TestNotificationResponse(Attempted: 1, Sent: 1, Failed: 0, Revoked: 0));
+        sender.Requests.Should().ContainSingle(request => request.Endpoint == missingSubscription.Endpoint);
+        var payload = JsonSerializer.Deserialize<Dictionary<string, string>>(sender.Requests.Single().Payload);
+        payload.Should().Contain("title", expectedTitle);
+        payload.Should().Contain("url", $"/matches/{match.Id}");
+        payload!["body"].Should().Contain("Poland - Germany");
+
+        var scheduledForUtc = expectedType == NotificationType.MissingPrediction2h
+            ? match.KickoffTimeUtc.AddHours(-2)
+            : match.KickoffTimeUtc.AddMinutes(-30);
+        dbContext.NotificationDeliveries.Should().ContainSingle(delivery =>
+            delivery.UserId == missingUser.Id &&
+            delivery.PushSubscriptionId == missingSubscription.Id &&
+            delivery.MatchId == match.Id &&
+            delivery.Type == expectedType &&
+            delivery.SubjectKey == $"{expectedType}:{match.Id:N}" &&
+            delivery.ScheduledForUtc == scheduledForUtc &&
+            delivery.Status == NotificationDeliveryStatus.Sent);
+    }
+
+    [Fact]
+    public async Task NotifyDueMatchRemindersAsync_WhenMorningDigestIsDue_ShouldSendMissingCountForTodaysMatches()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider { UtcNow = new DateTime(2026, 6, 15, 5, 0, 0, DateTimeKind.Utc) };
+        var homeTeam = CreateTeam("Poland", "POL");
+        var awayTeam = CreateTeam("Germany", "GER");
+        var firstMatch = CreateMatch(homeTeam.Id, awayTeam.Id);
+        firstMatch.KickoffTimeUtc = new DateTime(2026, 6, 15, 16, 0, 0, DateTimeKind.Utc);
+        var secondMatch = CreateMatch(homeTeam.Id, awayTeam.Id);
+        secondMatch.KickoffTimeUtc = new DateTime(2026, 6, 15, 19, 0, 0, DateTimeKind.Utc);
+        secondMatch.MatchNumber = 2;
+        var user = CreateUser();
+        var subscription = CreateSubscription(user.Id, "https://push.example/morning");
+        dbContext.Teams.AddRange(homeTeam, awayTeam);
+        dbContext.Matches.AddRange(firstMatch, secondMatch);
+        dbContext.Users.Add(user);
+        dbContext.Predictions.Add(new Prediction
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            MatchId = firstMatch.Id,
+            PredictedHomeScore = 1,
+            PredictedAwayScore = 1,
+            CreatedAtUtc = dateTimeProvider.UtcNow.AddHours(-1),
+        });
+        dbContext.PushSubscriptions.Add(subscription);
+        await dbContext.SaveChangesAsync();
+
+        var sender = new FakeWebPushSender();
+        var service = CreateWebPushService(dbContext, dateTimeProvider, sender);
+
+        var response = await service.NotifyDueMatchRemindersAsync();
+
+        response.Should().BeEquivalentTo(new TestNotificationResponse(Attempted: 1, Sent: 1, Failed: 0, Revoked: 0));
+        sender.Requests.Should().ContainSingle(request => request.Endpoint == subscription.Endpoint);
+        var payload = JsonSerializer.Deserialize<Dictionary<string, string>>(sender.Requests.Single().Payload);
+        payload.Should().Contain("title", "Dzisiejsze mecze czekaja");
+        payload.Should().Contain("body", "Masz 1 mecz bez typu.");
+        payload.Should().Contain("url", "/matches");
+        dbContext.NotificationDeliveries.Should().ContainSingle(delivery =>
+            delivery.UserId == user.Id &&
+            delivery.PushSubscriptionId == subscription.Id &&
+            delivery.Type == NotificationType.MorningDigest &&
+            delivery.SubjectKey == "digest:2026-06-15" &&
+            delivery.Status == NotificationDeliveryStatus.Sent);
+    }
+
+    [Fact]
+    public async Task NotifyDueMatchRemindersAsync_WhenDeliveryAlreadyExists_ShouldNotSendDuplicate()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider { UtcNow = new DateTime(2026, 6, 15, 10, 0, 0, DateTimeKind.Utc) };
+        var homeTeam = CreateTeam("Poland", "POL");
+        var awayTeam = CreateTeam("Germany", "GER");
+        var match = CreateMatch(homeTeam.Id, awayTeam.Id);
+        match.KickoffTimeUtc = dateTimeProvider.UtcNow.AddHours(2);
+        match.Status = MatchStatus.Scheduled;
+        match.IsSettled = false;
+        match.HomeScore90 = null;
+        match.AwayScore90 = null;
+        var user = CreateUser();
+        var subscription = CreateSubscription(user.Id, "https://push.example/dedupe");
+        dbContext.Teams.AddRange(homeTeam, awayTeam);
+        dbContext.Matches.Add(match);
+        dbContext.Users.Add(user);
+        dbContext.PushSubscriptions.Add(subscription);
+        dbContext.NotificationDeliveries.Add(new NotificationDelivery
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            PushSubscriptionId = subscription.Id,
+            MatchId = match.Id,
+            SubjectKey = $"{NotificationType.MissingPrediction2h}:{match.Id:N}",
+            Type = NotificationType.MissingPrediction2h,
+            ScheduledForUtc = match.KickoffTimeUtc.AddHours(-2),
+            SentAtUtc = dateTimeProvider.UtcNow.AddMinutes(-1),
+            Status = NotificationDeliveryStatus.Sent,
+            CreatedAtUtc = dateTimeProvider.UtcNow.AddMinutes(-1),
+        });
+        await dbContext.SaveChangesAsync();
+
+        var sender = new FakeWebPushSender();
+        var service = CreateWebPushService(dbContext, dateTimeProvider, sender);
+
+        var response = await service.NotifyDueMatchRemindersAsync();
+
+        response.Should().BeEquivalentTo(new TestNotificationResponse(Attempted: 0, Sent: 0, Failed: 0, Revoked: 0));
+        sender.Requests.Should().BeEmpty();
+        dbContext.NotificationDeliveries.Should().ContainSingle();
+    }
+
     private static ApplicationUser CreateUser(
         string email = "player@test.local",
         string displayName = "Player") =>
@@ -276,6 +440,22 @@ public sealed class NotificationServiceTests
             IsSettled = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
+
+    private static WebPushNotificationService CreateWebPushService(
+        WorldCupTyper.Infrastructure.Persistence.WorldCupTyperDbContext dbContext,
+        TestDateTimeProvider dateTimeProvider,
+        FakeWebPushSender sender) =>
+        new(
+            dbContext,
+            dateTimeProvider,
+            Options.Create(new WebPushOptions
+            {
+                PublicKey = "public-key",
+                PrivateKey = "private-key",
+                Subject = "mailto:test@example.com",
+            }),
+            sender,
+            NullLogger<WebPushNotificationService>.Instance);
 
     private sealed class FakeWebPushSender : IWebPushSender
     {
