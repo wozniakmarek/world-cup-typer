@@ -141,6 +141,11 @@ Backend potrzebuje:
 
 Klucz publiczny moze byc zwracany frontendowi przez `GET /api/notifications/vapid-public-key`, a prywatny klucz pozostaje w konfiguracji hostingu.
 
+`WebPush:Subject` jest globalnym kontaktem technicznym aplikacji, a nie loginem ani adresem gracza.
+Na produkcji rekomendowana wartosc to `mailto:powiadomienia@marekwozniak.me`.
+Alternatywnie mozna uzyc `https://typer.marekwozniak.me`.
+Wartosc musi byc poprawnym `mailto:` z adresem zawierajacym `@` albo adresem `https://`; zwykly tekst typu `Test` albo `ImieNazwisko` moze powodowac odrzucenie wysylki przez Apple Web Push jako `BadJwtToken`.
+
 Na produkcji workflow DigitalOcean App Platform mapuje te wartosci z GitHub:
 - secret `WEB_PUSH_PUBLIC_KEY` -> `WebPush__PublicKey`,
 - secret `WEB_PUSH_PRIVATE_KEY` -> `WebPush__PrivateKey`,
@@ -172,6 +177,15 @@ Service worker powinien obslugiwac `push` i `notificationclick`. Klikniecie w po
 
 ## Reguly powiadomien
 
+Przypomnienia meczowe obsluguje `NotificationReminderWorker`. Worker domyslnie jest wlaczony i uruchamia
+`INotificationService.NotifyDueMatchRemindersAsync()` co 5 minut.
+Konfiguracja:
+- `NotificationReminders:Enabled` - domyslnie `true`,
+- `NotificationReminders:IntervalMinutes` - domyslnie `5`.
+
+Wszystkie typy korzystaja z tej samej konfiguracji VAPID i tego samego sendera Web Push co aktualizacja rankingu.
+Deduplikacja opiera sie na `NotificationDelivery` per `UserId + PushSubscriptionId + Type + SubjectKey + ScheduledForUtc`.
+
 ### Rano przypomnienie o meczach
 Cel: pokazac liste dzisiejszych meczow i liczbe brakujacych typow.
 
@@ -179,7 +193,7 @@ Regula:
 - job raz dziennie, np. 07:00 Europe/Warsaw,
 - wybiera mecze z kickoffem w lokalnym dniu,
 - dla kazdego aktywnego uzytkownika liczy mecze bez typu,
-- wysyla tylko gdy istnieje przynajmniej jeden mecz bez typu albo uzytkownik ma wlaczone ogolne przypomnienie o terminarzu.
+- wysyla tylko gdy istnieje przynajmniej jeden przyszly dzisiejszy mecz bez typu i uzytkownik ma wlaczone `MorningDigestEnabled`.
 
 Payload:
 ```json
@@ -200,6 +214,16 @@ Regula:
 - odbiorcy: aktywni uzytkownicy bez `Prediction` dla tego meczu,
 - wysylka tylko dla preferencji `MissingPrediction2hEnabled`.
 
+Payload:
+```json
+{
+  "title": "Typowanie zamyka sie za 2h",
+  "body": "Poland - Germany: dodaj swoj typ przed rozpoczeciem meczu.",
+  "url": "/matches/{matchId}",
+  "type": "MissingPrediction2h"
+}
+```
+
 ### 30 min przed meczem bez typu
 Cel: ostatnie przypomnienie przed zamknieciem typowania.
 
@@ -208,6 +232,16 @@ Regula:
 - okno: `KickoffTimeUtc - 30m <= nowUtc < KickoffTimeUtc - 25m`,
 - odbiorcy: aktywni uzytkownicy bez `Prediction` dla tego meczu,
 - wysylka tylko dla preferencji `MissingPrediction30mEnabled`.
+
+Payload:
+```json
+{
+  "title": "Ostatnie 30 minut na typ",
+  "body": "Poland - Germany: brakuje Twojego typu.",
+  "url": "/matches/{matchId}",
+  "type": "MissingPrediction30m"
+}
+```
 
 ### Po rozliczeniu meczu i aktualizacji rankingu
 Cel: poinformowac, ze punkty i ranking sa gotowe.
