@@ -1,5 +1,6 @@
 using FluentAssertions;
 using WorldCupTyper.Application.Abstractions;
+using WorldCupTyper.Application.DTOs;
 using WorldCupTyper.Application.Services;
 using WorldCupTyper.Domain.Entities;
 using WorldCupTyper.Domain.Enums;
@@ -92,6 +93,11 @@ public sealed class MatchSettlementServiceTests
         {
             RankingUpdatedMatchIds.Add(matchId);
             return Task.CompletedTask;
+        }
+
+        public Task<TestNotificationResponse> SendTestNotificationAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new TestNotificationResponse(0, 0, 0, 0));
         }
     }
 }

@@ -15,6 +15,7 @@ import type {
   ResetPasswordResponse,
   Team,
   NotificationSettings,
+  TestNotificationResult,
   WebPushPublicKey,
 } from './types'
 
@@ -139,6 +140,7 @@ export const notificationsApi = {
     apiClient.post('/notifications/subscriptions', payload),
   revokeCurrentSubscription: async (payload: RevokePushSubscriptionPayload) =>
     apiClient.delete('/notifications/subscriptions/current', { data: payload }),
+  sendTest: async () => (await apiClient.post<TestNotificationResult>('/notifications/test')).data,
 }
 
 export const teamsApi = {

@@ -6,4 +6,5 @@ public enum NotificationType
     MissingPrediction2h = 2,
     MissingPrediction30m = 3,
     RankingUpdated = 4,
+    Test = 5,
 }

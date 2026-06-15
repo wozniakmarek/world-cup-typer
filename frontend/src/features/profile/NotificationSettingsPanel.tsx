@@ -56,6 +56,7 @@ export const NotificationSettingsPanel = () => {
   const [draftOverrides, setDraftOverrides] = useState<Partial<NotificationSettings>>({})
   const [deviceError, setDeviceError] = useState<string | null>(null)
   const [deviceSuccess, setDeviceSuccess] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<string | null>(null)
   const [hasCurrentDeviceSubscription, setHasCurrentDeviceSubscription] = useState(false)
   const [isCheckingCurrentDevice, setIsCheckingCurrentDevice] = useState(false)
   const supportState = useMemo(() => (typeof window === 'undefined' ? 'unsupported' : getPushSupportState()), [])
@@ -81,6 +82,7 @@ export const NotificationSettingsPanel = () => {
     onMutate: () => {
       setDeviceError(null)
       setDeviceSuccess(null)
+      setTestResult(null)
     },
     onSuccess: async () => {
       setHasCurrentDeviceSubscription(true)
@@ -95,6 +97,7 @@ export const NotificationSettingsPanel = () => {
     onMutate: () => {
       setDeviceError(null)
       setDeviceSuccess(null)
+      setTestResult(null)
     },
     onSuccess: async () => {
       setHasCurrentDeviceSubscription(false)
@@ -104,11 +107,24 @@ export const NotificationSettingsPanel = () => {
     onError: (error) => setDeviceError(getErrorMessage(error)),
   })
 
+  const testDeviceMutation = useMutation({
+    mutationFn: notificationsApi.sendTest,
+    onMutate: () => {
+      setDeviceError(null)
+      setDeviceSuccess(null)
+      setTestResult(null)
+    },
+    onSuccess: (result) => {
+      setTestResult(`Test wyslany: ${result.sent}/${result.attempted}. Bledy: ${result.failed}, wygasle: ${result.revoked}.`)
+    },
+    onError: (error) => setDeviceError(getErrorMessage(error)),
+  })
+
   const hasChanges = settingsQuery.data
     ? notificationOptions.some((option) => settingsQuery.data[option.key] !== draft[option.key])
     : false
   const isSaving = saveSettingsMutation.isPending
-  const isDevicePending = enableDeviceMutation.isPending || disableDeviceMutation.isPending
+  const isDevicePending = enableDeviceMutation.isPending || disableDeviceMutation.isPending || testDeviceMutation.isPending
   const isUnsupported = supportState === 'unsupported'
   const needsIosInstall = supportState === 'ios-install-required'
   const isDenied = supportState === 'denied'
@@ -193,6 +209,7 @@ export const NotificationSettingsPanel = () => {
       {saveSettingsMutation.isSuccess ? <InlineAlert tone="success" message="Ustawienia powiadomien zostaly zapisane." /> : null}
       {deviceError ? <InlineAlert tone="error" message={deviceError} /> : null}
       {deviceSuccess ? <InlineAlert tone="success" message={deviceSuccess} /> : null}
+      {testResult ? <InlineAlert tone="success" message={testResult} /> : null}
       {isDenied ? (
         <InlineAlert tone="warning" message="Przegladarka blokuje powiadomienia. Zmien zgode w ustawieniach strony, zeby wlaczyc push." />
       ) : null}
@@ -243,14 +260,24 @@ export const NotificationSettingsPanel = () => {
         </button>
 
         {hasCurrentDeviceSubscription ? (
-          <button
-            type="button"
-            className={`${secondaryButtonClassName} w-full sm:w-auto`}
-            disabled={isDevicePending || isCheckingCurrentDevice}
-            onClick={() => disableDeviceMutation.mutate()}
-          >
-            Wylacz na tym urzadzeniu
-          </button>
+          <>
+            <button
+              type="button"
+              className={`${secondaryButtonClassName} w-full sm:w-auto`}
+              disabled={isDevicePending || isCheckingCurrentDevice}
+              onClick={() => testDeviceMutation.mutate()}
+            >
+              {testDeviceMutation.isPending ? 'Wysylanie testu...' : 'Wyslij test'}
+            </button>
+            <button
+              type="button"
+              className={`${secondaryButtonClassName} w-full sm:w-auto`}
+              disabled={isDevicePending || isCheckingCurrentDevice}
+              onClick={() => disableDeviceMutation.mutate()}
+            >
+              Wylacz na tym urzadzeniu
+            </button>
+          </>
         ) : (
           <button
             type="button"

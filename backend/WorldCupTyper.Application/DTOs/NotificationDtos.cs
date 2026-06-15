@@ -21,3 +21,5 @@ public sealed record SavePushSubscriptionRequest(
     string? UserAgent);
 
 public sealed record RevokePushSubscriptionRequest(string Endpoint);
+
+public sealed record TestNotificationResponse(int Attempted, int Sent, int Failed, int Revoked);
