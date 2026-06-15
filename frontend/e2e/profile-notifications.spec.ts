@@ -213,7 +213,10 @@ test('wlaczenie powiadomien ignoruje niewidoczny BOM w kluczu VAPID', async ({ p
     Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true })
     Object.defineProperty(navigator, 'serviceWorker', {
       value: {
-        register: async () => registration,
+        register: async (url: string) => {
+          window.localStorage.setItem('typer.push.workerUrl', url)
+          return registration
+        },
         ready: Promise.resolve(registration),
         getRegistration: async () => registration,
       },
@@ -238,4 +241,5 @@ test('wlaczenie powiadomien ignoruje niewidoczny BOM w kluczu VAPID', async ({ p
 
   await expect(page.getByText('Powiadomienia zostaly wlaczone na tym urzadzeniu.')).toBeVisible()
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem('typer.push.keyLength'))).toBe('65')
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('typer.push.workerUrl'))).toBe('/sw.js')
 })
