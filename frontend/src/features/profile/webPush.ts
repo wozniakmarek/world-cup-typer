@@ -90,6 +90,22 @@ export const enableWebPushForCurrentDevice = async () => {
   })
 }
 
+export const hasWebPushSubscriptionOnCurrentDevice = async () => {
+  if (getPushSupportState() === 'unsupported' || getPushSupportState() === 'ios-install-required') {
+    return false
+  }
+
+  if (!('serviceWorker' in navigator)) {
+    return false
+  }
+
+  const registration = await navigator.serviceWorker.getRegistration(PUSH_SERVICE_WORKER_URL)
+    ?? await navigator.serviceWorker.ready.catch(() => null)
+  const subscription = await registration?.pushManager.getSubscription()
+
+  return Boolean(subscription)
+}
+
 export const disableWebPushForCurrentDevice = async () => {
   if (!('serviceWorker' in navigator)) {
     return

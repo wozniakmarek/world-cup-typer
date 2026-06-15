@@ -1,5 +1,5 @@
 import { Bell, BellOff, Save } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { notificationsApi } from '../../api/services'
@@ -7,7 +7,12 @@ import type { NotificationSettings } from '../../api/types'
 import { InlineAlert } from '../../components/InlineAlert'
 import { Panel } from '../../components/Panel'
 import { buttonClassName, secondaryButtonClassName } from '../../styles/ui'
-import { disableWebPushForCurrentDevice, enableWebPushForCurrentDevice, getPushSupportState } from './webPush'
+import {
+  disableWebPushForCurrentDevice,
+  enableWebPushForCurrentDevice,
+  getPushSupportState,
+  hasWebPushSubscriptionOnCurrentDevice,
+} from './webPush'
 
 type NotificationOption = {
   key: keyof Omit<NotificationSettings, 'hasActiveSubscription'>
@@ -51,6 +56,8 @@ export const NotificationSettingsPanel = () => {
   const [draftOverrides, setDraftOverrides] = useState<Partial<NotificationSettings>>({})
   const [deviceError, setDeviceError] = useState<string | null>(null)
   const [deviceSuccess, setDeviceSuccess] = useState<string | null>(null)
+  const [hasCurrentDeviceSubscription, setHasCurrentDeviceSubscription] = useState(false)
+  const [isCheckingCurrentDevice, setIsCheckingCurrentDevice] = useState(false)
   const supportState = useMemo(() => (typeof window === 'undefined' ? 'unsupported' : getPushSupportState()), [])
 
   const settingsQuery = useQuery({
@@ -76,6 +83,7 @@ export const NotificationSettingsPanel = () => {
       setDeviceSuccess(null)
     },
     onSuccess: async () => {
+      setHasCurrentDeviceSubscription(true)
       setDeviceSuccess('Powiadomienia zostaly wlaczone na tym urzadzeniu.')
       await queryClient.invalidateQueries({ queryKey: ['notifications', 'settings'] })
     },
@@ -89,6 +97,7 @@ export const NotificationSettingsPanel = () => {
       setDeviceSuccess(null)
     },
     onSuccess: async () => {
+      setHasCurrentDeviceSubscription(false)
       setDeviceSuccess('Powiadomienia zostaly wylaczone na tym urzadzeniu.')
       await queryClient.invalidateQueries({ queryKey: ['notifications', 'settings'] })
     },
@@ -103,7 +112,39 @@ export const NotificationSettingsPanel = () => {
   const isUnsupported = supportState === 'unsupported'
   const needsIosInstall = supportState === 'ios-install-required'
   const isDenied = supportState === 'denied'
-  const hasActiveSubscription = Boolean(settingsQuery.data?.hasActiveSubscription)
+  const hasAnyActiveSubscription = Boolean(settingsQuery.data?.hasActiveSubscription)
+
+  useEffect(() => {
+    let isActive = true
+    if (isUnsupported || needsIosInstall) {
+      setHasCurrentDeviceSubscription(false)
+      return () => {
+        isActive = false
+      }
+    }
+
+    setIsCheckingCurrentDevice(true)
+    void hasWebPushSubscriptionOnCurrentDevice()
+      .then((hasSubscription) => {
+        if (isActive) {
+          setHasCurrentDeviceSubscription(hasSubscription)
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setHasCurrentDeviceSubscription(false)
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsCheckingCurrentDevice(false)
+        }
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [isUnsupported, needsIosInstall])
 
   const statusLabel = needsIosInstall
     ? 'Dodaj aplikacje do ekranu poczatkowego'
@@ -111,11 +152,15 @@ export const NotificationSettingsPanel = () => {
       ? 'Brak wsparcia w przegladarce'
       : isDenied
       ? 'Zablokowane w przegladarce'
-      : hasActiveSubscription
+      : hasCurrentDeviceSubscription
         ? 'Aktywne na tym urzadzeniu'
+        : hasAnyActiveSubscription
+        ? 'Aktywne na innym urzadzeniu'
         : 'Nieaktywne na tym urzadzeniu'
   const statusDetail = needsIosInstall
     ? 'Na iPhonie powiadomienia dzialaja po otwarciu aplikacji z ikony na ekranie poczatkowym.'
+    : hasAnyActiveSubscription && !hasCurrentDeviceSubscription && !isUnsupported && !isDenied
+      ? 'To konto ma aktywna subskrypcje gdzie indziej. Ten telefon lub ta przegladarka wymaga osobnego wlaczenia.'
     : 'Ustawienia dotycza konta, aktywacja dotyczy tej przegladarki.'
 
   return (
@@ -124,7 +169,11 @@ export const NotificationSettingsPanel = () => {
         <div className="min-w-0">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-200">
-              {hasActiveSubscription ? <Bell className="h-5 w-5" aria-hidden="true" /> : <BellOff className="h-5 w-5" aria-hidden="true" />}
+              {hasCurrentDeviceSubscription || hasAnyActiveSubscription ? (
+                <Bell className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <BellOff className="h-5 w-5" aria-hidden="true" />
+              )}
             </span>
             <div className="min-w-0">
               <h2 className="font-display text-2xl uppercase text-white">Powiadomienia</h2>
@@ -193,11 +242,11 @@ export const NotificationSettingsPanel = () => {
           {isSaving ? 'Zapisywanie...' : 'Zapisz powiadomienia'}
         </button>
 
-        {hasActiveSubscription ? (
+        {hasCurrentDeviceSubscription ? (
           <button
             type="button"
             className={`${secondaryButtonClassName} w-full sm:w-auto`}
-            disabled={isDevicePending}
+            disabled={isDevicePending || isCheckingCurrentDevice}
             onClick={() => disableDeviceMutation.mutate()}
           >
             Wylacz na tym urzadzeniu
@@ -206,7 +255,7 @@ export const NotificationSettingsPanel = () => {
           <button
             type="button"
             className={`${secondaryButtonClassName} w-full sm:w-auto`}
-            disabled={needsIosInstall || isUnsupported || isDenied || isDevicePending}
+            disabled={needsIosInstall || isUnsupported || isDenied || isDevicePending || isCheckingCurrentDevice}
             onClick={() => enableDeviceMutation.mutate()}
           >
             {enableDeviceMutation.isPending ? 'Wlaczanie...' : 'Wlacz na tym urzadzeniu'}
