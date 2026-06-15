@@ -90,6 +90,44 @@ public sealed class NotificationServiceTests
     }
 
     [Fact]
+    public async Task SaveSubscriptionAsync_WithSameDeviceId_ShouldRevokeOlderCurrentUserSubscription()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var currentUser = CreateUser("current@test.local", "Current User");
+        var otherUser = CreateUser("other@test.local", "Other User");
+        dbContext.Users.AddRange(currentUser, otherUser);
+
+        var olderCurrentSubscription = CreateSubscription(currentUser.Id, "https://push.example/old-device");
+        olderCurrentSubscription.DeviceId = "device-1";
+        olderCurrentSubscription.UserAgent = "Same Browser";
+        olderCurrentSubscription.LastSeenAtUtc = new DateTime(2026, 6, 13, 8, 0, 0, DateTimeKind.Utc);
+        var otherUserSubscription = CreateSubscription(otherUser.Id, "https://push.example/other-device");
+        otherUserSubscription.DeviceId = "device-1";
+        otherUserSubscription.UserAgent = "Same Browser";
+        dbContext.PushSubscriptions.AddRange(olderCurrentSubscription, otherUserSubscription);
+        await dbContext.SaveChangesAsync();
+
+        var dateTimeProvider = new TestDateTimeProvider { UtcNow = new DateTime(2026, 6, 15, 9, 30, 0, DateTimeKind.Utc) };
+        var service = new NotificationSubscriptionService(dbContext, dateTimeProvider);
+
+        await service.SaveSubscriptionAsync(
+            currentUser.Id,
+            new SavePushSubscriptionRequest(
+                "https://push.example/new-device",
+                new PushSubscriptionKeysRequest("new-key", "new-auth"),
+                "Same Browser",
+                "device-1"));
+
+        olderCurrentSubscription.RevokedAtUtc.Should().Be(dateTimeProvider.UtcNow);
+        otherUserSubscription.RevokedAtUtc.Should().BeNull();
+        dbContext.PushSubscriptions.Should().ContainSingle(subscription =>
+            subscription.UserId == currentUser.Id &&
+            subscription.Endpoint == "https://push.example/new-device" &&
+            subscription.DeviceId == "device-1" &&
+            subscription.RevokedAtUtc == null);
+    }
+
+    [Fact]
     public async Task SaveSubscriptionAsync_WithMissingKeys_ShouldThrowBusinessRuleException()
     {
         using var dbContext = TestDbContextFactory.Create();
@@ -224,6 +262,36 @@ public sealed class NotificationServiceTests
             delivery.PushSubscriptionId == currentSubscription.Id &&
             delivery.Type == NotificationType.Test &&
             delivery.SubjectKey == $"test:{currentUser.Id:N}" &&
+            delivery.Status == NotificationDeliveryStatus.Sent);
+    }
+
+    [Fact]
+    public async Task SendTestNotificationAsync_WithLegacyDuplicateBrowserSubscriptions_ShouldSendOnlyMostRecentSubscription()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider { UtcNow = new DateTime(2026, 6, 15, 23, 10, 0, DateTimeKind.Utc) };
+        var currentUser = CreateUser("current@test.local", "Current User");
+        var olderSubscription = CreateSubscription(currentUser.Id, "https://push.example/legacy-old");
+        olderSubscription.UserAgent = "Same Browser";
+        olderSubscription.LastSeenAtUtc = dateTimeProvider.UtcNow.AddHours(-2);
+        var newerSubscription = CreateSubscription(currentUser.Id, "https://push.example/legacy-new");
+        newerSubscription.UserAgent = "Same Browser";
+        newerSubscription.LastSeenAtUtc = dateTimeProvider.UtcNow.AddMinutes(-5);
+
+        dbContext.Users.Add(currentUser);
+        dbContext.PushSubscriptions.AddRange(olderSubscription, newerSubscription);
+        await dbContext.SaveChangesAsync();
+
+        var sender = new FakeWebPushSender();
+        var service = CreateWebPushService(dbContext, dateTimeProvider, sender);
+
+        var response = await service.SendTestNotificationAsync(currentUser.Id);
+
+        response.Should().BeEquivalentTo(new TestNotificationResponse(Attempted: 1, Sent: 1, Failed: 0, Revoked: 0));
+        sender.Requests.Should().ContainSingle(request => request.Endpoint == newerSubscription.Endpoint);
+        dbContext.NotificationDeliveries.Should().ContainSingle(delivery =>
+            delivery.PushSubscriptionId == newerSubscription.Id &&
+            delivery.Type == NotificationType.Test &&
             delivery.Status == NotificationDeliveryStatus.Sent);
     }
 

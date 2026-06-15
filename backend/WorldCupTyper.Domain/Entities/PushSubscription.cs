@@ -8,6 +8,7 @@ public class PushSubscription
     public string P256dh { get; set; } = string.Empty;
     public string Auth { get; set; } = string.Empty;
     public string? UserAgent { get; set; }
+    public string? DeviceId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime LastSeenAtUtc { get; set; }
     public DateTime? RevokedAtUtc { get; set; }

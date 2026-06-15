@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WorldCupTyper.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using WorldCupTyper.Infrastructure.Persistence;
 namespace WorldCupTyper.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(WorldCupTyperDbContext))]
-    partial class WorldCupTyperDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260615212212_AddPushSubscriptionDeviceId")]
+    partial class AddPushSubscriptionDeviceId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

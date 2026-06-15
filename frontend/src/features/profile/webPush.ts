@@ -1,6 +1,7 @@
 import { notificationsApi } from '../../api/services'
 
 const PUSH_SERVICE_WORKER_URL = '/sw.js'
+const PUSH_DEVICE_ID_STORAGE_KEY = 'typer.push.deviceId'
 
 export type PushSupportState = NotificationPermission | 'unsupported' | 'ios-install-required'
 
@@ -39,6 +40,29 @@ const isStandaloneWebApp = () => {
   const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
 
   return window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true
+}
+
+const createPushDeviceId = () => {
+  if (typeof window.crypto?.randomUUID === 'function') {
+    return window.crypto.randomUUID()
+  }
+
+  const randomValues = new Uint32Array(4)
+  window.crypto.getRandomValues(randomValues)
+
+  return Array.from(randomValues, (value) => value.toString(16).padStart(8, '0')).join('-')
+}
+
+const getPushDeviceId = () => {
+  const existingDeviceId = window.localStorage.getItem(PUSH_DEVICE_ID_STORAGE_KEY)
+  if (existingDeviceId) {
+    return existingDeviceId
+  }
+
+  const deviceId = createPushDeviceId()
+  window.localStorage.setItem(PUSH_DEVICE_ID_STORAGE_KEY, deviceId)
+
+  return deviceId
 }
 
 export const getPushSupportState = () => {
@@ -87,6 +111,7 @@ export const enableWebPushForCurrentDevice = async () => {
       auth: json.keys.auth,
     },
     userAgent: navigator.userAgent,
+    deviceId: getPushDeviceId(),
   })
 }
 

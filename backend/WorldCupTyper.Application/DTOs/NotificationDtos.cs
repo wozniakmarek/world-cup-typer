@@ -18,7 +18,8 @@ public sealed record PushSubscriptionKeysRequest(string P256dh, string Auth);
 public sealed record SavePushSubscriptionRequest(
     string Endpoint,
     PushSubscriptionKeysRequest Keys,
-    string? UserAgent);
+    string? UserAgent,
+    string? DeviceId = null);
 
 public sealed record RevokePushSubscriptionRequest(string Endpoint);
 
