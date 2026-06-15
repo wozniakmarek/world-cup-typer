@@ -52,6 +52,7 @@ export interface SavePushSubscriptionPayload {
     auth: string
   }
   userAgent?: string
+  deviceId?: string
 }
 
 export interface RevokePushSubscriptionPayload {

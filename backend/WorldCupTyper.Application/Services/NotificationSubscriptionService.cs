@@ -23,6 +23,7 @@ public sealed class NotificationSubscriptionService : INotificationSubscriptionS
         ValidateRequest(request);
 
         var nowUtc = _dateTimeProvider.UtcNow;
+        var deviceId = NormalizeDeviceId(request.DeviceId);
         var subscription = await _dbContext.PushSubscriptions
             .FirstOrDefaultAsync(candidate => candidate.Endpoint == request.Endpoint, cancellationToken);
 
@@ -42,10 +43,27 @@ public sealed class NotificationSubscriptionService : INotificationSubscriptionS
         subscription.P256dh = request.Keys.P256dh;
         subscription.Auth = request.Keys.Auth;
         subscription.UserAgent = request.UserAgent;
+        subscription.DeviceId = deviceId;
         subscription.LastSeenAtUtc = nowUtc;
         subscription.RevokedAtUtc = null;
         subscription.FailureCount = 0;
         subscription.LastFailureAtUtc = null;
+
+        if (!string.IsNullOrWhiteSpace(deviceId))
+        {
+            var staleSubscriptions = await _dbContext.PushSubscriptions
+                .Where(candidate =>
+                    candidate.Id != subscription.Id &&
+                    candidate.UserId == userId &&
+                    candidate.DeviceId == deviceId &&
+                    candidate.RevokedAtUtc == null)
+                .ToListAsync(cancellationToken);
+
+            foreach (var staleSubscription in staleSubscriptions)
+            {
+                staleSubscription.RevokedAtUtc = nowUtc;
+            }
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -91,5 +109,12 @@ public sealed class NotificationSubscriptionService : INotificationSubscriptionS
         {
             throw new BusinessRuleException("Subskrypcja push jest niekompletna.");
         }
+    }
+
+    private static string? NormalizeDeviceId(string? deviceId)
+    {
+        var normalized = deviceId?.Trim();
+
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 }

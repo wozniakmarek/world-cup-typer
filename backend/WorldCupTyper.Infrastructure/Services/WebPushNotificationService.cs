@@ -92,6 +92,7 @@ public sealed class WebPushNotificationService : INotificationService
                 (subscription.User.NotificationPreference == null ||
                     subscription.User.NotificationPreference.RankingUpdatedEnabled))
             .ToListAsync(cancellationToken);
+        subscriptions = DeduplicateActiveSubscriptions(subscriptions);
 
         await SendToSubscriptionsAsync(
             subscriptions,
@@ -118,6 +119,7 @@ public sealed class WebPushNotificationService : INotificationService
                 subscription.RevokedAtUtc == null &&
                 subscription.User.IsActive)
             .ToListAsync(cancellationToken);
+        subscriptions = DeduplicateActiveSubscriptions(subscriptions);
 
         return await SendToSubscriptionsAsync(
             subscriptions,
@@ -363,9 +365,9 @@ public sealed class WebPushNotificationService : INotificationService
                 subscription.User.IsActive)
             .ToListAsync(cancellationToken);
 
-        return subscriptions
+        return DeduplicateActiveSubscriptions(subscriptions
             .Where(subscription => IsPreferenceEnabled(subscription.User.NotificationPreference, type))
-            .ToList();
+            .ToList());
     }
 
     private async Task<bool> HasDeliveryAsync(
@@ -478,6 +480,33 @@ public sealed class WebPushNotificationService : INotificationService
         {
             return TimeZoneInfo.FindSystemTimeZoneById(WarsawIanaTimeZoneId);
         }
+    }
+
+    private static List<WorldCupTyper.Domain.Entities.PushSubscription> DeduplicateActiveSubscriptions(
+        IEnumerable<WorldCupTyper.Domain.Entities.PushSubscription> subscriptions)
+    {
+        return subscriptions
+            .GroupBy(subscription => GetSubscriptionDeviceKey(subscription))
+            .Select(group => group
+                .OrderByDescending(subscription => subscription.LastSeenAtUtc)
+                .ThenByDescending(subscription => subscription.CreatedAtUtc)
+                .First())
+            .ToList();
+    }
+
+    private static string GetSubscriptionDeviceKey(WorldCupTyper.Domain.Entities.PushSubscription subscription)
+    {
+        if (!string.IsNullOrWhiteSpace(subscription.DeviceId))
+        {
+            return $"{subscription.UserId:N}:device:{subscription.DeviceId.Trim()}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(subscription.UserAgent))
+        {
+            return $"{subscription.UserId:N}:ua:{subscription.UserAgent.Trim()}";
+        }
+
+        return $"{subscription.UserId:N}:subscription:{subscription.Id:N}";
     }
 
     private static TestNotificationResponse Add(TestNotificationResponse left, TestNotificationResponse right)
