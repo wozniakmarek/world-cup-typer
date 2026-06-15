@@ -327,7 +327,8 @@ public sealed class FootballDataScheduleImportServiceTests
             dbContext,
             new ScoringService(),
             new LeaderboardBuilder(dbContext),
-            dateTimeProvider);
+            dateTimeProvider,
+            new NoopNotificationService());
 
         return new FootballDataScheduleImportService(
             dbContext,

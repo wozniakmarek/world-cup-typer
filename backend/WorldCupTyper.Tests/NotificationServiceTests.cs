@@ -1,9 +1,14 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using System.Text.Json;
 using WorldCupTyper.Application.DTOs;
 using WorldCupTyper.Application.Exceptions;
 using WorldCupTyper.Application.Services;
 using WorldCupTyper.Domain.Entities;
 using WorldCupTyper.Domain.Enums;
+using WorldCupTyper.Infrastructure.Options;
+using WorldCupTyper.Infrastructure.Services;
 using WorldCupTyper.Tests.Helpers;
 
 namespace WorldCupTyper.Tests;
@@ -122,6 +127,64 @@ public sealed class NotificationServiceTests
         dbContext.PushSubscriptions.Single(subscription => subscription.UserId == otherUser.Id).RevokedAtUtc.Should().BeNull();
     }
 
+    [Fact]
+    public async Task NotifyRankingUpdatedAsync_WithEnabledActiveSubscription_ShouldSendPushAndRecordDelivery()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var dateTimeProvider = new TestDateTimeProvider { UtcNow = new DateTime(2026, 6, 15, 20, 45, 0, DateTimeKind.Utc) };
+        var homeTeam = CreateTeam("Poland", "POL");
+        var awayTeam = CreateTeam("Germany", "GER");
+        var match = CreateMatch(homeTeam.Id, awayTeam.Id);
+        var user = CreateUser();
+        var subscription = CreateSubscription(user.Id, "https://push.example/ranking");
+
+        dbContext.Teams.AddRange(homeTeam, awayTeam);
+        dbContext.Matches.Add(match);
+        dbContext.Users.Add(user);
+        dbContext.NotificationPreferences.Add(new NotificationPreference
+        {
+            UserId = user.Id,
+            RankingUpdatedEnabled = true,
+            UpdatedAtUtc = dateTimeProvider.UtcNow,
+        });
+        dbContext.PushSubscriptions.Add(subscription);
+        await dbContext.SaveChangesAsync();
+
+        var sender = new FakeWebPushSender();
+        var service = new WebPushNotificationService(
+            dbContext,
+            dateTimeProvider,
+            Options.Create(new WebPushOptions
+            {
+                PublicKey = "public-key",
+                PrivateKey = "private-key",
+                Subject = "mailto:test@example.com",
+            }),
+            sender,
+            NullLogger<WebPushNotificationService>.Instance);
+
+        await service.NotifyRankingUpdatedAsync(match.Id);
+
+        sender.Requests.Should().ContainSingle();
+        var request = sender.Requests.Single();
+        request.Endpoint.Should().Be(subscription.Endpoint);
+        request.P256dh.Should().Be(subscription.P256dh);
+        request.Auth.Should().Be(subscription.Auth);
+
+        var payload = JsonSerializer.Deserialize<Dictionary<string, string>>(request.Payload);
+        payload.Should().Contain("title", "Ranking zaktualizowany");
+        payload.Should().Contain("url", "/ranking");
+        payload!["body"].Should().Contain("Poland - Germany");
+
+        dbContext.NotificationDeliveries.Should().ContainSingle(delivery =>
+            delivery.UserId == user.Id &&
+            delivery.PushSubscriptionId == subscription.Id &&
+            delivery.MatchId == match.Id &&
+            delivery.Type == NotificationType.RankingUpdated &&
+            delivery.Status == NotificationDeliveryStatus.Sent &&
+            delivery.SentAtUtc == dateTimeProvider.UtcNow);
+    }
+
     private static ApplicationUser CreateUser(
         string email = "player@test.local",
         string displayName = "Player") =>
@@ -147,4 +210,39 @@ public sealed class NotificationServiceTests
             CreatedAtUtc = DateTime.UtcNow,
             LastSeenAtUtc = DateTime.UtcNow,
         };
+
+    private static Team CreateTeam(string name, string shortName) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            ShortName = shortName,
+            CountryCode = shortName,
+        };
+
+    private static Match CreateMatch(Guid homeTeamId, Guid awayTeamId) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            MatchNumber = 1,
+            HomeTeamId = homeTeamId,
+            AwayTeamId = awayTeamId,
+            KickoffTimeUtc = new DateTime(2026, 6, 15, 18, 0, 0, DateTimeKind.Utc),
+            HomeScore90 = 2,
+            AwayScore90 = 1,
+            Status = MatchStatus.Settled,
+            IsSettled = true,
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+
+    private sealed class FakeWebPushSender : IWebPushSender
+    {
+        public List<WebPushRequest> Requests { get; } = [];
+
+        public Task SendAsync(WebPushRequest request, WebPushOptions options, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Task.CompletedTask;
+        }
+    }
 }

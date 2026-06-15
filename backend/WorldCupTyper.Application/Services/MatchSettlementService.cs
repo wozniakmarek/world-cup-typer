@@ -13,22 +13,26 @@ public sealed class MatchSettlementService : IMatchSettlementService
     private readonly IScoringService _scoringService;
     private readonly LeaderboardBuilder _leaderboardBuilder;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly INotificationService _notificationService;
 
     public MatchSettlementService(
         IAppDbContext dbContext,
         IScoringService scoringService,
         LeaderboardBuilder leaderboardBuilder,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        INotificationService notificationService)
     {
         _dbContext = dbContext;
         _scoringService = scoringService;
         _leaderboardBuilder = leaderboardBuilder;
         _dateTimeProvider = dateTimeProvider;
+        _notificationService = notificationService;
     }
 
-    public Task SettleMatchAsync(Guid matchId, CancellationToken cancellationToken = default)
+    public async Task SettleMatchAsync(Guid matchId, CancellationToken cancellationToken = default)
     {
-        return SettleMatchInternalAsync(matchId, false, cancellationToken);
+        await SettleMatchInternalAsync(matchId, false, cancellationToken);
+        await _notificationService.NotifyRankingUpdatedAsync(matchId, cancellationToken);
     }
 
     public async Task RecalculateRankingsAsync(CancellationToken cancellationToken = default)
@@ -66,6 +70,11 @@ public sealed class MatchSettlementService : IMatchSettlementService
         foreach (var matchId in matchIds)
         {
             await SettleMatchInternalAsync(matchId, true, cancellationToken);
+        }
+
+        if (matchIds.Count > 0)
+        {
+            await _notificationService.NotifyRankingUpdatedAsync(matchIds[^1], cancellationToken);
         }
     }
 
