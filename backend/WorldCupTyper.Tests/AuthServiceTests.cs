@@ -99,6 +99,23 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
+    public async Task UpdateAvatar_ShouldStoreSafeImageDataUrl()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var user = CreateUser();
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        const string imageDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
+
+        var service = CreateService(dbContext);
+        var currentUser = await service.UpdateAvatarAsync(user.Id, new UpdateAvatarRequest(imageDataUrl));
+
+        currentUser.AvatarUrl.Should().Be(imageDataUrl);
+        dbContext.Users.Single().AvatarUrl.Should().Be(imageDataUrl);
+    }
+
+    [Fact]
     public async Task UpdateAvatar_ShouldClearAvatarUrlWhenBlank()
     {
         using var dbContext = TestDbContextFactory.Create();
@@ -124,6 +141,20 @@ public sealed class AuthServiceTests
 
         var service = CreateService(dbContext);
         var act = () => service.UpdateAvatarAsync(user.Id, new UpdateAvatarRequest("javascript:alert(1)"));
+
+        await act.Should().ThrowAsync<BusinessRuleException>();
+    }
+
+    [Fact]
+    public async Task UpdateAvatar_ShouldRejectNonImageDataUrl()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var user = CreateUser();
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var act = () => service.UpdateAvatarAsync(user.Id, new UpdateAvatarRequest("data:text/html;base64,PHNjcmlwdD4="));
 
         await act.Should().ThrowAsync<BusinessRuleException>();
     }

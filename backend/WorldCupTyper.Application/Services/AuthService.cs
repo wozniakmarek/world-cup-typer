@@ -8,6 +8,16 @@ namespace WorldCupTyper.Application.Services;
 
 public sealed class AuthService : IAuthService
 {
+    private const int MaxHttpAvatarUrlLength = 500;
+    private const int MaxImageDataUrlLength = 100_000;
+    private static readonly string[] AllowedImageDataUrlPrefixes =
+    [
+        "data:image/png;base64,",
+        "data:image/jpeg;base64,",
+        "data:image/webp;base64,",
+        "data:image/gif;base64,",
+    ];
+
     private readonly IAppDbContext _dbContext;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
@@ -136,7 +146,12 @@ public sealed class AuthService : IAuthService
         }
 
         var normalized = avatarUrl.Trim();
-        if (normalized.Length > 500)
+        if (normalized.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            return NormalizeAvatarImageDataUrl(normalized);
+        }
+
+        if (normalized.Length > MaxHttpAvatarUrlLength)
         {
             throw new BusinessRuleException("Adres avatara moze miec maksymalnie 500 znakow.");
         }
@@ -148,5 +163,38 @@ public sealed class AuthService : IAuthService
         }
 
         return normalized;
+    }
+
+    private static string NormalizeAvatarImageDataUrl(string avatarUrl)
+    {
+        if (avatarUrl.Length > MaxImageDataUrlLength)
+        {
+            throw new BusinessRuleException("Zdjecie profilowe jest za duze.");
+        }
+
+        var matchingPrefix = AllowedImageDataUrlPrefixes.FirstOrDefault(prefix =>
+            avatarUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+
+        if (matchingPrefix is null)
+        {
+            throw new BusinessRuleException("Zdjecie profilowe musi byc obrazem PNG, JPEG, WebP albo GIF.");
+        }
+
+        var base64Payload = avatarUrl[matchingPrefix.Length..];
+        if (string.IsNullOrWhiteSpace(base64Payload))
+        {
+            throw new BusinessRuleException("Zdjecie profilowe jest niepoprawne.");
+        }
+
+        try
+        {
+            Convert.FromBase64String(base64Payload);
+        }
+        catch (FormatException)
+        {
+            throw new BusinessRuleException("Zdjecie profilowe jest niepoprawne.");
+        }
+
+        return avatarUrl;
     }
 }

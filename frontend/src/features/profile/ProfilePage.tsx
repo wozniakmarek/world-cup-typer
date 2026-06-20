@@ -1,24 +1,224 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useRef, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { predictionsApi, rankingApi } from '../../api/services'
+import type { CurrentUser } from '../../api/types'
 import { formatKickoff, translateTeamName } from '../../app/formatters'
 import { QueryState } from '../../components/QueryState'
 import { Panel } from '../../components/Panel'
 import { SectionHeading } from '../../components/SectionHeading'
 import { StatCard } from '../../components/StatCard'
-import { FormField } from '../../components/FormField'
 import { InlineAlert } from '../../components/InlineAlert'
 import { UserAvatar } from '../../components/UserAvatar'
 import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
 import { useAuth } from '../auth/AuthContext'
 import { NotificationSettingsPanel } from './NotificationSettingsPanel'
 
-export const ProfilePage = () => {
+const avatarCanvasSize = 320
+const avatarOutputQuality = 0.86
+const maxAvatarFileSizeBytes = 5 * 1024 * 1024
+const maxAvatarDataUrlLength = 100_000
+
+const isImageDataAvatar = (value?: string | null) => Boolean(value?.startsWith('data:image/'))
+
+const createAvatarDataUrl = async (file: File) => {
+  if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+    throw new Error('Wybierz plik PNG, JPEG, WebP albo GIF.')
+  }
+
+  if (file.size > maxAvatarFileSizeBytes) {
+    throw new Error('Zdjęcie może mieć maksymalnie 5 MB.')
+  }
+
+  const objectUrl = URL.createObjectURL(file)
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const nextImage = new Image()
+      nextImage.onload = () => resolve(nextImage)
+      nextImage.onerror = () => reject(new Error('Nie udało się odczytać zdjęcia.'))
+      nextImage.src = objectUrl
+    })
+
+    const width = image.naturalWidth || image.width
+    const height = image.naturalHeight || image.height
+    const sourceSize = Math.min(width, height)
+    const sourceX = (width - sourceSize) / 2
+    const sourceY = (height - sourceSize) / 2
+    const canvas = document.createElement('canvas')
+    canvas.width = avatarCanvasSize
+    canvas.height = avatarCanvasSize
+
+    const context = canvas.getContext('2d')
+    if (!context) {
+      throw new Error('Przeglądarka nie może przygotować miniatury zdjęcia.')
+    }
+
+    context.fillStyle = '#020617'
+    context.fillRect(0, 0, avatarCanvasSize, avatarCanvasSize)
+    context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, avatarCanvasSize, avatarCanvasSize)
+
+    const dataUrl = canvas.toDataURL('image/jpeg', avatarOutputQuality)
+    if (dataUrl.length > maxAvatarDataUrlLength) {
+      throw new Error('Zdjęcie po zmniejszeniu jest nadal za duże.')
+    }
+
+    return dataUrl
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
+const getAvatarUrlInputValue = (avatarUrl?: string | null) => (isImageDataAvatar(avatarUrl) ? '' : (avatarUrl ?? ''))
+
+const ProfileAvatarPanel = ({
+  user,
+  updateAvatar,
+}: {
+  user: CurrentUser | null
+  updateAvatar: (avatarUrl?: string | null) => Promise<CurrentUser>
+}) => {
   const queryClient = useQueryClient()
+  const avatarFileInputRef = useRef<HTMLInputElement | null>(null)
+  const [avatarValue, setAvatarValue] = useState(user?.avatarUrl ?? '')
+  const [avatarUrlInput, setAvatarUrlInput] = useState(getAvatarUrlInputValue(user?.avatarUrl))
+  const [selectedAvatarFileName, setSelectedAvatarFileName] = useState<string | null>(null)
+  const [avatarFileError, setAvatarFileError] = useState<string | null>(null)
+
+  const avatarMutation = useMutation({
+    mutationFn: (nextAvatarUrl?: string | null) => updateAvatar(nextAvatarUrl?.trim() || null),
+    onSuccess: (currentUser) => {
+      setAvatarValue(currentUser.avatarUrl ?? '')
+      setAvatarUrlInput(getAvatarUrlInputValue(currentUser.avatarUrl))
+      setSelectedAvatarFileName(null)
+      setAvatarFileError(null)
+      void queryClient.invalidateQueries({ queryKey: ['ranking'] })
+    },
+  })
+
+  const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    setAvatarFileError(null)
+
+    try {
+      const dataUrl = await createAvatarDataUrl(file)
+      setAvatarValue(dataUrl)
+      setAvatarUrlInput('')
+      setSelectedAvatarFileName(file.name)
+    } catch (err) {
+      setAvatarFileError(err instanceof Error ? err.message : 'Nie udało się przygotować zdjęcia.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  return (
+    <Panel>
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[auto_1fr] lg:items-center">
+        <div className="flex min-w-0 items-center gap-4">
+          <UserAvatar displayName={user?.displayName ?? 'Gracz'} avatarUrl={avatarValue || null} size="lg" />
+          <div className="min-w-0">
+            <p className="truncate font-display text-2xl uppercase text-white">{user?.displayName}</p>
+            <p className="truncate text-sm text-slate-400">{user?.email}</p>
+          </div>
+        </div>
+
+        <form
+          className="grid gap-3 md:grid-cols-[1fr_auto]"
+          onSubmit={(event) => {
+            event.preventDefault()
+            avatarMutation.mutate(avatarValue)
+          }}
+        >
+          <div className="flex flex-col gap-2 text-sm text-slate-300">
+            <label className="font-medium text-slate-200" htmlFor="profile-avatar-url">
+              Zdjęcie profilowe
+            </label>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <input
+                id="profile-avatar-url"
+                className={inputClassName}
+                value={avatarUrlInput}
+                onChange={(event) => {
+                  setAvatarUrlInput(event.target.value)
+                  setAvatarValue(event.target.value)
+                  setSelectedAvatarFileName(null)
+                  setAvatarFileError(null)
+                }}
+                placeholder="https://..."
+                type="text"
+              />
+              <input
+                ref={avatarFileInputRef}
+                aria-label="Zdjecie z galerii"
+                className="sr-only"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={(event) => void handleAvatarFileChange(event)}
+              />
+              <button
+                className={`${secondaryButtonClassName} w-full sm:w-auto`}
+                type="button"
+                disabled={avatarMutation.isPending}
+                onClick={() => avatarFileInputRef.current?.click()}
+              >
+                Wybierz z galerii
+              </button>
+            </div>
+            <span className="text-xs text-slate-500">
+              Wklej pełny adres URL obrazu, wybierz zdjęcie z galerii albo zostaw puste, żeby użyć inicjałów.
+            </span>
+            {selectedAvatarFileName ? (
+              <span className="text-xs font-medium text-emerald-300">Wybrano {selectedAvatarFileName}</span>
+            ) : isImageDataAvatar(avatarValue) ? (
+              <span className="text-xs font-medium text-emerald-300">Używasz zdjęcia z galerii.</span>
+            ) : null}
+            {avatarFileError ? (
+              <span className="text-xs font-medium text-rose-300" role="alert">
+                {avatarFileError}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <button className={`${buttonClassName} w-full sm:w-auto`} type="submit" disabled={avatarMutation.isPending}>
+              Zapisz
+            </button>
+            <button
+              className={`${secondaryButtonClassName} w-full sm:w-auto`}
+              type="button"
+              disabled={avatarMutation.isPending}
+              onClick={() => {
+                setAvatarValue('')
+                setAvatarUrlInput('')
+                setSelectedAvatarFileName(null)
+                setAvatarFileError(null)
+                avatarMutation.mutate(null)
+              }}
+            >
+              Usuń
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {avatarMutation.isError ? (
+        <InlineAlert className="mt-4" tone="error" message={getErrorMessage(avatarMutation.error)} />
+      ) : null}
+      {avatarMutation.isSuccess ? (
+        <InlineAlert className="mt-4" tone="success" message="Avatar profilu został zapisany." />
+      ) : null}
+    </Panel>
+  )
+}
+
+export const ProfilePage = () => {
   const { user, updateAvatar, changePassword } = useAuth()
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -30,17 +230,6 @@ export const ProfilePage = () => {
   const predictionsQuery = useQuery({ queryKey: ['predictions', 'mine'], queryFn: predictionsApi.getMine })
 
   const ranking = myRankingQuery.data
-  const avatarMutation = useMutation({
-    mutationFn: (nextAvatarUrl?: string | null) => updateAvatar(nextAvatarUrl?.trim() || null),
-    onSuccess: (currentUser) => {
-      setAvatarUrl(currentUser.avatarUrl ?? '')
-      void queryClient.invalidateQueries({ queryKey: ['ranking'] })
-    },
-  })
-
-  useEffect(() => {
-    setAvatarUrl(user?.avatarUrl ?? '')
-  }, [user?.avatarUrl])
 
   const handlePasswordChange = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -74,59 +263,7 @@ export const ProfilePage = () => {
         description="Twoje miejsce w tabeli, aktualny dorobek punktowy i historia typów."
       />
 
-      <Panel>
-        <div className="grid min-w-0 gap-5 lg:grid-cols-[auto_1fr] lg:items-center">
-          <div className="flex min-w-0 items-center gap-4">
-            <UserAvatar displayName={user?.displayName ?? 'Gracz'} avatarUrl={user?.avatarUrl} size="lg" />
-            <div className="min-w-0">
-              <p className="truncate font-display text-2xl uppercase text-white">{user?.displayName}</p>
-              <p className="truncate text-sm text-slate-400">{user?.email}</p>
-            </div>
-          </div>
-
-          <form
-            className="grid gap-3 md:grid-cols-[1fr_auto]"
-            onSubmit={(event) => {
-              event.preventDefault()
-              avatarMutation.mutate(avatarUrl)
-            }}
-          >
-            <FormField label="Zdjęcie profilowe" hint="Wklej pełny adres URL obrazu albo zostaw puste, żeby użyć inicjałów.">
-              <input
-                className={inputClassName}
-                value={avatarUrl}
-                onChange={(event) => setAvatarUrl(event.target.value)}
-                placeholder="https://..."
-                type="url"
-              />
-            </FormField>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <button className={`${buttonClassName} w-full sm:w-auto`} type="submit" disabled={avatarMutation.isPending}>
-                Zapisz
-              </button>
-              <button
-                className={`${secondaryButtonClassName} w-full sm:w-auto`}
-                type="button"
-                disabled={avatarMutation.isPending}
-                onClick={() => {
-                  setAvatarUrl('')
-                  avatarMutation.mutate(null)
-                }}
-              >
-                Usuń
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {avatarMutation.isError ? (
-          <InlineAlert className="mt-4" tone="error" message={getErrorMessage(avatarMutation.error)} />
-        ) : null}
-        {avatarMutation.isSuccess ? (
-          <InlineAlert className="mt-4" tone="success" message="Avatar profilu został zapisany." />
-        ) : null}
-      </Panel>
+      <ProfileAvatarPanel key={user?.id ?? 'anonymous'} user={user} updateAvatar={updateAvatar} />
 
       <QueryState
         isLoading={myRankingQuery.isLoading}

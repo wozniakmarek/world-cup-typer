@@ -166,6 +166,44 @@ test('profil pozwala wlaczyc i zmienic ustawienia powiadomien', async ({ page })
   })
 })
 
+test('profil pozwala zapisac zdjecie z galerii jako avatar', async ({ page }) => {
+  let savedAvatarUrl: string | null | undefined
+
+  await signIn(page)
+  await mockProfileApis(page)
+  await mockNotificationSettings(page)
+  await page.route('**/api/auth/me/avatar', async (route) => {
+    savedAvatarUrl = (route.request().postDataJSON() as { avatarUrl?: string | null }).avatarUrl
+    await route.fulfill({
+      json: {
+        id: 'user-1',
+        email: 'marek@test.local',
+        displayName: 'Marek',
+        role: 'Player',
+        isActive: true,
+        requiresPasswordChange: false,
+        avatarUrl: savedAvatarUrl,
+      },
+    })
+  })
+
+  await page.goto('/profile')
+  await page.getByLabel('Zdjecie z galerii').setInputFiles({
+    name: 'avatar.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  })
+
+  await expect(page.getByText('Wybrano avatar.png')).toBeVisible()
+  await page.getByRole('button', { name: 'Zapisz', exact: true }).click()
+
+  await expect.poll(() => savedAvatarUrl).toContain('data:image/')
+  await expect(page.getByText(/Avatar profilu zosta/)).toBeVisible()
+})
+
 test('iPhone w Safari dostaje instrukcje instalacji PWA zamiast braku wsparcia', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'userAgent', {
