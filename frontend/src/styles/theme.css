@@ -17,6 +17,12 @@ body {
   background-attachment: fixed;
 }
 
+@media (max-width: 639px) {
+  body {
+    background-attachment: scroll;
+  }
+}
+
 .glass-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
