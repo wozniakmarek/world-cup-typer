@@ -166,6 +166,23 @@ test('logged-in mobile pages do not create horizontal document scroll', async ({
   }
 })
 
+test('logged-in mobile shell keeps the page background scroll-attached behind fixed navigation', async ({ page }) => {
+  await page.goto('/matches/match-1')
+
+  await expect(page.getByRole('navigation', { name: 'Nawigacja mobilna gracza' })).toBeVisible()
+
+  const backgroundAttachments = await page.evaluate(() =>
+    getComputedStyle(document.body)
+      .backgroundAttachment.split(',')
+      .map((attachment) => attachment.trim()),
+  )
+
+  expect(
+    backgroundAttachments,
+    'Fixed page backgrounds trigger iOS Safari compositing bugs that can detach the bottom nav from the visual viewport.',
+  ).not.toContain('fixed')
+})
+
 test('logged-in mobile shell keeps primary content high in the first viewport', async ({ page }) => {
   await page.goto('/')
 
