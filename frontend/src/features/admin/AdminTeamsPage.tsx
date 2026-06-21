@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
@@ -21,6 +21,14 @@ const emptyTeamForm = {
   groupName: '',
 }
 
+const getTeamFormFromTeam = (team: Team) => ({
+  name: team.name,
+  shortName: team.shortName,
+  countryCode: team.countryCode,
+  flagEmoji: team.flagEmoji ?? '',
+  groupName: team.groupName ?? '',
+})
+
 type FeedbackState = {
   tone: 'success' | 'error'
   message: string
@@ -35,19 +43,10 @@ export const AdminTeamsPage = () => {
   const [editForm, setEditForm] = useState(emptyTeamForm)
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
 
-  useEffect(() => {
-    if (!selectedTeam) {
-      return
-    }
-
-    setEditForm({
-      name: selectedTeam.name,
-      shortName: selectedTeam.shortName,
-      countryCode: selectedTeam.countryCode,
-      flagEmoji: selectedTeam.flagEmoji ?? '',
-      groupName: selectedTeam.groupName ?? '',
-    })
-  }, [selectedTeam])
+  const selectTeamForEdit = (team: Team) => {
+    setSelectedTeam(team)
+    setEditForm(getTeamFormFromTeam(team))
+  }
 
   const refreshTeams = async () => {
     await Promise.all([
@@ -221,7 +220,7 @@ export const AdminTeamsPage = () => {
                         <td className="px-4 py-4 text-slate-300">{team.countryCode}</td>
                         <td className="px-4 py-4 text-slate-300">{team.groupName || '-'}</td>
                         <td className="px-4 py-4">
-                          <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedTeam(team)}>
+                          <button type="button" className={secondaryButtonClassName} onClick={() => selectTeamForEdit(team)}>
                             Edytuj
                           </button>
                         </td>
@@ -248,7 +247,7 @@ export const AdminTeamsPage = () => {
                 </div>
 
                 <div className="mt-4 flex items-center justify-end">
-                  <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedTeam(team)}>
+                  <button type="button" className={secondaryButtonClassName} onClick={() => selectTeamForEdit(team)}>
                     Edytuj
                   </button>
                 </div>

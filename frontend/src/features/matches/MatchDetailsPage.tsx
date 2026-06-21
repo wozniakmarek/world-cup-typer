@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
@@ -24,12 +24,17 @@ const parseScoreValue = (value: string) => {
   return Number(normalized)
 }
 
+type ScoreDraft = {
+  key: string
+  homeScore: string
+  awayScore: string
+}
+
 export const MatchDetailsPage = () => {
   const { matchId } = useParams()
   const queryClient = useQueryClient()
-  const [homeScore, setHomeScore] = useState('')
-  const [awayScore, setAwayScore] = useState('')
-  const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null)
+  const [scoreDraft, setScoreDraft] = useState<ScoreDraft>({ key: '', homeScore: '', awayScore: '' })
+  const [feedback, setFeedback] = useState<{ matchId?: string; tone: 'success' | 'error'; message: string } | null>(null)
 
   const matchQuery = useQuery({
     queryKey: ['match', matchId],
@@ -43,20 +48,24 @@ export const MatchDetailsPage = () => {
     enabled: Boolean(matchId),
   })
 
-  useEffect(() => {
-    setFeedback(null)
-  }, [matchId])
-
-  useEffect(() => {
-    if (matchQuery.data?.myPrediction) {
-      setHomeScore(String(matchQuery.data.myPrediction.predictedHomeScore))
-      setAwayScore(String(matchQuery.data.myPrediction.predictedAwayScore))
-      return
-    }
-
-    setHomeScore('')
-    setAwayScore('')
-  }, [matchId, matchQuery.data?.myPrediction])
+  const match = matchQuery.data
+  const predictionDraftKey = match
+    ? [
+        match.id,
+        match.myPrediction?.id ?? 'new',
+        match.myPrediction?.predictedHomeScore ?? '',
+        match.myPrediction?.predictedAwayScore ?? '',
+      ].join(':')
+    : `loading:${matchId ?? ''}`
+  const serverScoreDraft = {
+    key: predictionDraftKey,
+    homeScore: match?.myPrediction ? String(match.myPrediction.predictedHomeScore) : '',
+    awayScore: match?.myPrediction ? String(match.myPrediction.predictedAwayScore) : '',
+  }
+  const activeScoreDraft = scoreDraft.key === predictionDraftKey ? scoreDraft : serverScoreDraft
+  const homeScore = activeScoreDraft.homeScore
+  const awayScore = activeScoreDraft.awayScore
+  const visibleFeedback = feedback?.matchId === matchId ? feedback : null
 
   const savePredictionMutation = useMutation({
     mutationFn: async () => {
@@ -83,7 +92,7 @@ export const MatchDetailsPage = () => {
       return matchesApi.createPrediction(matchId, payload)
     },
     onSuccess: async () => {
-      setFeedback({ tone: 'success', message: 'Typ zapisany.' })
+      setFeedback({ matchId, tone: 'success', message: 'Typ zapisany.' })
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['match', matchId] }),
         queryClient.invalidateQueries({ queryKey: ['match-predictions', matchId] }),
@@ -91,7 +100,7 @@ export const MatchDetailsPage = () => {
         queryClient.invalidateQueries({ queryKey: ['predictions', 'mine'] }),
       ])
     },
-    onError: (error) => setFeedback({ tone: 'error', message: getErrorMessage(error) }),
+    onError: (error) => setFeedback({ matchId, tone: 'error', message: getErrorMessage(error) }),
   })
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -99,7 +108,7 @@ export const MatchDetailsPage = () => {
     setFeedback(null)
 
     if (!canEditPrediction) {
-      setFeedback({ tone: 'error', message: 'Nie można zmienić typu po rozpoczęciu meczu.' })
+      setFeedback({ matchId, tone: 'error', message: 'Nie można zmienić typu po rozpoczęciu meczu.' })
       return
     }
 
@@ -107,14 +116,13 @@ export const MatchDetailsPage = () => {
     const parsedAwayScore = parseScoreValue(awayScore)
 
     if (parsedHomeScore == null || parsedAwayScore == null) {
-      setFeedback({ tone: 'error', message: 'Wpisz nieujemne liczby całkowite dla obu drużyn.' })
+      setFeedback({ matchId, tone: 'error', message: 'Wpisz nieujemne liczby całkowite dla obu drużyn.' })
       return
     }
 
     await savePredictionMutation.mutateAsync()
   }
 
-  const match = matchQuery.data
   const presentationStatus = match ? getPresentationMatchStatus(match) : null
   const canEditPrediction = match ? canEditMatchPrediction(match) : false
   const isLocked = Boolean(match && !canEditPrediction && !match.isSettled)
@@ -213,7 +221,7 @@ export const MatchDetailsPage = () => {
                     step="1"
                     inputMode="numeric"
                     value={homeScore}
-                    onChange={(event) => setHomeScore(event.target.value)}
+                    onChange={(event) => setScoreDraft({ ...activeScoreDraft, homeScore: event.target.value })}
                     disabled={!canEditPrediction || savePredictionMutation.isPending}
                     className={inputClassName}
                   />
@@ -225,7 +233,7 @@ export const MatchDetailsPage = () => {
                     step="1"
                     inputMode="numeric"
                     value={awayScore}
-                    onChange={(event) => setAwayScore(event.target.value)}
+                    onChange={(event) => setScoreDraft({ ...activeScoreDraft, awayScore: event.target.value })}
                     disabled={!canEditPrediction || savePredictionMutation.isPending}
                     className={inputClassName}
                   />
@@ -241,7 +249,7 @@ export const MatchDetailsPage = () => {
                 </div>
               </form>
 
-              {feedback ? <InlineAlert tone={feedback.tone} message={feedback.message} /> : null}
+              {visibleFeedback ? <InlineAlert tone={visibleFeedback.tone} message={visibleFeedback.message} /> : null}
             </Panel>
 
             <Panel className="space-y-4">

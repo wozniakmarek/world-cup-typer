@@ -12,7 +12,7 @@ import { StatCard } from '../../components/StatCard'
 import { InlineAlert } from '../../components/InlineAlert'
 import { UserAvatar } from '../../components/UserAvatar'
 import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { NotificationSettingsPanel } from './NotificationSettingsPanel'
 
 const avatarCanvasSize = 320

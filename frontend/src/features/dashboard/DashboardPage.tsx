@@ -8,7 +8,7 @@ import { QueryState } from '../../components/QueryState'
 import { SectionHeading } from '../../components/SectionHeading'
 import { StatCard } from '../../components/StatCard'
 import { UserAvatar } from '../../components/UserAvatar'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 
 export const DashboardPage = () => {
   const { user } = useAuth()

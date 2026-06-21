@@ -51,14 +51,26 @@ const defaultSettings: NotificationSettings = {
   hasActiveSubscription: false,
 }
 
+type CurrentDeviceSubscriptionState = 'checking' | boolean
+
+const getInitialCurrentDeviceSubscriptionState = (): CurrentDeviceSubscriptionState => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const supportState = getPushSupportState()
+  return supportState === 'unsupported' || supportState === 'ios-install-required' ? false : 'checking'
+}
+
 export const NotificationSettingsPanel = () => {
   const queryClient = useQueryClient()
   const [draftOverrides, setDraftOverrides] = useState<Partial<NotificationSettings>>({})
   const [deviceError, setDeviceError] = useState<string | null>(null)
   const [deviceSuccess, setDeviceSuccess] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<string | null>(null)
-  const [hasCurrentDeviceSubscription, setHasCurrentDeviceSubscription] = useState(false)
-  const [isCheckingCurrentDevice, setIsCheckingCurrentDevice] = useState(false)
+  const [currentDeviceSubscriptionState, setCurrentDeviceSubscriptionState] = useState<CurrentDeviceSubscriptionState>(
+    getInitialCurrentDeviceSubscriptionState,
+  )
   const supportState = useMemo(() => (typeof window === 'undefined' ? 'unsupported' : getPushSupportState()), [])
 
   const settingsQuery = useQuery({
@@ -85,7 +97,7 @@ export const NotificationSettingsPanel = () => {
       setTestResult(null)
     },
     onSuccess: async () => {
-      setHasCurrentDeviceSubscription(true)
+      setCurrentDeviceSubscriptionState(true)
       setDeviceSuccess('Powiadomienia zostaly wlaczone na tym urzadzeniu.')
       await queryClient.invalidateQueries({ queryKey: ['notifications', 'settings'] })
     },
@@ -100,7 +112,7 @@ export const NotificationSettingsPanel = () => {
       setTestResult(null)
     },
     onSuccess: async () => {
-      setHasCurrentDeviceSubscription(false)
+      setCurrentDeviceSubscriptionState(false)
       setDeviceSuccess('Powiadomienia zostaly wylaczone na tym urzadzeniu.')
       await queryClient.invalidateQueries({ queryKey: ['notifications', 'settings'] })
     },
@@ -129,31 +141,26 @@ export const NotificationSettingsPanel = () => {
   const needsIosInstall = supportState === 'ios-install-required'
   const isDenied = supportState === 'denied'
   const hasAnyActiveSubscription = Boolean(settingsQuery.data?.hasActiveSubscription)
+  const hasCurrentDeviceSubscription = currentDeviceSubscriptionState === true
+  const isCheckingCurrentDevice = currentDeviceSubscriptionState === 'checking'
 
   useEffect(() => {
     let isActive = true
     if (isUnsupported || needsIosInstall) {
-      setHasCurrentDeviceSubscription(false)
       return () => {
         isActive = false
       }
     }
 
-    setIsCheckingCurrentDevice(true)
     void hasWebPushSubscriptionOnCurrentDevice()
       .then((hasSubscription) => {
         if (isActive) {
-          setHasCurrentDeviceSubscription(hasSubscription)
+          setCurrentDeviceSubscriptionState(hasSubscription)
         }
       })
       .catch(() => {
         if (isActive) {
-          setHasCurrentDeviceSubscription(false)
-        }
-      })
-      .finally(() => {
-        if (isActive) {
-          setIsCheckingCurrentDevice(false)
+          setCurrentDeviceSubscriptionState(false)
         }
       })
 

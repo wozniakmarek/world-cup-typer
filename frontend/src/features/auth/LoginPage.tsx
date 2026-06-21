@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
-import { useAuth } from './AuthContext'
+import { useAuth } from './useAuth'
 import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
 
 export const LoginPage = () => {

@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { CalendarDays, LayoutDashboard, LogOut, Shield, Trophy, UserCircle2, UsersRound } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
-import { useAuth } from '../features/auth/AuthContext'
+import { useAuth } from '../features/auth/useAuth'
 import { UserAvatar } from './UserAvatar'
 
 const commonLinks = [
