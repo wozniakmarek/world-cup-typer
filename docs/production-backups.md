@@ -1,7 +1,9 @@
 # Production Database Backups
 
+Status: operational runbook. Verify current DigitalOcean database settings before each production release that depends on backup/restore guarantees.
+
 ## Cel
-Ten dokument opisuje bezpieczny plan backupow produkcyjnej bazy `world-cup-typer`, zanim do aplikacji trafia realne typy, wyniki i ranking.
+Ten dokument opisuje bezpieczny plan backupow produkcyjnej bazy `world-cup-typer` dla realnych typow, wynikow i rankingu.
 
 Backupy zawieraja dane produkcyjne uzytkownikow. Ich wlaczenie, miejsce przechowywania, dostep oraz ewentualne kopiowanie poza dostawce bazy wymagaja jawnej decyzji czlowieka przed wdrozeniem.
 

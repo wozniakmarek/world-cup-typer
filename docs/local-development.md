@@ -52,7 +52,7 @@ $env:FootballData__SettleAutomatically = "true"
 
 Worker uruchamia synchronizacje tylko wtedy, gdy `FootballData__Enabled=true` i token nie jest pusty. Ten sam import mozna wywolac recznie jako admin przez `POST /api/admin/matches/sync-football-data`, co jest zalecane do smoke testu na stagingu przed wlaczeniem cyklicznej automatyzacji.
 
-Tokena API nie zapisujemy w repozytorium. Produkcyjne wlaczenie importu wymaga jawnej decyzji czlowieka i powinno nastapic dopiero po staging smoke.
+Tokena API nie zapisujemy w repozytorium. Zmiana produkcyjnej konfiguracji importu lub operacje na realnych danych wymagaja jawnej decyzji czlowieka i powinny byc poprzedzone staging smoke.
 
 ## Frontend
 1. `cd frontend`

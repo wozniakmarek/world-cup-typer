@@ -1,315 +1,179 @@
-# Web Push Notifications - plan techniczny
+# Web Push Notifications
 
-## Cel
-Pierwszy etap web push notifications ma przygotowac fundament pod przypomnienia bez wprowadzania ciezkiej orkiestracji. MVP powinno zapisac zgody i subskrypcje, pozwolic backendowi wybrac odbiorcow oraz zostawic proste, testowalne punkty rozszerzenia dla wysylki.
+This document describes the current Web Push implementation in `world-cup-typer`.
 
-Zakres tego etapu to design i skeleton. Pelna wysylka push, monitoring kolejek i zaawansowana personalizacja moga powstac pozniej.
+## Current Scope
 
-## Obecne punkty zaczepienia
-- `Match.KickoffTimeUtc` jest zrodlem prawdy dla zamkniecia typowania.
-- `PredictionService` blokuje tworzenie i edycje typow po kickoffie przez `Match.CanAcceptPredictions(nowUtc)`.
-- `MatchSettlementService` rozlicza typy, zapisuje `LeaderboardSnapshot` i ustawia `Match.Status = Settled`.
-- `INotificationService` oraz `NoopNotificationService` juz istnieja jako bezpieczny seam pod przyszle powiadomienia.
-- Frontend jest PWA-ready i ma `PwaInstallPrompt`, ale nie ma jeszcze service workera push ani flow zgody na powiadomienia.
+The application supports real browser push subscriptions and notification delivery for logged-in users:
 
-## Zasady MVP
-- Zgoda na powiadomienia jest opt-in i pokazywana po zalogowaniu, nie podczas logowania.
-- Backend przechowuje tylko techniczne dane Web Push oraz preferencje uzytkownika.
-- Endpoint subskrypcji wymaga JWT i zawsze przypisuje subskrypcje do `User.GetUserId()`.
-- Wysylka musi byc idempotentna per `UserId + NotificationType + SubjectKey + ScheduledForUtc`.
-- Nie wysylamy pushy do nieaktywnych uzytkownikow.
-- Production data changes zwiazane z testami push wymagaja decyzji czlowieka.
+- account-level notification preferences,
+- browser/device subscription registration,
+- current-device disable flow,
+- VAPID public key endpoint,
+- iOS install guidance,
+- morning digest,
+- 2h missing-prediction reminder,
+- 30m missing-prediction reminder,
+- ranking update notification,
+- test notification endpoint,
+- durable delivery records for deduplication and diagnostics,
+- expired subscription revocation on `404`/`410` Web Push responses.
 
-## Model danych
+## User Flow
 
-### PushSubscription
-Encja reprezentuje jedna przegladarke albo urzadzenie uzytkownika.
+1. User opens the profile page.
+2. `NotificationSettingsPanel` loads settings from `/api/notifications/settings`.
+3. The browser support state is checked:
+   - unsupported browser,
+   - denied permission,
+   - iOS/iPadOS install-required state,
+   - existing subscription on the current device.
+4. User enables push for the current device.
+5. Frontend requests permission, fetches `/api/notifications/vapid-public-key`, registers the service worker, subscribes with `PushManager`, creates a persistent device id, and posts the subscription to `/api/notifications/subscriptions`.
+6. User can update account preferences independently from the current-device subscription.
+7. User can send a test notification or disable the current device.
 
-Pola:
-- `Id`
-- `UserId`
-- `Endpoint`
-- `P256dh`
-- `Auth`
-- `UserAgent`
-- `CreatedAtUtc`
-- `LastSeenAtUtc`
-- `RevokedAtUtc`
-- `FailureCount`
-- `LastFailureAtUtc`
+## Frontend Files
 
-Ograniczenia:
-- unikalny `Endpoint`,
-- indeks `UserId`,
-- indeks `RevokedAtUtc`,
-- endpoint i klucze nie sa sekretami aplikacji, ale nadal nie powinny trafiac do logow.
+- `frontend/src/features/profile/NotificationSettingsPanel.tsx`
+- `frontend/src/features/profile/webPush.ts`
+- `frontend/public/push-sw.js`
+- `frontend/vite.config.ts`
 
-### NotificationPreference
-Preferencje mozna zaczac jako jeden rekord na uzytkownika.
+Important frontend behavior:
 
-Pola:
-- `UserId`
-- `MorningDigestEnabled`
-- `MissingPrediction2hEnabled`
-- `MissingPrediction30mEnabled`
-- `RankingUpdatedEnabled`
-- `QuietHoursStartLocal`
-- `QuietHoursEndLocal`
-- `UpdatedAtUtc`
+- rejects unsupported browsers,
+- handles iPhone/iPad Safari by asking the user to add the PWA to the home screen,
+- normalizes VAPID public keys and strips whitespace/BOM,
+- stores a stable browser/device id in local storage,
+- registers the push service worker at `/sw.js`,
+- sends `endpoint`, `p256dh`, `auth`, `userAgent`, and `deviceId` to the backend.
 
-Domyslnie wszystkie cztery typy moga byc wlaczone po zgodzie na push. Quiet hours moga zostac niewykorzystane w pierwszym wdrozeniu, ale pole pozwala uniknac migracji modelu przy pierwszej personalizacji.
+## Backend Files
 
-### NotificationDelivery
-Lekki dziennik deduplikacji i diagnostyki.
-
-Pola:
-- `Id`
-- `UserId`
-- `PushSubscriptionId`
-- `MatchId`
-- `SubjectKey`
-- `Type`
-- `ScheduledForUtc`
-- `SentAtUtc`
-- `Status`
-- `ErrorCode`
-- `CreatedAtUtc`
-
-Ograniczenia:
-- unikalny klucz `UserId + PushSubscriptionId + Type + SubjectKey + ScheduledForUtc`,
-- `SubjectKey` jest stabilnym kluczem deduplikacji, np. `match:{matchId}` albo `digest:2026-06-13`,
-- `MatchId` jest opcjonalnym kontekstem nawigacji i raportowania,
-- statusy: `Pending`, `Sent`, `Skipped`, `Failed`.
+- `NotificationsController`
+- `NotificationPreferenceService`
+- `NotificationSubscriptionService`
+- `WebPushNotificationService`
+- `NotificationReminderWorker`
+- `WebPushSender`
+- `WebPushOptionsValidator`
+- `PushSubscription`
+- `NotificationPreference`
+- `NotificationDelivery`
 
 ## API
 
-### `GET /api/notifications/settings`
-Zwraca obecne preferencje oraz stan po stronie przegladarki znany backendowi.
+See [API contract](api-contract.md) for full endpoint listing.
 
-Response:
-```json
-{
-  "morningDigestEnabled": true,
-  "missingPrediction2hEnabled": true,
-  "missingPrediction30mEnabled": true,
-  "rankingUpdatedEnabled": true,
-  "hasActiveSubscription": true
-}
+Notification endpoints:
+
+- `GET /api/notifications/settings`
+- `PUT /api/notifications/settings`
+- `GET /api/notifications/vapid-public-key`
+- `POST /api/notifications/subscriptions`
+- `DELETE /api/notifications/subscriptions/{id}`
+- `DELETE /api/notifications/subscriptions/current`
+- `POST /api/notifications/test`
+
+## Data Model
+
+See [Data model](database-model.md) for field-level detail.
+
+The notification model is split into:
+
+- `PushSubscription` - one active/revoked browser/device subscription.
+- `NotificationPreference` - account-level toggles.
+- `NotificationDelivery` - one attempted delivery record used for deduplication and diagnostics.
+
+Delivery uniqueness is enforced by:
+
+```text
+UserId + PushSubscriptionId + Type + SubjectKey + ScheduledForUtc
 ```
 
-### `PUT /api/notifications/settings`
-Aktualizuje preferencje zalogowanego uzytkownika.
+## Notification Types
 
-Request:
-```json
-{
-  "morningDigestEnabled": true,
-  "missingPrediction2hEnabled": true,
-  "missingPrediction30mEnabled": true,
-  "rankingUpdatedEnabled": true
-}
+### Morning Digest
+
+Runs around 07:00 Europe/Warsaw and sends a daily summary only when the user still has missing predictions for upcoming matches that day.
+
+Subject key:
+
+```text
+digest:yyyy-MM-dd
 ```
 
-### `POST /api/notifications/subscriptions`
-Rejestruje albo odswieza subskrypcje Web Push dla aktualnego uzytkownika. Endpoint powinien byc idempotentny po `endpoint`.
+### Missing Prediction 2h
 
-Request:
-```json
-{
-  "endpoint": "https://push.example/browser-token",
-  "keys": {
-    "p256dh": "base64-url-key",
-    "auth": "base64-url-auth"
-  },
-  "userAgent": "Mozilla/5.0 (Test Browser)"
-}
+Runs in the reminder worker window for matches starting in about two hours. Sends only to active users without a prediction for the match and with `MissingPrediction2hEnabled=true`.
+
+Subject key:
+
+```text
+MissingPrediction2h:{matchId}
 ```
 
-Response: `204 No Content`.
+### Missing Prediction 30m
 
-### `DELETE /api/notifications/subscriptions/{id}`
-Oznacza subskrypcje jako wycofana (`RevokedAtUtc`). Frontend moze wywolac to przy wylaczeniu powiadomien w profilu. Gdy przegladarka nie zna `id`, mozna dodac wariant `DELETE /api/notifications/subscriptions/current` z endpointem w body.
+Runs in the reminder worker window for matches starting in about 30 minutes. Sends only to active users without a prediction for the match and with `MissingPrediction30mEnabled=true`.
 
-### `DELETE /api/notifications/subscriptions/current`
-Oznacza aktualna subskrypcje przegladarki jako wycofana po `endpoint` przekazanym w body. Ten wariant jest uzywany przez frontend, bo Web Push API zna endpoint, ale nie zna backendowego `Id`.
+Subject key:
 
-### Konfiguracja VAPID
-Backend potrzebuje:
-- `WebPush:Subject`
-- `WebPush:PublicKey`
-- `WebPush:PrivateKey`
-
-Klucz publiczny moze byc zwracany frontendowi przez `GET /api/notifications/vapid-public-key`, a prywatny klucz pozostaje w konfiguracji hostingu.
-
-`WebPush:Subject` jest globalnym kontaktem technicznym aplikacji, a nie loginem ani adresem gracza.
-Na produkcji rekomendowana wartosc to `mailto:powiadomienia@marekwozniak.me`.
-Alternatywnie mozna uzyc `https://typer.marekwozniak.me`.
-Wartosc musi byc poprawnym `mailto:` z adresem zawierajacym `@` albo adresem `https://`; zwykly tekst typu `Test` albo `ImieNazwisko` moze powodowac odrzucenie wysylki przez Apple Web Push jako `BadJwtToken`.
-
-Na produkcji workflow DigitalOcean App Platform mapuje te wartosci z GitHub:
-- secret `WEB_PUSH_PUBLIC_KEY` -> `WebPush__PublicKey`,
-- secret `WEB_PUSH_PRIVATE_KEY` -> `WebPush__PrivateKey`,
-- variable `WEB_PUSH_SUBJECT` -> `WebPush__Subject`.
-
-Klucze VAPID nie sa zapisywane w repozytorium.
-
-## Flow zgody po stronie frontend
-1. Po zalogowaniu frontend sprawdza `Notification` i `serviceWorker` w przegladarce.
-2. UI pokazuje spokojny prompt w profilu albo dashboardzie, bez blokowania glownego workflow.
-3. Po kliknieciu uzytkownika frontend wywoluje `Notification.requestPermission()`.
-4. Dla `granted` frontend rejestruje service worker, pobiera VAPID public key i tworzy `PushSubscription`.
-5. Subskrypcja trafia do `POST /api/notifications/subscriptions`.
-6. Uzytkownik moze zmienic preferencje przez `PUT /api/notifications/settings`.
-7. Dla `denied` frontend nie ponawia natretnie prompta. Pokazuje tylko pasywny stan w profilu.
-
-### iOS/iPadOS
-iOS/iPadOS wspiera Web Push dla aplikacji dodanych do ekranu poczatkowego, nie dla zwyklej karty Safari. Frontend wykrywa iPhone/iPad poza trybem standalone i pokazuje instrukcje:
-1. stuknij `Udostepnij`,
-2. wybierz `Dodaj do ekranu poczatkowego`,
-3. otworz `Typer MS` z nowej ikony,
-4. w profilu wlacz powiadomienia na tym urzadzeniu.
-
-Android, desktop Chrome/Edge oraz Safari macOS korzystaja ze standardowego flow `Notification` + `ServiceWorker` + `PushManager`.
-
-Service worker powinien obslugiwac `push` i `notificationclick`. Klikniecie w powiadomienie prowadzi do:
-- `/matches/{matchId}` dla przypomnien meczowych,
-- `/ranking` dla aktualizacji rankingu.
-
-## Reguly powiadomien
-
-Przypomnienia meczowe obsluguje `NotificationReminderWorker`. Worker domyslnie jest wlaczony i uruchamia
-`INotificationService.NotifyDueMatchRemindersAsync()` co 5 minut.
-Konfiguracja:
-- `NotificationReminders:Enabled` - domyslnie `true`,
-- `NotificationReminders:IntervalMinutes` - domyslnie `5`.
-
-Wszystkie typy korzystaja z tej samej konfiguracji VAPID i tego samego sendera Web Push co aktualizacja rankingu.
-Deduplikacja opiera sie na `NotificationDelivery` per `UserId + PushSubscriptionId + Type + SubjectKey + ScheduledForUtc`.
-
-### Rano przypomnienie o meczach
-Cel: pokazac liste dzisiejszych meczow i liczbe brakujacych typow.
-
-Regula:
-- job raz dziennie, np. 07:00 Europe/Warsaw,
-- wybiera mecze z kickoffem w lokalnym dniu,
-- dla kazdego aktywnego uzytkownika liczy mecze bez typu,
-- wysyla tylko gdy istnieje przynajmniej jeden przyszly dzisiejszy mecz bez typu i uzytkownik ma wlaczone `MorningDigestEnabled`.
-
-Payload:
-```json
-{
-  "title": "Dzisiejsze mecze czekaja",
-  "body": "Masz 2 mecze bez typu.",
-  "url": "/matches",
-  "type": "MorningDigest"
-}
+```text
+MissingPrediction30m:{matchId}
 ```
 
-### 2h przed meczem bez typu
-Cel: pierwsze praktyczne przypomnienie dla konkretnego meczu.
+### Ranking Updated
 
-Regula:
-- job cykliczny co 5 minut,
-- okno: `KickoffTimeUtc - 2h <= nowUtc < KickoffTimeUtc - 1h55m`,
-- odbiorcy: aktywni uzytkownicy bez `Prediction` dla tego meczu,
-- wysylka tylko dla preferencji `MissingPrediction2hEnabled`.
+Sent after match settlement when ranking has been recalculated and the user has `RankingUpdatedEnabled=true`.
 
-Payload:
-```json
-{
-  "title": "Typowanie zamyka sie za 2h",
-  "body": "Poland - Germany: dodaj swoj typ przed rozpoczeciem meczu.",
-  "url": "/matches/{matchId}",
-  "type": "MissingPrediction2h"
-}
+Subject key:
+
+```text
+ranking:{matchId}
 ```
 
-### 30 min przed meczem bez typu
-Cel: ostatnie przypomnienie przed zamknieciem typowania.
+### Test
 
-Regula:
-- job cykliczny co 5 minut,
-- okno: `KickoffTimeUtc - 30m <= nowUtc < KickoffTimeUtc - 25m`,
-- odbiorcy: aktywni uzytkownicy bez `Prediction` dla tego meczu,
-- wysylka tylko dla preferencji `MissingPrediction30mEnabled`.
+Manual user-triggered test from the profile page.
 
-Payload:
-```json
-{
-  "title": "Ostatnie 30 minut na typ",
-  "body": "Poland - Germany: brakuje Twojego typu.",
-  "url": "/matches/{matchId}",
-  "type": "MissingPrediction30m"
-}
+Subject key:
+
+```text
+test:{userId}
 ```
 
-### Po rozliczeniu meczu i aktualizacji rankingu
-Cel: poinformowac, ze punkty i ranking sa gotowe.
+## Worker Behavior
 
-Regula:
-- najlepszy trigger to koniec `MatchSettlementService.SettleMatchInternalAsync`, po utworzeniu `LeaderboardSnapshot`,
-- dla automatycznego syncu i recznego rozliczenia trigger jest ten sam,
-- odbiorcy: aktywni uzytkownicy z preferencja `RankingUpdatedEnabled`,
-- payload prowadzi do `/ranking` albo `/matches/{matchId}`.
+`NotificationReminderWorker` runs `INotificationService.NotifyDueMatchRemindersAsync()` on an interval.
 
-W pierwszym szkielecie mozna zostawic wywolanie na interfejsie:
-```csharp
-await _notificationService.NotifyRankingUpdatedAsync(match.Id, cancellationToken);
-```
+Configuration:
 
-## Backendowy podzial odpowiedzialnosci
-- `Domain`: encje `PushSubscription`, `NotificationPreference`, `NotificationDelivery` oraz enum `NotificationType`.
-- `Application`: DTO, `INotificationSubscriptionService`, `INotificationPreferenceService`, rozszerzony `INotificationService`.
-- `Infrastructure`: EF konfiguracje, migracja, implementacja `WebPushNotificationService`, hosted service do planowanych powiadomien.
-- `Api`: `NotificationsController` z endpointami uzytkownika.
+- `NotificationReminders:Enabled`
+- `NotificationReminders:IntervalMinutes`
 
-W MVP `NoopNotificationService` moze pozostac domyslny, dopoki `WebPush:Enabled` nie zostanie wlaczone. Dzieki temu migracje i endpointy subskrypcji moga wejsc bez ryzyka przypadkowej wysylki.
+The worker exits early when disabled. Failures are logged and do not crash the host.
 
-## Backlog implementacyjny
+## Production Configuration
 
-### Etap 1: kontrakty i baza
-- Dodac encje domenowe oraz enumy powiadomien.
-- Rozszerzyc `IAppDbContext` i `WorldCupTyperDbContext`.
-- Dodac konfiguracje EF Core i migracje.
-- Dodac testy konfiguracji unikalnosci dla `PushSubscription.Endpoint` i deduplikacji `NotificationDelivery`.
+Production requires:
 
-### Etap 2: API subskrypcji i preferencji
-- Dodac DTO request/response.
-- Dodac serwis zapisujacy subskrypcje idempotentnie po endpoint.
-- Dodac serwis preferencji z domyslnymi wartosciami.
-- Dodac `NotificationsController`.
-- Dodac testy autoryzacji i reguly, ze uzytkownik nie moze zarzadzac cudza subskrypcja.
-- Zaktualizowac `docs/api-contract.md` i `docs/database-model.md`.
+- `WebPush__Subject`
+- `WebPush__PublicKey`
+- `WebPush__PrivateKey`
 
-### Etap 3: frontend consent skeleton
-- Dodac `notificationsApi` w `frontend/src/api/services.ts`.
-- Dodac typy request/response w `frontend/src/api/types.ts`.
-- Dodac service worker push w publicznym katalogu frontendu.
-- Dodac komponent ustawien w profilu albo dashboardzie.
-- Dodac obsluge braku wsparcia przegladarki, `denied` i `granted`.
+The DigitalOcean deployment workflow maps these from:
 
-### Etap 4: planowanie bez realnej wysylki
-- Dodac query wybierajace odbiorcow dla morning digest, 2h, 30m i ranking update.
-- Zapisywac `NotificationDelivery` jako `Skipped` albo `Pending` przy wylaczonym `WebPush:Enabled`.
-- Dodac testy dla okien czasowych i braku typu.
-- Podlaczyc `NotifyRankingUpdatedAsync` po settlement.
+- `WEB_PUSH_PUBLIC_KEY`
+- `WEB_PUSH_PRIVATE_KEY`
+- `WEB_PUSH_SUBJECT`
 
-### Etap 5: realna wysylka Web Push
-- Dodac biblioteke Web Push po stronie .NET.
-- Dodac konfiguracje VAPID i endpoint public key.
-- Implementowac wysylke z obsluga 404/410 przez `RevokedAtUtc`.
-- Logowac bledy bez endpointow i kluczy.
-- Dodac staging-first smoke test: rejestracja subskrypcji testowej i weryfikacja, ze backend probuje wyslac payload.
+The private key must remain secret. The public key is intentionally exposed through the API so browsers can subscribe.
 
-## Weryfikacja
-- Unit testy serwisow subskrypcji, preferencji, selection query i deduplikacji delivery.
-- Testy kontrolera dla wymaganej autoryzacji.
-- Testy EF/migracji dla indeksow.
-- Frontend: test komponentu albo Playwright smoke dla widocznego stanu zgody, bez wymagania prawdziwego systemowego prompta.
-- Staging-first smoke przed wlaczeniem `WebPush:Enabled` w produkcji.
+## Safety Notes
 
-## Decyzje odlozone
-- Czy morning digest ma miec osobna godzine per uzytkownik.
-- Czy preferencje maja byc per turniej, czy globalne dla konta.
-- Czy potrzebna jest kolejka zewnetrzna. Dla MVP hosted service i `NotificationDelivery` wystarcza.
-- Czy admin potrzebuje endpointu testowego do wyslania powiadomienia do siebie.
+- Do not log endpoints, auth secrets, or private VAPID keys.
+- Expired subscriptions are marked revoked after Web Push `404` or `410`.
+- Account preferences and browser/device subscription state are separate.
+- Production testing that changes real user notification data requires a human decision.

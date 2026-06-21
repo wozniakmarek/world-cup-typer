@@ -7,7 +7,7 @@ The app covers the full tournament workflow: player accounts, match predictions,
 ## Live
 
 - Frontend: [typer.marekwozniak.me](https://typer.marekwozniak.me)
-- Public access: landing page and ranking
+- Public access: landing page and top ranking
 - Private access: predictions, profile, notifications, and admin panels require an invited account
 
 ## Screenshots
@@ -30,15 +30,47 @@ The app exposes a public competition surface while keeping the actual prediction
 
 ## Product Highlights
 
-- Player login with JWT authentication and role-based access.
-- Admin panel for players, teams, matches, results, and settlement.
+- JWT login with `Admin` and `Player` roles.
+- Required password-change flow for temporary passwords.
+- Admin panel for players, teams, matches, results, settlement, ranking recalculation, and football-data sync.
 - Match list, match details, prediction form, kickoff lock, and post-kickoff prediction visibility.
-- Ranking with deterministic tie-breakers and a ranking progress chart backed by leaderboard snapshots.
-- Player profile with prediction history, avatar support, stats, and notification preferences.
-- PWA installation flow, service worker setup, and browser push notification support.
-- Web push reminders for missing predictions and ranking updates, with idempotent delivery tracking.
-- Optional schedule/result import through a `football-data.org` adapter.
-- Mobile-first dark UI with responsive tables, cards, loading states, empty states, and error handling.
+- Ranking with deterministic tie-breakers, avatars, current-user markers, and a progress chart backed by leaderboard snapshots.
+- Player profile with prediction history, ranking progress, password change, avatar URL/gallery upload, stats, and notification preferences.
+- PWA installation flow, app icons, service worker setup, and browser push notification support.
+- Web push reminders for missing predictions, morning digests, ranking updates, and test notifications with idempotent delivery tracking.
+- Schedule/result import through a `football-data.org` adapter, with optional automatic settlement.
+- Mobile-first dark UI with responsive tables, cards, fixed mobile navigation, loading states, empty states, and error handling.
+
+## Current Implementation
+
+The repository currently includes the complete product flow, not just an MVP skeleton.
+
+### Player Experience
+
+- Public landing page with anonymous top-ranking data.
+- Login by email or display name.
+- Dashboard with missing predictions, upcoming matches, top ranking, and scoring rules.
+- Match browsing with filters and match cards.
+- Prediction creation and editing before kickoff.
+- Locked post-kickoff state with delayed visibility of other players' predictions.
+- Full ranking table and multi-player ranking progress chart.
+- Profile page with current ranking, stats, progress history, prediction history, avatar management, password change, and notification settings.
+
+### Admin Experience
+
+- Player create/edit/deactivate flows.
+- Temporary password reset with forced password change.
+- Team create/edit flows with country metadata and group assignment.
+- Match create/edit flows with phase, group, kickoff, venue, status, 90-minute score, final score, and settlement.
+- Ranking recalculation for operational recovery.
+- Manual football-data.org sync endpoint for schedule/result import.
+
+### Automation And Background Work
+
+- EF Core migrations can be applied at startup or through a manual migration workflow.
+- `FootballDataSyncWorker` can import fixtures/results on a schedule.
+- `NotificationReminderWorker` sends due push reminders.
+- Web push delivery stores durable delivery records for diagnostics and deduplication.
 
 ## Architecture
 
@@ -87,6 +119,7 @@ The project includes automated checks and production-oriented workflows:
 - GitHub Pages workflow deploys the frontend.
 - DigitalOcean App Platform workflow deploys the backend from a pinned image digest.
 - Playwright smoke tests support production, staging, and local preview modes.
+- Current repository test inventory: 87 backend test cases and 26 Playwright/helper tests.
 - Health endpoints expose liveness and readiness checks:
 
 ```text
@@ -189,14 +222,15 @@ npm run test:e2e:smoke
 - [Production backups](docs/production-backups.md)
 - [Web push notifications](docs/web-push-notifications.md)
 - [Football API research](docs/football-api-research.md)
-- [MVP status](docs/mvp-status.md)
+- [Project status](docs/mvp-status.md)
 
-## Roadmap
+## Project Status
 
-The core product is already usable end-to-end. The next interesting improvements are:
+The original MVP scope is complete. Current documentation tracks the implemented system rather than a future checklist:
 
-- richer post-match summaries,
-- stronger social comparison between players,
-- deeper tournament analytics,
-- more polished mobile review before wider public sharing,
-- continued hardening of production observability and backup routines.
+- [Project status](docs/mvp-status.md)
+- [API contract](docs/api-contract.md)
+- [Data model](docs/database-model.md)
+- [Architecture](docs/architecture.md)
+
+Remaining work is optional product evolution, such as richer social features, non-stub knockout resolution, email/OAuth account flows, and deeper production observability.
