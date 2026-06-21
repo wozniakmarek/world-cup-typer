@@ -1,118 +1,99 @@
-# MVP Status
+# Project Status
 
-Stan projektu na 2026-05-18.
+This document reflects the current codebase state. The original MVP scope has been completed and the project has moved into production hardening and polish.
 
-## Cel
-Ten dokument porownuje poczatkowe zalozenia projektu z aktualnym stanem repo. Ma ulatwic dalsze planowanie bez wracania za kazdym razem do calej historii ustalen.
+## Current Product State
 
-## Zrobione
+The app is an end-to-end private World Cup prediction league:
 
-### Backend
-- JWT auth dla `Admin` i `Player`
-- endpointy `auth`, `teams`, `matches`, `predictions`, `ranking`
-- endpointy admina dla graczy, druzyn i meczow
-- walidacja typowania po kickoffie po stronie backendu
-- scoring `3/1/0`
-- rozliczanie meczow
-- ranking i `LeaderboardSnapshot`
-- seed development
-- migracje EF Core
-- health endpoints `/health` i `/health/live`
-- konfigurowalne migracje przy starcie przez `DatabaseStartup__ApplyMigrationsOnStartup`
+- production frontend is deployed at `https://typer.marekwozniak.me`,
+- backend is containerized and deployable to DigitalOcean App Platform,
+- public users can see the landing page and anonymous top-ranking endpoint,
+- invited users can log in, predict matches, view ranking/progress, manage profile/avatar, and configure notifications,
+- admins can manage players, teams, matches, results, settlement, ranking recalculation, and football-data sync.
 
-### Frontend
-- login
-- dashboard
-- lista meczow z filtrami
-- szczegoly meczu z formularzem typu
-- ranking
-- profil gracza
-- panel admina dla graczy
-- panel admina dla druzyn
-- panel admina dla meczow
-- PWA-ready konfiguracja z manifestem i service workerem
-- wspolne stany `loading/error/empty/success`
-- mobilne wzorce dla tabel i list adminowych
-- lepsza nawigacja i czytelniejsze komunikaty formularzy
+## Implemented Backend
 
-### Operacyjne przygotowanie repo
-- `docker-compose.yml` dla Postgresa
-- `Dockerfile` dla API
-- CI workflow build/test
-- workflow deployu frontendu na GitHub Pages
-- workflow publikacji obrazu backendu do GHCR
-- workflow migracyjny EF Core
-- template deployu backendu do DigitalOcean App Platform
+- JWT authentication for `Admin` and `Player`.
+- Role-based authorization for admin endpoints.
+- Required password-change flow after temporary password reset.
+- REST endpoints for auth, players, teams, matches, predictions, ranking, notifications, and admin operations.
+- Backend-enforced prediction lock after kickoff.
+- Prediction visibility rule: own prediction before kickoff, other players after kickoff.
+- `3/1/0` scoring.
+- Match settlement and ranking recalculation.
+- `LeaderboardSnapshot` history for ranking progress.
+- Profile avatar storage, including resized image data URLs from the frontend.
+- EF Core PostgreSQL migrations.
+- Startup database initialization/migration path.
+- Development seed data for local use.
+- Health endpoints `/health/live` and `/health`.
+- football-data.org schedule/result import and optional automatic settlement.
+- Hosted football-data sync worker.
+- Web Push subscription, preferences, delivery records, reminders, ranking update notifications, and test notification endpoint.
 
-## Zamkniete kryteria MVP
-- Admin moze sie zalogowac.
-- Admin moze dodac gracza.
-- Gracz moze sie zalogowac.
-- Admin moze dodac druzyny i mecze.
-- Gracz widzi liste meczow.
-- Gracz moze obstawic wynik meczu przed kickoffem.
-- Gracz moze edytowac typ przed kickoffem.
-- Backend blokuje dodanie i edycje typu po kickoffie.
-- Przed kickoffem gracz nie widzi typow innych.
-- Po kickoffie gracz widzi typy innych.
-- Admin moze wpisac wynik po 90 minutach.
-- Admin moze rozliczyc mecz.
-- System przyznaje punkty `3/1/0` zgodnie z zasadami.
-- Ranking pokazuje punkty i podstawowe statystyki.
-- Gracz widzi swoje statystyki.
-- Projekt uruchamia sie lokalnie wedlug README.
-- Sa testy jednostkowe dla scoringu i kluczowych reguł biznesowych.
+## Implemented Frontend
 
-## Czesciowo domkniete
-- Responsywnosc mobilna jest sensowna i po polishu duzo dojrzalsza, ale nadal warto zrobic jeszcze jeden stricte produktowy przeglad na realnych telefonach przed publicznym deployem.
-- Deploy jest przygotowany workflowami i konfiguracja, ale nie zostal jeszcze skonfigurowany sekretami ani odpalony na docelowej infrastrukturze.
-- PWA jest gotowe technicznie do instalacji, ale bez pelnych push notifications i bez rozbudowanego offline.
+- Public landing page and login page.
+- Authenticated dashboard with open prediction counts, upcoming matches, top ranking, and scoring rules.
+- Match list with filters and responsive cards.
+- Match details with prediction form, kickoff lock messaging, result display, and post-kickoff predictions.
+- Ranking table with avatars, tie-breaker data, current-user marker, and ranking progress chart.
+- Profile page with stats, prediction history, ranking progress, password change, avatar URL/gallery upload, and notification settings.
+- Admin dashboard with summary metrics.
+- Admin player management with create/edit/deactivate/reset password flows.
+- Admin team management.
+- Admin match management with create/edit/result/settle/recalculate flows.
+- PWA manifest, install prompt, service worker, icons, and push service worker.
+- Web Push browser flow with iOS standalone guidance, VAPID key normalization, device id, enable/disable/test actions.
+- Shared loading/error/empty/success UI states.
+- Mobile navigation, responsive admin tables/cards, and iOS-safe form control sizing.
 
-## Dodatkowo dopiete po MVP bazowym
-- wspolne komponenty `InlineAlert`, `QueryState` i `ResponsiveTable`
-- bardziej przewidywalne komunikaty sukcesu i bledu w ekranach gracza i admina
-- lepsza obsluga pustych i ladujacych sie sekcji na dashboardzie, meczach, rankingu i profilu
-- bardziej mobilny panel admina dla graczy, druzyn i meczow
-- poprawiona nawigacja na malych viewportach
+## Implemented Operations
 
-## Swiadomie odlozone poza MVP
-- automatyczne pobieranie terminarza
-- automatyczne pobieranie wynikow
-- smart knockout resolver
-- mailowe resety hasla i zaproszenia
-- OAuth / Google login
-- pelne web push notifications
-- rozbudowane wykresy i zaawansowana analityka
+- `docker-compose.yml` for local PostgreSQL.
+- Local helper scripts `typer.ps1` and `typer.cmd`.
+- Dockerfile for the API.
+- GitHub Actions CI for backend build/test, frontend build, and API container build.
+- GitHub Pages frontend deployment.
+- GHCR backend image publication.
+- Manual DigitalOcean App Platform backend deployment from a pinned image digest.
+- Manual EF Core migration workflow.
+- Playwright smoke workflow with production, staging, and local preview modes.
+- Production backup runbook.
 
-## Najwazniejsze rzeczy do zrobienia dalej
+## Test Coverage
 
-### 1. Realny deploy
-- skonfigurowac sekrety GitHub
-- wlaczyc GitHub Pages
-- skonfigurowac DNS dla `typer.marekwozniak.me`
-- skonfigurowac hosting backendu i polaczenie z baza
+Current test inventory from the repository:
 
-### 2. Decyzja o migracjach produkcyjnych
-- zostawic `DatabaseStartup__ApplyMigrationsOnStartup=true`
-- albo przejsc na model: najpierw workflow migracyjny, potem deploy API
+- 87 backend test cases across auth, password changes, players, matches, predictions, scoring, ranking, settlement, football-data import/mapping, web push options, notification services, notification workers, authorization, and migration cleanup behavior.
+- 26 frontend/Playwright/helper tests across public smoke, login smoke, staging player/admin smoke, ranking progress, profile notifications, avatar upload, mobile navigation/layout, and football-data match presentation.
 
-### 3. UX i polish MVP
-- zrobic jeszcze jeden pelny przeglad UX na realnych urzadzeniach i po docelowym deployu
-- lokalny CORS wspiera teraz `http://localhost:5173` oraz `http://127.0.0.1:5173`; warto tylko utrzymac to w przyszlych zmianach konfiguracyjnych
-- ewentualnie dopracowac drobne copy i spacing po pierwszych testach uzytkownikow
+## Production Configuration
 
-### 4. Pierwszy etap po MVP
-- wykres progresu punktow na bazie `LeaderboardSnapshot`
-- import terminarza
-- automatyczne wyniki
-- push notifications
+Production deployment is represented by:
 
-## Ostatnia potwierdzona weryfikacja
-- `dotnet build WorldCupTyper.sln`
-- `dotnet test WorldCupTyper.sln`
-- `npm run build`
-- `npm run build:pages`
-- `docker build -f backend/WorldCupTyper.Api/Dockerfile -t world-cup-typer-api .`
-- `dotnet tool run dotnet-ef database update --project backend/WorldCupTyper.Infrastructure`
-- runtime check `/health` i `/health/live`
-- smoke test frontendu na `http://localhost:5173` dla flow admina i gracza
+- `.github/workflows/frontend-pages.yml`
+- `.github/workflows/backend-image.yml`
+- `.github/workflows/backend-app-platform.yml`
+- `.do/app.yaml`
+
+The DigitalOcean app spec configures:
+
+- `api-typer.marekwozniak.me`,
+- GHCR image digest deployment,
+- PostgreSQL connection string through secrets,
+- JWT through secrets,
+- production CORS for `https://typer.marekwozniak.me`,
+- football-data.org enabled with token from GitHub secrets,
+- Web Push VAPID values from secrets/variables.
+
+## Not In Scope Yet
+
+These are optional future improvements, not missing MVP pieces:
+
+- email password reset/invitations,
+- OAuth or Google login,
+- non-stub smart knockout resolver,
+- deeper social features such as badges, post-match summaries, and head-to-head comparisons,
+- richer production observability beyond the current workflow and health-check setup.

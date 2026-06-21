@@ -2,6 +2,20 @@
 
 Data researchu: 2026-05-19
 
+## Status implementacji
+
+Ten dokument zostaje jako zapis decyzji architektonicznej i researchu. Aktualny kod ma juz zaimplementowany adapter `football-data.org`:
+
+- `FootballDataClient`,
+- `FootballDataMatchMapper`,
+- `FootballDataScheduleImportService`,
+- `FootballDataSyncWorker`,
+- endpoint admina `POST /api/admin/matches/sync-football-data`,
+- pola `ExternalId` na `Team` i `Match`,
+- import terminarza, statusow, wynikow po 90 minutach, wynikow finalnych i opcjonalne automatyczne rozliczanie.
+
+Aktualna dokumentacja operacyjna jest w [Deployment Preparation](deployment-prep.md), a model danych w [Data Model](database-model.md).
+
 ## Cel
 
 Celem jest wybranie darmowego albo taniego zrodla danych, ktore moze zasilac `world-cup-typer` terminarzem, statusem meczu i wynikiem po 90 minutach. To nie jest plan pelnej implementacji, tylko decyzja architektoniczna i etapowy kierunek wdrozenia.
@@ -38,9 +52,9 @@ Obecny `Match` jest blisko gotowy pod integracje:
 - `HomeScore90` i `AwayScore90` sa kluczowe dla zasad typowania;
 - `HomeScoreFinal`, `AwayScoreFinal` i `WinnerTeamId` pozwalaja pokazac wynik pucharowy bez mieszania go z punktacja za typ po 90 minutach;
 - `IsSettled` i `SettledAtUtc` zabezpieczaja idempotencje settlementu;
-- `LeaderboardSnapshot` juz wspiera przyszly wykres progresu po meczu.
+- `LeaderboardSnapshot` wspiera wykres progresu po meczu.
 
-Jedyna luka modelowa przed produkcyjna integracja to brak zewnetrznych identyfikatorow na `Team`. Przy jednym providerze mozna mapowac po `CountryCode` i nazwie, ale bezpieczniej bedzie dodac osobna tabele mapowania, np. `ExternalTeamMapping(Provider, ExternalTeamId, TeamId, DisplayName)`. Dla `Match.ExternalId` warto przyjac format z prefiksem, np. `football-data:123456`, zeby pozniej nie blokowac zmiany dostawcy.
+Pierwotna luka modelowa, czyli brak zewnetrznych identyfikatorow na `Team`, zostala domknieta przez pole `Team.ExternalId`. Przy rozbudowie o wielu providerow nadal mozna rozwazyc osobna tabele mapowania, np. `ExternalTeamMapping(Provider, ExternalTeamId, TeamId, DisplayName)`.
 
 ## Automatyzacja po obszarach
 
@@ -68,20 +82,22 @@ Dla `API-Football` analogicznie trzeba uzywac `score.fulltime`, a `score.extrati
 
 ### Settlement
 
-Settlement mozna zautomatyzowac dopiero po zapisaniu wyniku po 90 minutach i statusie finalnym z feedu. Job powinien:
+Settlement jest automatyzowany po zapisaniu wyniku po 90 minutach i statusie finalnym z feedu. Implementacja:
 - pobrac zakonczone mecze bez `IsSettled`;
 - uzupelnic `HomeScore90` / `AwayScore90`;
 - opcjonalnie uzupelnic wynik finalny i `WinnerTeamId`;
 - wywolac `MatchSettlementService.SettleMatchAsync(match.Id)`;
-- byc idempotentny i logowac pominiecia, np. brak `regularTime` w meczu pucharowym.
+- zachowac idempotencje i logowac pominiecia lub bledy importu, np. brak `regularTime` w meczu pucharowym.
 
 Warto zostawic reczny endpoint admina jako fallback, bo dane sportowe potrafia miec korekty po meczu.
 
-### Ranking i przyszly wykres
+### Ranking i wykres progresu
 
-Ranking po settlementcie juz jest spiety przez `LeaderboardBuilder` i `LeaderboardSnapshot`. Po automatyzacji settlementu wykres progresu mozna budowac bez osobnej integracji z API: snapshot po meczu wystarczy jako punkt osi czasu.
+Ranking po settlementcie jest spiety przez `LeaderboardBuilder` i `LeaderboardSnapshot`. Wykres progresu korzysta z zapisanych snapshotow po meczach, bez osobnej integracji z zewnetrznym API.
 
-## Etapowy plan wdrozenia
+## Historyczny etapowy plan wdrozenia
+
+Ponizszy plan jest historycznym zapisem kierunku. Najwazniejsze elementy zostaly zaimplementowane w obecnym kodzie.
 
 1. Pilot bez sekretow w repo
 

@@ -1,4 +1,6 @@
-# Typer Mistrzostw Świata — Plan MVP
+# Typer Mistrzostw Swiata - Historical MVP Plan
+
+This document is historical. It describes the original MVP plan, not the current state of the application. For current implementation status, see [Project Status](mvp-status.md).
 
 ## Cel
 Prywatna aplikacja webowa/PWA do typowania wyników meczów Mistrzostw Świata w grupie znajomych.
