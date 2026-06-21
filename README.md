@@ -1,189 +1,202 @@
-# Typer Mistrzostw Świata
+# World Cup Typer
 
-Prywatne MVP aplikacji webowej/PWA do typowania wyników meczów Mistrzostw Świata w grupie znajomych. Projekt jest przygotowany lokalnie, ale architektura jest już rozbita tak, żeby później bez bólu dodać deploy, powiadomienia push, import terminarza i bardziej rozbudowane statystyki.
+Production-ready web application for running a private World Cup prediction league with friends.
 
-## Stack
-- Frontend: React, Vite, TypeScript, Tailwind CSS, React Router, TanStack Query, vite-plugin-pwa
-- Backend: .NET 8, ASP.NET Core Web API, EF Core, JWT, PostgreSQL
-- Baza: PostgreSQL w Docker Compose
+The app covers the full tournament workflow: player accounts, match predictions, kickoff locks, result settlement, public ranking, admin operations, PWA support, web push reminders, and CI/CD deployment. It is built as a portfolio project, but it is also a real product deployed for a private group.
 
-## Struktura
-- `frontend/`
-- `backend/`
-- `docs/`
+## Live
 
-Przydatne dokumenty:
-- `docs/deployment-prep.md`
-- `docs/production-backups.md`
-- `docs/mvp-status.md`
+- Frontend: [typer.marekwozniak.me](https://typer.marekwozniak.me)
+- Public access: landing page and ranking
+- Private access: predictions, profile, notifications, and admin panels require an invited account
 
-## Co działa w MVP
-- logowanie admina i graczy,
-- zarządzanie graczami przez admina,
-- zarządzanie drużynami i meczami przez admina,
-- wpisywanie oraz edycja typów przed kickoffem,
-- blokada typów po kickoffie po stronie backendu,
-- widoczność typów innych graczy dopiero po kickoffie,
-- wpisywanie wyników po 90 minutach,
-- rozliczanie meczu i ranking 3/1/0,
-- profil gracza ze statystykami i historią typów,
-- responsywny interfejs w ciemnym motywie,
-- PWA-ready z manifestem i service workerem.
+## Screenshots
 
-## Local start
+The screenshots below were captured from the production frontend. Ranking data is intentionally hidden in the public screenshot to avoid publishing player data in the repository.
 
-### 1. PostgreSQL
-```bash
-docker compose up -d
-```
+| Public landing | Login |
+| --- | --- |
+| ![Public landing screen](docs/assets/screenshots/public-home.png) | ![Login screen](docs/assets/screenshots/login.png) |
 
-### 2. Backend
-```bash
-cd backend
-dotnet restore
-dotnet build
-dotnet test
-dotnet tool run dotnet-ef database update --project WorldCupTyper.Infrastructure --startup-project WorldCupTyper.Api
-dotnet run --project WorldCupTyper.Api
-```
+## What It Does
 
-API startuje domyślnie pod `http://localhost:5000`.
+World Cup Typer is a private PWA for predicting FIFA World Cup match results. Players submit scores before kickoff, the backend enforces prediction locks, and the system settles matches into a transparent `3/1/0` scoring model:
 
-### 3. Frontend
-```bash
-cd frontend
-npm install
-copy ..\\.env.example .env
-npm run dev
-```
+- `3 pts` for an exact score after 90 minutes
+- `1 pt` for the correct outcome
+- `0 pts` for a missed prediction
 
-Frontend czyta `VITE_API_BASE_URL=http://localhost:5000`.
-Lokalny backend dopuszcza frontend uruchomiony zarówno pod `http://localhost:5173`, jak i `http://127.0.0.1:5173`.
+The app exposes a public competition surface while keeping the actual prediction workflow private.
 
-## Seed development
-- Admin: `admin@marekwozniak.me` / `ChangeMe123!`
-- Gracze: `marek@typer.local`, `kuba@typer.local`, `bartek@typer.local`, `pawel@typer.local`, `asia@typer.local`
-- Hasło przykładowych graczy: `ChangeMe123!`
+## Product Highlights
 
-`appsettings.Development.json` zawiera wyłącznie development-only konfigurację lokalną. Do środowisk docelowych trzeba podać osobne connection stringi i sekrety JWT przez env/secrets.
+- Player login with JWT authentication and role-based access.
+- Admin panel for players, teams, matches, results, and settlement.
+- Match list, match details, prediction form, kickoff lock, and post-kickoff prediction visibility.
+- Ranking with deterministic tie-breakers and a ranking progress chart backed by leaderboard snapshots.
+- Player profile with prediction history, avatar support, stats, and notification preferences.
+- PWA installation flow, service worker setup, and browser push notification support.
+- Web push reminders for missing predictions and ranking updates, with idempotent delivery tracking.
+- Optional schedule/result import through a `football-data.org` adapter.
+- Mobile-first dark UI with responsive tables, cards, loading states, empty states, and error handling.
 
-## Testy
-Uruchomione testy obejmują:
-- `ScoringService`
-- reguły `PredictionService`
-- sortowanie `RankingService`
+## Architecture
 
-## CI
-Repo jest przygotowane pod GitHub Actions przez workflow `.github/workflows/ci.yml`.
-
-Pipeline uruchamia:
-- build i test backendu `.NET 8`,
-- build frontendu `Vite`,
-- build obrazu Docker dla `WorldCupTyper.Api`.
-
-Workflow `.github/workflows/playwright-smoke.yml` uruchamia smoke Playwright:
-- `push` na `main`: bezpieczny zakres production (`E2E_BASE_URL`),
-- `pull_request` / `workflow_dispatch`: może używać staging (`E2E_STAGING_BASE_URL`) i szerszego smoke po zalogowaniu.
-
-Sekrety dla smoke:
-- `E2E_BASE_URL` (produkcyjny URL smoke),
-- `E2E_STAGING_BASE_URL` (opcjonalny staging URL smoke),
-- `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`,
-- `E2E_PLAYER_EMAIL`, `E2E_PLAYER_PASSWORD`.
-
-## Deploy preparation
-
-### Backend environment variables
-Docelowy backend powinien dostać co najmniej:
-- `ConnectionStrings__DefaultConnection`
-- `Jwt__Key`
-- `Jwt__Issuer`
-- `Jwt__Audience`
-- `Jwt__ExpiryMinutes`
-- `Cors__AllowedOrigins__0=https://typer.marekwozniak.me`
-- `DatabaseStartup__ApplyMigrationsOnStartup=true`
-- `Seed__Enabled=false`
-
-### Frontend environment variables
-Docelowy frontend powinien dostać:
-- `VITE_API_BASE_URL=https://api-typer.marekwozniak.me`
-
-### Frontend on GitHub Pages
-Repo zawiera workflow `.github/workflows/frontend-pages.yml`, który publikuje frontend na GitHub Pages po pushu do `main`.
-
-Aby go uruchomić docelowo:
-- w ustawieniach repo otwórz `Settings -> Pages`,
-- ustaw `Source` na `GitHub Actions`,
-- skonfiguruj custom domain `typer.marekwozniak.me`,
-- ustaw DNS dla subdomeny zgodnie z konfiguracją GitHub Pages.
-
-Build Pages używa `npm run build:pages`, które oprócz zwykłego buildu tworzy też `404.html` dla fallbacku SPA przy odświeżaniu podstron.
-
-### Docker build for API
-Obraz API da sie zbudowac z katalogu repo:
-
-```bash
-docker build -f backend/WorldCupTyper.Api/Dockerfile -t world-cup-typer-api .
-```
-
-### Backend image release
-Repo zawiera workflow `.github/workflows/backend-image.yml`, który po zmianach w `backend/` publikuje obraz API do GitHub Container Registry.
-
-Docelowa nazwa obrazu:
+The repository is a monorepo with a React frontend and a layered .NET backend.
 
 ```text
-ghcr.io/wozniakmarek/world-cup-typer-api
+frontend/  React, Vite, TypeScript, Tailwind CSS, React Router, TanStack Query, PWA
+backend/   .NET 8, ASP.NET Core Web API, EF Core, PostgreSQL, JWT, Web Push
+docs/      Architecture, API contract, data model, deployment notes, product notes
 ```
 
-Przykladowe tagi:
-- `latest` dla `main`,
-- `sha-<short-commit>` dla konkretnego commita,
-- `main` jako tag galezi.
+Backend layers:
 
-### DigitalOcean App Platform
-Repo zawiera tez:
-- app spec `.do/app.yaml`,
-- reczny workflow `.github/workflows/backend-app-platform.yml`.
+- `Domain` - entities, enums, and business concepts.
+- `Application` - DTOs, service interfaces, and use-case services.
+- `Infrastructure` - EF Core, PostgreSQL persistence, JWT, password hashing, football data import, notifications.
+- `Api` - REST controllers, auth, middleware, CORS, health checks, and host configuration.
+- `Tests` - unit and integration-style coverage for core domain rules.
 
-Ten workflow:
-1. buduje obraz API,
-2. publikuje go do GHCR,
-3. wdraza do DigitalOcean App Platform po konkretnym digestcie obrazu.
+Key design choices:
 
-Do uruchomienia w GitHub trzeba dodac sekrety:
-- `DIGITALOCEAN_ACCESS_TOKEN`
-- `GHCR_CREDENTIALS` w formacie `username:token`
-- `DEFAULT_CONNECTION`
-- `JWT_KEY`
+- Prediction rules are enforced in the backend, not only in the UI.
+- Settlement is idempotent and produces leaderboard snapshots for historical ranking views.
+- Push delivery uses durable records to deduplicate reminders and diagnose failed subscriptions.
+- External integrations are behind interfaces so the core game logic stays testable.
 
-Repo zawiera tez reczny workflow `.github/workflows/backend-migrations.yml`, ktory uruchamia `dotnet ef database update` przeciwko connection stringowi z sekretu `DEFAULT_CONNECTION`.
+## Tech Stack
 
-### Health endpoint
-Backend udostępnia anonimowe endpointy zdrowia:
+| Area | Stack |
+| --- | --- |
+| Frontend | React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, Recharts |
+| Backend | .NET 8, ASP.NET Core Web API, EF Core, PostgreSQL |
+| Auth | JWT, role-based authorization |
+| PWA | Vite PWA, service worker, install prompt, Web Push |
+| Integrations | football-data.org adapter, Web Push VAPID |
+| Delivery | GitHub Actions, GitHub Pages, GHCR, DigitalOcean App Platform |
+| QA | xUnit, Playwright smoke tests, Docker image build, health checks |
+
+## Quality And Operations
+
+The project includes automated checks and production-oriented workflows:
+
+- CI builds and tests the backend.
+- CI builds the frontend.
+- Docker image build validates the API container.
+- GitHub Pages workflow deploys the frontend.
+- DigitalOcean App Platform workflow deploys the backend from a pinned image digest.
+- Playwright smoke tests support production, staging, and local preview modes.
+- Health endpoints expose liveness and readiness checks:
 
 ```text
 GET /health
 GET /health/live
 ```
 
-`/health/live` sprawdza, czy proces działa.
-`/health` jest readiness checkiem i obejmuje też połączenie z bazą.
+## Local Development
 
-## Migracje
-Narzędzie EF jest dodane lokalnie przez manifest `dotnet-tools.json`.
+### Requirements
 
-Przykład:
+- .NET 8 SDK
+- Node.js 20+
+- Docker
+
+### 1. Start PostgreSQL
+
 ```bash
-cd backend
-dotnet tool run dotnet-ef migrations add SomeChange --project WorldCupTyper.Infrastructure --startup-project WorldCupTyper.Api
-dotnet tool run dotnet-ef database update --project WorldCupTyper.Infrastructure --startup-project WorldCupTyper.Api
+docker compose up -d
 ```
 
-## Kolejne etapy
-- push notifications,
-- import terminarza i wyników,
-- smart knockout resolver,
-- wykres progresu punktów na bazie `LeaderboardSnapshot`,
-- finalne spięcie domen `typer.marekwozniak.me` oraz `api-typer.marekwozniak.me`,
-- dopiecie produkcyjnego deployu po skonfigurowaniu sekretow i zasobow hostingu,
-- decyzja, czy docelowo zostawiamy migracje przy starcie aplikacji, czy przechodzimy w pelni na osobny workflow migracyjny.
+### 2. Run Backend
+
+```bash
+cd backend
+dotnet restore
+dotnet build
+dotnet test
+dotnet tool restore
+dotnet tool run dotnet-ef database update --project WorldCupTyper.Infrastructure --startup-project WorldCupTyper.Api
+dotnet run --project WorldCupTyper.Api
+```
+
+The API starts at:
+
+```text
+http://localhost:5000
+```
+
+### 3. Run Frontend
+
+```bash
+cd frontend
+npm install
+copy ..\.env.example .env
+npm run dev
+```
+
+The frontend expects:
+
+```text
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+Local CORS allows both:
+
+```text
+http://localhost:5173
+http://127.0.0.1:5173
+```
+
+## Development Seed
+
+Development-only accounts are seeded for local testing:
+
+```text
+Admin:  admin@marekwozniak.me / ChangeMe123!
+Players: marek@typer.local, kuba@typer.local, bartek@typer.local, pawel@typer.local, asia@typer.local
+Password: ChangeMe123!
+```
+
+These credentials are not production credentials. Production configuration is provided through environment variables and secrets.
+
+## Useful Commands
+
+Backend:
+
+```bash
+dotnet test backend/WorldCupTyper.sln --configuration Release
+docker build -f backend/WorldCupTyper.Api/Dockerfile -t world-cup-typer-api .
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run build
+npm run build:pages
+npm run lint
+npm run test:e2e:smoke
+```
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [API contract](docs/api-contract.md)
+- [Data model](docs/database-model.md)
+- [Local development](docs/local-development.md)
+- [Deployment preparation](docs/deployment-prep.md)
+- [Production backups](docs/production-backups.md)
+- [Web push notifications](docs/web-push-notifications.md)
+- [Football API research](docs/football-api-research.md)
+- [MVP status](docs/mvp-status.md)
+
+## Roadmap
+
+The core product is already usable end-to-end. The next interesting improvements are:
+
+- richer post-match summaries,
+- stronger social comparison between players,
+- deeper tournament analytics,
+- more polished mobile review before wider public sharing,
+- continued hardening of production observability and backup routines.
