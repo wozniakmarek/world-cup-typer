@@ -166,6 +166,16 @@ test('logged-in mobile pages do not create horizontal document scroll', async ({
   }
 })
 
+test('mobile form controls keep an iOS-safe font size', async ({ page }) => {
+  await page.goto('/profile')
+
+  const firstInput = page.locator('input').first()
+  await expect(firstInput).toBeVisible()
+
+  const fontSize = await firstInput.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))
+  expect(fontSize, 'iOS Safari zooms focused form controls below 16px and can leave the app visually zoomed after login.').toBeGreaterThanOrEqual(16)
+})
+
 test('logged-in mobile shell keeps the page background scroll-attached behind fixed navigation', async ({ page }) => {
   await page.goto('/matches/match-1')
 

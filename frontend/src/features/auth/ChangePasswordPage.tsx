@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
 import { InlineAlert } from '../../components/InlineAlert'
 import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
-import { useAuth } from './AuthContext'
+import { useAuth } from './useAuth'
 
 export const ChangePasswordPage = () => {
   const navigate = useNavigate()

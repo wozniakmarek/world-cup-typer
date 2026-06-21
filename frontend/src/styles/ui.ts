@@ -1,5 +1,5 @@
 export const inputClassName =
-  'min-h-11 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400/70'
+  'min-h-11 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400/70 sm:text-sm'
 
 export const buttonClassName =
   'inline-flex min-h-11 items-center justify-center whitespace-normal rounded-full bg-emerald-400 px-4 py-2.5 text-center text-sm font-semibold leading-snug text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60'

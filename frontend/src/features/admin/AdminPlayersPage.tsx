@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
@@ -19,6 +19,13 @@ const emptyCreateForm = {
   role: 'Player' as UserRole,
 }
 
+const getEditFormFromPlayer = (player: Player) => ({
+  email: player.email,
+  displayName: player.displayName,
+  role: player.role,
+  isActive: player.isActive,
+})
+
 type FeedbackState = {
   tone: 'success' | 'error'
   message: string
@@ -30,24 +37,13 @@ export const AdminPlayersPage = () => {
   const playersQuery = useQuery({ queryKey: ['admin', 'players'], queryFn: adminApi.getPlayers })
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [createForm, setCreateForm] = useState(emptyCreateForm)
-  const [editForm, setEditForm] = useState({
-    email: '',
-    displayName: '',
-    role: 'Player' as UserRole,
-    isActive: true,
-  })
+  const [editForm, setEditForm] = useState({ email: '', displayName: '', role: 'Player' as UserRole, isActive: true })
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
 
-  useEffect(() => {
-    if (selectedPlayer) {
-      setEditForm({
-        email: selectedPlayer.email,
-        displayName: selectedPlayer.displayName,
-        role: selectedPlayer.role,
-        isActive: selectedPlayer.isActive,
-      })
-    }
-  }, [selectedPlayer])
+  const selectPlayerForEdit = (player: Player) => {
+    setSelectedPlayer(player)
+    setEditForm(getEditFormFromPlayer(player))
+  }
 
   const refreshPlayers = async () => {
     await queryClient.invalidateQueries({ queryKey: ['admin', 'players'] })
@@ -218,7 +214,7 @@ export const AdminPlayersPage = () => {
                           {player.requiresPasswordChange ? 'Wymaga zmiany' : 'Ustawione'}
                         </td>
                         <td className="px-4 py-4">
-                          <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedPlayer(player)}>
+                          <button type="button" className={secondaryButtonClassName} onClick={() => selectPlayerForEdit(player)}>
                             Edytuj
                           </button>
                         </td>
@@ -251,7 +247,7 @@ export const AdminPlayersPage = () => {
                       {player.requiresPasswordChange ? 'Wymaga zmiany' : 'Ustawione'}
                     </p>
                   </div>
-                  <button type="button" className={secondaryButtonClassName} onClick={() => setSelectedPlayer(player)}>
+                  <button type="button" className={secondaryButtonClassName} onClick={() => selectPlayerForEdit(player)}>
                     Edytuj
                   </button>
                 </div>

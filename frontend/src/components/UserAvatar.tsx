@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import clsx from 'clsx'
 
 const sizeClassMap = {
@@ -25,12 +25,8 @@ export const UserAvatar = ({
   size?: keyof typeof sizeClassMap
   className?: string
 }) => {
-  const [imageFailed, setImageFailed] = useState(false)
-  const showImage = Boolean(avatarUrl && !imageFailed)
-
-  useEffect(() => {
-    setImageFailed(false)
-  }, [avatarUrl])
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null)
+  const showImage = Boolean(avatarUrl && failedAvatarUrl !== avatarUrl)
 
   return (
     <span
@@ -49,7 +45,7 @@ export const UserAvatar = ({
           className="h-full w-full object-cover"
           loading="lazy"
           referrerPolicy="no-referrer"
-          onError={() => setImageFailed(true)}
+          onError={() => setFailedAvatarUrl(avatarUrl ?? null)}
         />
       ) : (
         <span aria-hidden="true">{getInitials(displayName)}</span>
