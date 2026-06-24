@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { authApi } from '../../api/services'
-import { getErrorMessage } from '../../api/client'
+import { getErrorMessage, isAuthenticationFailure } from '../../api/client'
 import type { CurrentUser } from '../../api/types'
 import { AuthContext } from './authContextCore'
 import type { AuthContextValue } from './authContextCore'
@@ -27,11 +27,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(currentUser)
         localStorage.setItem(USER_KEY, JSON.stringify(currentUser))
       })
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(USER_KEY)
-        setToken(null)
-        setUser(null)
+      .catch((error) => {
+        if (isAuthenticationFailure(error)) {
+          localStorage.removeItem(TOKEN_KEY)
+          localStorage.removeItem(USER_KEY)
+          setToken(null)
+          setUser(null)
+        }
       })
       .finally(() => {
         setIsInitializing(false)

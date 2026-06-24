@@ -48,7 +48,7 @@ services:
         scope: RUN_TIME
         type: GENERAL
       - key: Jwt__ExpiryMinutes
-        value: "720"
+        value: "43200"
         scope: RUN_TIME
         type: GENERAL
       - key: Cors__AllowedOrigins__0

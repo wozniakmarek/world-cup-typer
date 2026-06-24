@@ -64,6 +64,34 @@ test('publiczny home pokazuje landing z rankingiem przed logowaniem', async ({ p
   await expect(page.getByRole('link', { name: 'Przejdź do logowania' })).toHaveAttribute('href', '/login')
 })
 
+test('zapisana sesja zostaje po chwilowym bledzie profilu auth', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Regresje zapisanej sesji sprawdzamy lokalnie')
+
+  await page.addInitScript(() => {
+    window.localStorage.setItem('typer.auth.token', 'cached-token')
+    window.localStorage.setItem(
+      'typer.auth.user',
+      JSON.stringify({
+        id: 'player-1',
+        email: 'player@test.local',
+        displayName: 'Oskar',
+        role: 'Player',
+        isActive: true,
+        requiresPasswordChange: false,
+        avatarUrl: null,
+      }),
+    )
+  })
+  await page.route('**/api/auth/me', async (route) => route.abort('failed'))
+  await page.route('**/api/matches**', async (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/ranking/top', async (route) => route.fulfill({ json: [] }))
+
+  await page.goto('/')
+
+  await expect(page.getByRole('button', { name: 'Wyloguj' })).toBeVisible()
+  await expect(page).not.toHaveURL(/\/login/)
+})
+
 const roles = [
   {
     name: 'admin',
