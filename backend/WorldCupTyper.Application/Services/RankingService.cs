@@ -50,6 +50,7 @@ public sealed class RankingService : IRankingService
             .Include(snapshot => snapshot.Match)
             .ThenInclude(match => match.AwayTeam)
             .OrderBy(snapshot => snapshot.Match.KickoffTimeUtc)
+            .ThenBy(snapshot => snapshot.CreatedAtUtc)
             .ThenBy(snapshot => snapshot.Match.MatchNumber)
             .ToListAsync(cancellationToken);
 
@@ -77,6 +78,7 @@ public sealed class RankingService : IRankingService
             .Include(snapshot => snapshot.Match)
             .ThenInclude(match => match.AwayTeam)
             .OrderBy(snapshot => snapshot.Match.KickoffTimeUtc)
+            .ThenBy(snapshot => snapshot.CreatedAtUtc)
             .ThenBy(snapshot => snapshot.Match.MatchNumber)
             .ThenBy(snapshot => snapshot.Position)
             .ToListAsync(cancellationToken);
@@ -87,6 +89,7 @@ public sealed class RankingService : IRankingService
             {
                 var orderedSnapshots = group
                     .OrderBy(snapshot => snapshot.Match.KickoffTimeUtc)
+                    .ThenBy(snapshot => snapshot.CreatedAtUtc)
                     .ThenBy(snapshot => snapshot.Match.MatchNumber)
                     .ToList();
                 var latestSnapshot = orderedSnapshots.Last();

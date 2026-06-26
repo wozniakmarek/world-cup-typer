@@ -111,6 +111,38 @@ public sealed class RankingServiceTests
     }
 
     [Fact]
+    public async Task ProgressForRanking_ShouldUseSnapshotTimeAsTieBreakerForSameKickoffMatches()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out _, out _);
+        var sharedKickoff = new DateTime(2026, 6, 26, 16, 0, 0, DateTimeKind.Utc);
+        var lowerNumberMatch = AddSettledMatch(dbContext, 10, "ECU", "GER", sharedKickoff);
+        var higherNumberMatch = AddSettledMatch(dbContext, 20, "CUI", "CIV", sharedKickoff);
+        AddSnapshot(
+            dbContext,
+            lowerNumberMatch.Id,
+            marek.Id,
+            totalPoints: 6,
+            position: 1,
+            createdAtUtc: sharedKickoff.AddHours(3));
+        AddSnapshot(
+            dbContext,
+            higherNumberMatch.Id,
+            marek.Id,
+            totalPoints: 3,
+            position: 1,
+            createdAtUtc: sharedKickoff.AddHours(2));
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var progress = await service.GetProgressForRankingAsync(marek.Id);
+
+        var points = progress.Single(series => series.UserId == marek.Id).Points.ToList();
+        points.Select(point => point.MatchLabel).Should().Equal("CUI-CIV", "ECU-GER");
+        points.Select(point => point.TotalPoints).Should().Equal(3, 6);
+    }
+
+    [Fact]
     public async Task ProgressForRanking_ShouldIncludeActiveAdminsWithSnapshots()
     {
         using var dbContext = TestDbContextFactory.Create();
@@ -230,7 +262,13 @@ public sealed class RankingServiceTests
         return match;
     }
 
-    private static void AddSnapshot(WorldCupTyperDbContext dbContext, Guid matchId, Guid userId, int totalPoints, int position)
+    private static void AddSnapshot(
+        WorldCupTyperDbContext dbContext,
+        Guid matchId,
+        Guid userId,
+        int totalPoints,
+        int position,
+        DateTime? createdAtUtc = null)
     {
         dbContext.LeaderboardSnapshots.Add(new LeaderboardSnapshot
         {
@@ -242,7 +280,7 @@ public sealed class RankingServiceTests
             CorrectOutcomeHits = totalPoints,
             PredictionsCount = 1,
             Position = position,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = createdAtUtc ?? DateTime.UtcNow,
         });
     }
 }
