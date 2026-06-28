@@ -3,7 +3,12 @@ import type { MatchSummary } from '../api/types'
 import { canEditMatchPrediction, formatKickoff, formatMatchContext, formatTeamDisplayName, getPredictionLabel } from '../app/formatters'
 import { StatusPill } from './StatusPill'
 
-export const MatchCard = ({ match }: { match: MatchSummary }) => {
+type MatchCardProps = {
+  match: MatchSummary
+  onOpenDetails?: () => void
+}
+
+export const MatchCard = ({ match, onOpenDetails }: MatchCardProps) => {
   const canEditPrediction = canEditMatchPrediction(match)
   const statusMessage = match.isSettled
     ? `Punkty: ${match.myPoints ?? 0}`
@@ -60,6 +65,7 @@ export const MatchCard = ({ match }: { match: MatchSummary }) => {
       <div className="mt-5 flex justify-end sm:justify-start">
         <Link
           to={`/matches/${match.id}`}
+          onClick={onOpenDetails}
           className="inline-flex w-full items-center justify-center rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300 sm:w-auto"
         >
           Szczegóły meczu
