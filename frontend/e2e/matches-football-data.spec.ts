@@ -131,6 +131,60 @@ const matches = [
     myPoints: null,
     canEditPrediction: true,
   },
+  {
+    id: 'match-settled-old',
+    matchNumber: 537332,
+    phase: 'GroupStage',
+    groupName: 'D',
+    kickoffTimeUtc: '2026-06-15T19:00:00Z',
+    venue: 'Lumen Field',
+    status: 'Settled',
+    isSettled: true,
+    homeScore90: 1,
+    awayScore90: 0,
+    homeTeam: team('team-fra', 'France', 'FRA', 'FRA', 'D'),
+    awayTeam: team('team-sen', 'Senegal', 'SEN', 'SEN', 'D'),
+    myPrediction: {
+      id: 'prediction-settled-old',
+      predictedHomeScore: 1,
+      predictedAwayScore: 0,
+      createdAtUtc: '2026-06-14T12:00:00Z',
+      updatedAtUtc: null,
+      lockedAtUtc: '2026-06-15T19:00:00Z',
+      points: 3,
+      isExactScore: true,
+      isCorrectOutcome: true,
+    },
+    myPoints: 3,
+    canEditPrediction: false,
+  },
+  {
+    id: 'match-settled-new',
+    matchNumber: 537333,
+    phase: 'GroupStage',
+    groupName: 'E',
+    kickoffTimeUtc: '2026-06-27T19:00:00Z',
+    venue: 'BC Place',
+    status: 'Settled',
+    isSettled: true,
+    homeScore90: 3,
+    awayScore90: 0,
+    homeTeam: team('team-ger', 'Germany', 'GER', 'GER', 'E'),
+    awayTeam: team('team-hai', 'Haiti', 'HAI', 'HAI', 'E'),
+    myPrediction: {
+      id: 'prediction-settled-new',
+      predictedHomeScore: 2,
+      predictedAwayScore: 0,
+      createdAtUtc: '2026-06-26T12:00:00Z',
+      updatedAtUtc: null,
+      lockedAtUtc: '2026-06-27T19:00:00Z',
+      points: 1,
+      isExactScore: false,
+      isCorrectOutcome: true,
+    },
+    myPoints: 1,
+    canEditPrediction: false,
+  },
 ]
 
 test.beforeEach(async ({ page }) => {
@@ -214,6 +268,40 @@ test('player match list labels locked post-kickoff scheduled match as in progres
 
   await page.getByRole('button', { name: 'Zablokowane' }).click()
   await expect(inProgressCard.getByText('W trakcie')).toBeVisible()
+})
+
+test('player match list keeps the latest settled matches at the top of the settled filter', async ({ page }) => {
+  await page.goto('/matches')
+
+  await page.getByRole('button', { name: 'Rozliczone' }).click()
+
+  const settledCards = page.locator('article')
+  await expect(settledCards).toHaveCount(2)
+  await expect(settledCards.nth(0)).toContainText('Niemcy')
+  await expect(settledCards.nth(0)).toContainText('Haiti')
+  await expect(settledCards.nth(1)).toContainText('Francja')
+  await expect(settledCards.nth(1)).toContainText('Senegal')
+})
+
+test('mobile match navigation restores the last list position after leaving matches', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 667 })
+  await page.goto('/matches')
+
+  const lowerMatchCard = page.locator('article').filter({ hasText: 'Niemcy' }).filter({ hasText: 'Haiti' })
+  await lowerMatchCard.scrollIntoViewIfNeeded()
+
+  const savedScrollY = await page.evaluate(() => Math.round(window.scrollY))
+  expect(savedScrollY).toBeGreaterThan(200)
+
+  const mobileNavigation = page.getByLabel('Nawigacja mobilna gracza')
+  await mobileNavigation.getByRole('link', { name: 'Dashboard' }).click()
+  await expect(page).toHaveURL(/\/$/)
+  await page.evaluate(() => window.scrollTo(0, 0))
+
+  await mobileNavigation.getByRole('link', { name: 'Mecze' }).click()
+  await expect(page).toHaveURL(/\/matches$/)
+  await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBeGreaterThan(savedScrollY - 120)
+  await expect(lowerMatchCard).toBeInViewport()
 })
 
 test('player match details hide unsafe in-progress score from the 90 minute result block', async ({ page }) => {
