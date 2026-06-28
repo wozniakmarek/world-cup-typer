@@ -185,6 +185,91 @@ const matches = [
     myPoints: 1,
     canEditPrediction: false,
   },
+  {
+    id: 'match-open-one',
+    matchNumber: 537334,
+    phase: 'GroupStage',
+    groupName: 'F',
+    kickoffTimeUtc: '2026-07-01T19:00:00Z',
+    venue: 'SoFi Stadium',
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-pol-open', 'Poland', 'POL', 'POL', 'F'),
+    awayTeam: team('team-por-open', 'Portugal', 'POR', 'POR', 'F'),
+    myPrediction: null,
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
+    id: 'match-open-two',
+    matchNumber: 537335,
+    phase: 'GroupStage',
+    groupName: 'F',
+    kickoffTimeUtc: '2026-07-02T19:00:00Z',
+    venue: 'SoFi Stadium',
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-esp-open', 'Spain', 'ESP', 'ESP', 'F'),
+    awayTeam: team('team-ita-open', 'Italy', 'ITA', 'ITA', 'F'),
+    myPrediction: null,
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
+    id: 'match-open-three',
+    matchNumber: 537336,
+    phase: 'GroupStage',
+    groupName: 'G',
+    kickoffTimeUtc: '2026-07-03T19:00:00Z',
+    venue: 'Hard Rock Stadium',
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-bra-open', 'Brazil', 'BRA', 'BRA', 'G'),
+    awayTeam: team('team-arg-open', 'Argentina', 'ARG', 'ARG', 'G'),
+    myPrediction: null,
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
+    id: 'match-open-four',
+    matchNumber: 537337,
+    phase: 'GroupStage',
+    groupName: 'G',
+    kickoffTimeUtc: '2026-07-04T19:00:00Z',
+    venue: 'Hard Rock Stadium',
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-mar-open', 'Morocco', 'MAR', 'MAR', 'G'),
+    awayTeam: team('team-jpn-open', 'Japan', 'JPN', 'JPN', 'G'),
+    myPrediction: null,
+    myPoints: null,
+    canEditPrediction: true,
+  },
+  {
+    id: 'match-open-bottom',
+    matchNumber: 537338,
+    phase: 'GroupStage',
+    groupName: 'G',
+    kickoffTimeUtc: '2026-07-05T19:00:00Z',
+    venue: 'Hard Rock Stadium',
+    status: 'Scheduled',
+    isSettled: false,
+    homeScore90: null,
+    awayScore90: null,
+    homeTeam: team('team-can-open', 'Canada', 'CAN', 'CAN', 'G'),
+    awayTeam: team('team-ned-open', 'Netherlands', 'NED', 'NED', 'G'),
+    myPrediction: null,
+    myPoints: null,
+    canEditPrediction: true,
+  },
 ]
 
 test.beforeEach(async ({ page }) => {
@@ -212,6 +297,29 @@ test.beforeEach(async ({ page }) => {
     json: {
       canViewAllPredictions: true,
       predictions: [],
+    },
+  }))
+  await page.route('**/api/matches/match-open-bottom', async (route) => route.fulfill({
+    json: {
+      ...matches.find((match) => match.id === 'match-open-bottom'),
+      homeScoreFinal: null,
+      awayScoreFinal: null,
+      canViewPredictions: true,
+    },
+  }))
+  await page.route('**/api/matches/match-open-bottom/predictions', async (route) => route.fulfill({
+    json: {
+      canViewAllPredictions: true,
+      predictions: Array.from({ length: 18 }, (_, index) => ({
+        predictionId: `prediction-open-bottom-${index}`,
+        userId: `user-open-bottom-${index}`,
+        displayName: `Gracz ${index + 1}`,
+        predictedHomeScore: index % 4,
+        predictedAwayScore: (index + 1) % 3,
+        points: null,
+        isExactScore: null,
+        isCorrectOutcome: null,
+      })),
     },
   }))
   await page.route('**/api/ranking/top', async (route) => route.fulfill({ json: [] }))
@@ -302,6 +410,70 @@ test('mobile match navigation restores the last list position after leaving matc
   await expect(page).toHaveURL(/\/matches$/)
   await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBeGreaterThan(savedScrollY - 120)
   await expect(lowerMatchCard).toBeInViewport()
+})
+
+test('mobile match details start at the top after opening a lower match card', async ({ page }) => {
+  await page.addInitScript(() => {
+    const trackedWindow = window as Window & { __scrollToTopCalls: number[] }
+    const originalScrollTo = window.scrollTo.bind(window)
+    trackedWindow.__scrollToTopCalls = []
+    window.scrollTo = ((optionsOrX?: ScrollToOptions | number, y?: number) => {
+      const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
+      if (typeof top === 'number') {
+        trackedWindow.__scrollToTopCalls.push(Math.round(top))
+      }
+
+      if (typeof optionsOrX === 'object') {
+        originalScrollTo(optionsOrX)
+        return
+      }
+
+      originalScrollTo(optionsOrX ?? 0, y ?? 0)
+    }) as typeof window.scrollTo
+  })
+
+  await page.setViewportSize({ width: 390, height: 667 })
+  await page.goto('/matches')
+
+  await page.getByRole('button', { name: 'Do obstawienia' }).click()
+  const lowerOpenMatchCard = page.locator('article').filter({ hasText: 'Kanada' }).filter({ hasText: 'Holandia' })
+  await lowerOpenMatchCard.scrollIntoViewIfNeeded()
+
+  const listScrollY = await page.evaluate(() => Math.round(window.scrollY))
+  expect(listScrollY).toBeGreaterThan(200)
+
+  await lowerOpenMatchCard.getByRole('link', { name: 'Szczegóły meczu' }).click()
+
+  await expect(page).toHaveURL(/\/matches\/match-open-bottom$/)
+  await expect(page.getByRole('heading', { name: /Kanada vs Holandia/ })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => {
+    const trackedWindow = window as Window & { __scrollToTopCalls?: number[] }
+    return trackedWindow.__scrollToTopCalls?.includes(0) ?? false
+  })).toBe(true)
+  await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(0)
+})
+
+test('mobile matches navigation returns to the previous filter and list position from details', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 667 })
+  await page.goto('/matches')
+
+  await page.getByRole('button', { name: 'Do obstawienia' }).click()
+  const lowerOpenMatchCard = page.locator('article').filter({ hasText: 'Kanada' }).filter({ hasText: 'Holandia' })
+  await lowerOpenMatchCard.scrollIntoViewIfNeeded()
+
+  const savedScrollY = await page.evaluate(() => Math.round(window.scrollY))
+  expect(savedScrollY).toBeGreaterThan(200)
+
+  await lowerOpenMatchCard.getByRole('link', { name: 'Szczegóły meczu' }).click()
+  await expect(page).toHaveURL(/\/matches\/match-open-bottom$/)
+
+  await page.getByLabel('Nawigacja mobilna gracza').getByRole('link', { name: 'Mecze' }).click()
+
+  await expect(page).toHaveURL(/\/matches$/)
+  await expect(page.locator('article')).toHaveCount(5)
+  await expect(page.getByText('Meksyk')).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBeGreaterThan(savedScrollY - 120)
+  await expect(lowerOpenMatchCard).toBeInViewport()
 })
 
 test('player match details hide unsafe in-progress score from the 90 minute result block', async ({ page }) => {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
@@ -35,6 +35,10 @@ export const MatchDetailsPage = () => {
   const queryClient = useQueryClient()
   const [scoreDraft, setScoreDraft] = useState<ScoreDraft>({ key: '', homeScore: '', awayScore: '' })
   const [feedback, setFeedback] = useState<{ matchId?: string; tone: 'success' | 'error'; message: string } | null>(null)
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 })
+  }, [matchId])
 
   const matchQuery = useQuery({
     queryKey: ['match', matchId],

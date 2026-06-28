@@ -17,7 +17,13 @@ const filters = [
   { key: 'settled', label: 'Rozliczone' },
 ] as const
 
+type MatchFilterKey = (typeof filters)[number]['key']
+
 const matchesScrollStorageKey = 'typer.matches.scrollY'
+const matchesFilterStorageKey = 'typer.matches.filter'
+
+const isMatchFilterKey = (value: string): value is MatchFilterKey =>
+  filters.some((filter) => filter.key === value)
 
 const readStoredMatchesScrollY = () => {
   try {
@@ -37,10 +43,36 @@ const saveMatchesScrollY = () => {
   }
 }
 
+const readStoredMatchesFilter = (): MatchFilterKey => {
+  try {
+    const rawValue = window.sessionStorage.getItem(matchesFilterStorageKey)
+    return rawValue && isMatchFilterKey(rawValue) ? rawValue : 'all'
+  } catch {
+    return 'all'
+  }
+}
+
+const saveMatchesFilter = (filter: MatchFilterKey) => {
+  try {
+    window.sessionStorage.setItem(matchesFilterStorageKey, filter)
+  } catch {
+    return
+  }
+}
+
 export const MatchesPage = () => {
-  const [filter, setFilter] = useState<(typeof filters)[number]['key']>('all')
+  const [filter, setFilter] = useState<MatchFilterKey>(() => readStoredMatchesFilter())
   const didRestoreScroll = useRef(false)
+  const isOpeningMatchDetails = useRef(false)
   const matchesQuery = useQuery({ queryKey: ['matches'], queryFn: matchesApi.getAll })
+  const handleFilterChange = (nextFilter: MatchFilterKey) => {
+    setFilter(nextFilter)
+    saveMatchesFilter(nextFilter)
+  }
+  const handleOpenMatchDetails = () => {
+    saveMatchesScrollY()
+    isOpeningMatchDetails.current = true
+  }
 
   const visibleMatches = (matchesQuery.data ?? []).filter((match) => shouldShowMatchToPlayer(match)).filter((match) => {
     const canEditPrediction = canEditMatchPrediction(match)
@@ -77,12 +109,18 @@ export const MatchesPage = () => {
     : visibleMatches
 
   useEffect(() => {
-    window.addEventListener('scroll', saveMatchesScrollY, { passive: true })
-    window.addEventListener('pagehide', saveMatchesScrollY)
+    const saveCurrentMatchesScrollY = () => {
+      if (!isOpeningMatchDetails.current) {
+        saveMatchesScrollY()
+      }
+    }
+
+    window.addEventListener('scroll', saveCurrentMatchesScrollY, { passive: true })
+    window.addEventListener('pagehide', saveCurrentMatchesScrollY)
 
     return () => {
-      window.removeEventListener('scroll', saveMatchesScrollY)
-      window.removeEventListener('pagehide', saveMatchesScrollY)
+      window.removeEventListener('scroll', saveCurrentMatchesScrollY)
+      window.removeEventListener('pagehide', saveCurrentMatchesScrollY)
     }
   }, [])
 
@@ -114,7 +152,7 @@ export const MatchesPage = () => {
           <button
             key={item.key}
             type="button"
-            onClick={() => setFilter(item.key)}
+            onClick={() => handleFilterChange(item.key)}
             className={filterButtonClassName(filter === item.key)}
           >
             {item.label}
@@ -134,7 +172,7 @@ export const MatchesPage = () => {
       >
         <div className="grid gap-4 xl:grid-cols-2">
           {matches.map((match) => (
-            <MatchCard key={match.id} match={match} />
+            <MatchCard key={match.id} match={match} onOpenDetails={handleOpenMatchDetails} />
           ))}
         </div>
       </QueryState>
