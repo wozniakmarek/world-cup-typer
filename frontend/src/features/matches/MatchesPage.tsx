@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getErrorMessage } from '../../api/client'
 import { matchesApi } from '../../api/services'
@@ -17,11 +17,32 @@ const filters = [
   { key: 'settled', label: 'Rozliczone' },
 ] as const
 
+const matchesScrollStorageKey = 'typer.matches.scrollY'
+
+const readStoredMatchesScrollY = () => {
+  try {
+    const rawValue = window.sessionStorage.getItem(matchesScrollStorageKey)
+    const scrollY = rawValue == null ? null : Number(rawValue)
+    return scrollY != null && Number.isFinite(scrollY) && scrollY > 0 ? scrollY : null
+  } catch {
+    return null
+  }
+}
+
+const saveMatchesScrollY = () => {
+  try {
+    window.sessionStorage.setItem(matchesScrollStorageKey, String(Math.max(0, Math.round(window.scrollY))))
+  } catch {
+    return
+  }
+}
+
 export const MatchesPage = () => {
   const [filter, setFilter] = useState<(typeof filters)[number]['key']>('all')
+  const didRestoreScroll = useRef(false)
   const matchesQuery = useQuery({ queryKey: ['matches'], queryFn: matchesApi.getAll })
 
-  const matches = (matchesQuery.data ?? []).filter((match) => shouldShowMatchToPlayer(match)).filter((match) => {
+  const visibleMatches = (matchesQuery.data ?? []).filter((match) => shouldShowMatchToPlayer(match)).filter((match) => {
     const canEditPrediction = canEditMatchPrediction(match)
 
     if (filter === 'today' || filter === 'tomorrow') {
@@ -49,6 +70,36 @@ export const MatchesPage = () => {
 
     return true
   })
+  const matches = filter === 'settled'
+    ? [...visibleMatches].sort((current, next) =>
+        new Date(next.kickoffTimeUtc).getTime() - new Date(current.kickoffTimeUtc).getTime()
+        || next.matchNumber - current.matchNumber)
+    : visibleMatches
+
+  useEffect(() => {
+    window.addEventListener('scroll', saveMatchesScrollY, { passive: true })
+    window.addEventListener('pagehide', saveMatchesScrollY)
+
+    return () => {
+      window.removeEventListener('scroll', saveMatchesScrollY)
+      window.removeEventListener('pagehide', saveMatchesScrollY)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (didRestoreScroll.current || matchesQuery.isLoading || matches.length === 0) {
+      return
+    }
+
+    didRestoreScroll.current = true
+    const scrollY = readStoredMatchesScrollY()
+    if (scrollY == null) {
+      return
+    }
+
+    const animationFrameId = window.requestAnimationFrame(() => window.scrollTo({ top: scrollY }))
+    return () => window.cancelAnimationFrame(animationFrameId)
+  }, [matches.length, matchesQuery.isLoading])
 
   return (
     <div className="space-y-6">
