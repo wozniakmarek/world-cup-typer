@@ -12,11 +12,45 @@ The app covers the full tournament workflow: player accounts, match predictions,
 
 ## Screenshots
 
-The screenshots below were captured from the production frontend. Ranking data is intentionally hidden in the public screenshot to avoid publishing player data in the repository.
+The screenshots below show the actual application UI. Player-facing and admin views were captured from a local instance running the development seed, so every name, email, and result is placeholder data — no real player information is published in the repository.
+
+### Public
+
+The unauthenticated surface: a landing page that pitches the league and links to login, plus the email/display-name login form.
 
 | Public landing | Login |
 | --- | --- |
 | ![Public landing screen](docs/assets/screenshots/public-home.png) | ![Login screen](docs/assets/screenshots/login.png) |
+
+Landing page with the public pitch and top-ranking teaser · JWT login by email or display name.
+
+### Player experience
+
+The core prediction loop: a dashboard that surfaces what needs attention, the match browser with kickoff-lock status, and the per-match prediction form.
+
+| Dashboard | Match browser |
+| --- | --- |
+| ![Player dashboard](docs/assets/screenshots/dashboard.png) | ![Match browser](docs/assets/screenshots/matches.png) |
+
+Dashboard with missing predictions, upcoming matches, top ranking, and scoring rules · Match list with phase/group filters, settlement badges, and per-match points.
+
+| Match details & prediction | Profile |
+| --- | --- |
+| ![Match details and prediction form](docs/assets/screenshots/match-details.png) | ![Player profile](docs/assets/screenshots/profile.png) |
+
+Match detail view: prediction form, kickoff lock, settled result, and post-kickoff visibility of other players' predictions · Profile with stats, avatar management, password change, and notification preferences.
+
+### Ranking
+
+The full leaderboard with deterministic tie-breakers and a multi-player points-progress chart backed by leaderboard snapshots.
+
+![Ranking table and progress chart](docs/assets/screenshots/ranking.png)
+
+### Admin
+
+The operator control center for players, teams, matches, results, settlement, ranking recalculation, and football-data sync.
+
+![Admin control center](docs/assets/screenshots/admin.png)
 
 ## What It Does
 
