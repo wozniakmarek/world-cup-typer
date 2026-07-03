@@ -275,6 +275,14 @@ const matches = [
 test.beforeEach(async ({ page }) => {
   test.skip(!runsAgainstLocalPreview(), 'Regresja terminarza wymaga lokalnego preview z kodem z PR-a')
 
+  // The fixture uses absolute kickoff dates: settled/locked matches through 2026-06-28 and
+  // five open-for-prediction matches on 2026-07-01..05. The filter buckets (open / locked /
+  // settled) are derived from the current time, so pin the clock to a moment inside that
+  // window. Without this, the "Do obstawienia" count drifts as the real calendar passes each
+  // open match's kickoff. setFixedTime freezes Date only and keeps timers running, so the
+  // scroll-restore debounce still works.
+  await page.clock.setFixedTime(new Date('2026-06-30T12:00:00Z'))
+
   await page.addInitScript((user) => {
     window.localStorage.setItem('typer.auth.token', 'test-token')
     window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
