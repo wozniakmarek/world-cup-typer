@@ -69,3 +69,7 @@ export const getErrorMessage = (error: unknown) => {
 
   return 'Wyst\u0105pi\u0142 nieoczekiwany b\u0142\u0105d.'
 }
+
+export const isAuthenticationFailure = (error: unknown) => {
+  return axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)
+}
