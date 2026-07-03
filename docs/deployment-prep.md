@@ -36,7 +36,7 @@ The backend app spec uses these important environment values:
 - `Jwt__Key`
 - `Jwt__Issuer=WorldCupTyper`
 - `Jwt__Audience=WorldCupTyper.Client`
-- `Jwt__ExpiryMinutes=720`
+- `Jwt__ExpiryMinutes=43200`
 - `Cors__AllowedOrigins__0=https://typer.marekwozniak.me`
 - `Seed__Enabled=false`
 - `FootballData__Enabled=true`
