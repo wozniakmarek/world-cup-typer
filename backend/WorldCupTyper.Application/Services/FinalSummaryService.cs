@@ -51,7 +51,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 finalLeader?.DisplayName),
             positionSeries,
             finalTop,
-            BuildGlobalFacts(seriesData, predictionRows, settledMatches));
+            BuildGlobalFacts(seriesData, predictionRows, settledMatches, activeUsers));
     }
 
     public async Task<PersonalFinalSummaryResponseDto> GetPersonalFinalSummaryAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -248,13 +248,15 @@ public sealed class FinalSummaryService : IFinalSummaryService
     private static List<FinalSummaryFactDto> BuildGlobalFacts(
         IReadOnlyCollection<FinalPositionSeriesData> seriesData,
         IReadOnlyCollection<PredictionSummaryRow> predictionRows,
-        IReadOnlyCollection<Match> settledMatches)
+        IReadOnlyCollection<Match> settledMatches,
+        IReadOnlyCollection<ApplicationUser> activeUsers)
     {
+        var activeUserDisplayNames = activeUsers.ToDictionary(user => user.Id, user => user.DisplayName);
         var facts = new List<FinalSummaryFactDto>();
         AddBiggestClimbFact(facts, seriesData);
         AddBiggestDropFact(facts, seriesData);
         AddMostExactMatchFact(facts, predictionRows, settledMatches);
-        AddDrawSpecialistFact(facts, predictionRows, settledMatches, seriesData);
+        AddDrawSpecialistFact(facts, predictionRows, settledMatches, activeUserDisplayNames);
         return facts;
     }
 
@@ -367,7 +369,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
         List<FinalSummaryFactDto> facts,
         IReadOnlyCollection<PredictionSummaryRow> predictionRows,
         IReadOnlyCollection<Match> settledMatches,
-        IReadOnlyCollection<FinalPositionSeriesData> seriesData)
+        IReadOnlyDictionary<Guid, string> activeUserDisplayNames)
     {
         var drawMatchIds = settledMatches
             .Where(match => match.HomeScore90.HasValue && match.AwayScore90.HasValue && match.HomeScore90.Value == match.AwayScore90.Value)
@@ -398,12 +400,11 @@ public sealed class FinalSummaryService : IFinalSummaryService
             return;
         }
 
-        var userNameById = seriesData.ToDictionary(data => data.Series.UserId, data => data.Series.DisplayName);
         var maxHits = drawHitsByUser.Max(entry => entry.Hits);
         var userIds = drawHitsByUser
             .Where(entry => entry.Hits == maxHits)
             .Select(entry => entry.UserId)
-            .OrderBy(userId => userNameById.TryGetValue(userId, out var displayName) ? displayName : string.Empty, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : string.Empty, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var userIdSet = userIds.ToHashSet();
         var relatedMatchIds = predictionRows
@@ -420,7 +421,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
             "draw-specialist",
             "Specjalista od remisow",
             $"Trafione remisy: {maxHits}",
-            $"{JoinNames(userIds.Select(userId => userNameById.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))} najlepiej czytali remisy.",
+            $"{JoinNames(userIds.Select(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))} najlepiej czytali remisy.",
             userIds,
             relatedMatchIds));
     }

@@ -151,6 +151,29 @@ public sealed class FinalSummaryServiceTests
         personal.PredictionsCount.Should().Be(2);
     }
 
+    [Fact]
+    public async Task GetFinalSummaryAsync_ShouldUseActiveUserDisplayNameForDrawSpecialistWithoutSnapshots()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out _, out var inactive);
+        inactive.IsActive = false;
+        var ola = CreateUser("Ola");
+        dbContext.Users.Add(ola);
+        var drawMatch = AddSettledMatch(dbContext, 1, "FRA", "ESP", DateTime.UtcNow.AddDays(-1), homeScore: 1, awayScore: 1);
+        AddSnapshot(dbContext, drawMatch.Id, marek.Id, totalPoints: 0, exact: 0, outcome: 0, predictions: 0, position: 1, createdAtUtc: drawMatch.KickoffTimeUtc.AddHours(2));
+        AddPrediction(dbContext, ola.Id, drawMatch.Id, 1, 1, points: 3, exact: true, outcome: true);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var summary = await service.GetFinalSummaryAsync();
+
+        summary.PositionSeries.Select(series => series.UserId).Should().NotContain(ola.Id);
+        var drawSpecialist = summary.GlobalFacts.Single(fact => fact.Id == "draw-specialist");
+        drawSpecialist.RelatedUserIds.Should().Equal(ola.Id);
+        drawSpecialist.RelatedMatchIds.Should().Equal(drawMatch.Id);
+        $"{drawSpecialist.Title} {drawSpecialist.Description}".Should().Contain("Ola").And.NotContain("Gracz");
+    }
+
     private static FinalSummaryService CreateService(WorldCupTyperDbContext dbContext)
     {
         return new FinalSummaryService(dbContext);
