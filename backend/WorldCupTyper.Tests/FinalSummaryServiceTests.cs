@@ -174,6 +174,70 @@ public sealed class FinalSummaryServiceTests
         $"{drawSpecialist.Title} {drawSpecialist.Description}".Should().Contain("Ola").And.NotContain("Gracz");
     }
 
+    [Fact]
+    public async Task GetPersonalFinalSummaryAsync_ShouldReturnAtLeastThreeFactsForPlayerWithData()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var tomek, out _);
+        var matchOne = AddSettledMatch(dbContext, 1, "POL", "GER", DateTime.UtcNow.AddDays(-3), homeScore: 2, awayScore: 1);
+        var matchTwo = AddSettledMatch(dbContext, 2, "FRA", "ESP", DateTime.UtcNow.AddDays(-2), homeScore: 1, awayScore: 1);
+        var matchThree = AddSettledMatch(dbContext, 3, "BRA", "ARG", DateTime.UtcNow.AddDays(-1), homeScore: 3, awayScore: 0);
+        AddSnapshot(dbContext, matchOne.Id, marek.Id, totalPoints: 1, exact: 0, outcome: 1, predictions: 1, position: 4, createdAtUtc: matchOne.KickoffTimeUtc.AddHours(2));
+        AddSnapshot(dbContext, matchTwo.Id, marek.Id, totalPoints: 4, exact: 1, outcome: 2, predictions: 2, position: 2, createdAtUtc: matchTwo.KickoffTimeUtc.AddHours(2));
+        AddSnapshot(dbContext, matchThree.Id, marek.Id, totalPoints: 7, exact: 2, outcome: 3, predictions: 3, position: 1, createdAtUtc: matchThree.KickoffTimeUtc.AddHours(2));
+        AddSnapshot(dbContext, matchThree.Id, tomek.Id, totalPoints: 6, exact: 1, outcome: 3, predictions: 3, position: 2, createdAtUtc: matchThree.KickoffTimeUtc.AddHours(2));
+        AddPrediction(dbContext, marek.Id, matchOne.Id, 2, 0, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, marek.Id, matchTwo.Id, 1, 1, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, marek.Id, matchThree.Id, 3, 0, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, tomek.Id, matchThree.Id, 2, 0, points: 1, exact: false, outcome: true);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var recap = await service.GetPersonalFinalSummaryAsync(marek.Id);
+
+        recap.DisplayName.Should().Be("Marek");
+        recap.FinalPosition.Should().Be(1);
+        recap.PersonalFacts.Count.Should().BeGreaterThanOrEqualTo(3);
+        recap.PersonalFacts.Should().Contain(fact => fact.Id == "personal-best-match");
+        recap.PersonalFacts.Should().Contain(fact => fact.Id == "personal-biggest-climb");
+        recap.HighlightedMatchIds.Should().Contain(matchThree.Id);
+    }
+
+    [Fact]
+    public async Task GetFinalSummaryAsync_ShouldPreferEightInterestingGlobalFactsWhenDataAllows()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var tomek, out _);
+        var matchOne = AddSettledMatch(dbContext, 1, "POL", "GER", DateTime.UtcNow.AddDays(-4), homeScore: 2, awayScore: 1);
+        var matchTwo = AddSettledMatch(dbContext, 2, "FRA", "ESP", DateTime.UtcNow.AddDays(-3), homeScore: 1, awayScore: 1);
+        var matchThree = AddSettledMatch(dbContext, 3, "BRA", "ARG", DateTime.UtcNow.AddDays(-2), homeScore: 3, awayScore: 0);
+        var matchFour = AddSettledMatch(dbContext, 4, "USA", "JPN", DateTime.UtcNow.AddDays(-1), homeScore: 0, awayScore: 0);
+        foreach (var match in new[] { matchOne, matchTwo, matchThree, matchFour })
+        {
+            AddSnapshot(dbContext, match.Id, marek.Id, totalPoints: match.MatchNumber * 3, exact: match.MatchNumber, outcome: match.MatchNumber + 1, predictions: match.MatchNumber, position: Math.Max(1, 5 - match.MatchNumber), createdAtUtc: match.KickoffTimeUtc.AddHours(2));
+            AddSnapshot(dbContext, match.Id, tomek.Id, totalPoints: match.MatchNumber, exact: 0, outcome: match.MatchNumber, predictions: match.MatchNumber, position: match.MatchNumber + 1, createdAtUtc: match.KickoffTimeUtc.AddHours(2));
+            AddPrediction(dbContext, marek.Id, match.Id, match.HomeScore90!.Value, match.AwayScore90!.Value, points: 3, exact: true, outcome: true);
+            AddPrediction(dbContext, tomek.Id, match.Id, match.HomeScore90.Value, match.AwayScore90.Value + 1, points: match.HomeScore90 == match.AwayScore90 ? 0 : 1, exact: false, outcome: match.HomeScore90 != match.AwayScore90);
+        }
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var summary = await service.GetFinalSummaryAsync();
+
+        summary.GlobalFacts.Count.Should().BeGreaterThanOrEqualTo(8);
+        summary.GlobalFacts.Select(fact => fact.Id).Should().Contain(new[]
+        {
+            "biggest-climb",
+            "biggest-drop",
+            "most-exact-match",
+            "draw-specialist",
+            "strongest-finish",
+            "scoreline-magnet",
+            "most-consistent",
+            "one-goal-away",
+        });
+    }
+
     private static FinalSummaryService CreateService(WorldCupTyperDbContext dbContext)
     {
         return new FinalSummaryService(dbContext);

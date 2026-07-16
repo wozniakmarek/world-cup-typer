@@ -60,6 +60,26 @@ public sealed class FinalSummaryService : IFinalSummaryService
         var finalEntry = summary.FinalTop.FirstOrDefault(entry => entry.UserId == userId);
         if (finalEntry is not null)
         {
+            var settledMatches = await _dbContext.Matches
+                .AsNoTracking()
+                .Where(match => match.IsSettled)
+                .Include(match => match.HomeTeam)
+                .Include(match => match.AwayTeam)
+                .OrderBy(match => match.KickoffTimeUtc)
+                .ThenBy(match => match.MatchNumber)
+                .ToListAsync(cancellationToken);
+            var settledMatchIds = settledMatches.Select(match => match.Id).ToList();
+            var predictionRows = await LoadPredictionRowsAsync(new[] { userId }, settledMatchIds, cancellationToken);
+            var personalFacts = BuildPersonalFacts(
+                finalEntry,
+                summary.PositionSeries.FirstOrDefault(series => series.UserId == userId),
+                predictionRows,
+                settledMatches);
+            var highlightedMatchIds = personalFacts
+                .SelectMany(fact => fact.RelatedMatchIds)
+                .Distinct()
+                .ToList();
+
             return new PersonalFinalSummaryResponseDto(
                 finalEntry.UserId,
                 finalEntry.DisplayName,
@@ -69,8 +89,8 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 finalEntry.ExactScoreHits,
                 finalEntry.CorrectOutcomeHits,
                 finalEntry.PredictionsCount,
-                Array.Empty<FinalSummaryFactDto>(),
-                Array.Empty<Guid>());
+                personalFacts,
+                highlightedMatchIds);
         }
 
         var user = await _dbContext.Users
@@ -138,6 +158,8 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 prediction.MatchId,
                 prediction.PredictedHomeScore,
                 prediction.PredictedAwayScore,
+                prediction.Match.HomeScore90,
+                prediction.Match.AwayScore90,
                 prediction.Result!.Points,
                 prediction.Result.IsExactScore,
                 prediction.Result.IsCorrectOutcome,
@@ -150,6 +172,8 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 row.MatchId,
                 row.PredictedHomeScore,
                 row.PredictedAwayScore,
+                row.HomeScore90,
+                row.AwayScore90,
                 row.Points,
                 row.IsExactScore,
                 row.IsCorrectOutcome))
@@ -257,7 +281,97 @@ public sealed class FinalSummaryService : IFinalSummaryService
         AddBiggestDropFact(facts, seriesData);
         AddMostExactMatchFact(facts, predictionRows, settledMatches);
         AddDrawSpecialistFact(facts, predictionRows, settledMatches, activeUserDisplayNames);
+        AddStrongestFinishFact(facts, seriesData);
+        AddScorelineMagnetFact(facts, predictionRows);
+        AddMostConsistentFact(facts, predictionRows, activeUserDisplayNames);
+        AddOneGoalAwayFact(facts, predictionRows, settledMatches, activeUserDisplayNames);
         return facts;
+    }
+
+    private static List<FinalSummaryFactDto> BuildPersonalFacts(
+        FinalRankingEntryDto finalEntry,
+        FinalRankingPositionSeriesDto? positionSeries,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<Match> settledMatches)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var facts = new List<FinalSummaryFactDto>();
+
+        facts.Add(new FinalSummaryFactDto(
+            "personal-final-rank",
+            "Finalne miejsce",
+            $"Miejsce #{finalEntry.FinalPosition}",
+            $"{finalEntry.DisplayName} konczy z {finalEntry.TotalPoints} pkt, {finalEntry.ExactScoreHits} dokladnymi wynikami i {finalEntry.CorrectOutcomeHits} trafionymi rozstrzygnieciami.",
+            new[] { finalEntry.UserId },
+            Array.Empty<Guid>()));
+
+        if (positionSeries is not null && positionSeries.Points.Count > 1)
+        {
+            var firstPosition = positionSeries.Points.First().Position;
+            var climb = firstPosition - positionSeries.FinalPosition;
+            if (climb > 0)
+            {
+                facts.Add(new FinalSummaryFactDto(
+                    "personal-biggest-climb",
+                    "Najwiekszy awans",
+                    $"Awans o {climb} miejsc",
+                    $"{finalEntry.DisplayName} przesunal sie z miejsca {firstPosition} na {positionSeries.FinalPosition}.",
+                    new[] { finalEntry.UserId },
+                    positionSeries.Points.Select(point => point.MatchId).TakeLast(1).ToList()));
+            }
+        }
+
+        var bestPoints = predictionRows.Count == 0
+            ? 0
+            : predictionRows.Max(row => row.Points);
+        if (bestPoints > 0)
+        {
+            var bestMatchIds = predictionRows
+                .Where(row => row.Points == bestPoints)
+                .Select(row => row.MatchId)
+                .Where(matchById.ContainsKey)
+                .OrderBy(matchId => matchById[matchId].MatchNumber)
+                .ToList();
+
+            facts.Add(new FinalSummaryFactDto(
+                "personal-best-match",
+                "Najlepszy mecz",
+                $"Najlepszy typ: {bestPoints} pkt",
+                $"{JoinNames(bestMatchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))} dal najwiecej punktow w pojedynczym typie.",
+                new[] { finalEntry.UserId },
+                bestMatchIds));
+        }
+
+        var favoriteScoreline = predictionRows
+            .GroupBy(row => new { row.PredictedHomeScore, row.PredictedAwayScore })
+            .Select(group => new
+            {
+                group.Key.PredictedHomeScore,
+                group.Key.PredictedAwayScore,
+                Count = group.Count(),
+                MatchIds = group.Select(row => row.MatchId).Where(matchById.ContainsKey).ToList(),
+            })
+            .OrderByDescending(entry => entry.Count)
+            .ThenBy(entry => entry.PredictedHomeScore)
+            .ThenBy(entry => entry.PredictedAwayScore)
+            .FirstOrDefault();
+
+        if (favoriteScoreline is not null)
+        {
+            facts.Add(new FinalSummaryFactDto(
+                "personal-favorite-scoreline",
+                "Ulubiony wynik",
+                $"{favoriteScoreline.PredictedHomeScore}:{favoriteScoreline.PredictedAwayScore} typowane {favoriteScoreline.Count} razy",
+                $"{finalEntry.DisplayName} najczesciej wybieral wynik {favoriteScoreline.PredictedHomeScore}:{favoriteScoreline.PredictedAwayScore}.",
+                new[] { finalEntry.UserId },
+                favoriteScoreline.MatchIds));
+        }
+
+        return facts
+            .GroupBy(fact => fact.Id)
+            .Select(group => group.First())
+            .Take(5)
+            .ToList();
     }
 
     private static void AddBiggestClimbFact(List<FinalSummaryFactDto> facts, IReadOnlyCollection<FinalPositionSeriesData> seriesData)
@@ -426,6 +540,156 @@ public sealed class FinalSummaryService : IFinalSummaryService
             relatedMatchIds));
     }
 
+    private static void AddStrongestFinishFact(List<FinalSummaryFactDto> facts, IReadOnlyCollection<FinalPositionSeriesData> seriesData)
+    {
+        var finishes = seriesData
+            .Where(data => data.Series.Points.Count > 1)
+            .Select(data =>
+            {
+                var points = data.Series.Points.ToList();
+                var midpointIndex = Math.Max(0, (points.Count / 2) - 1);
+                var secondHalfGain = points.Last().TotalPoints - points[midpointIndex].TotalPoints;
+
+                return new
+                {
+                    data.Series.UserId,
+                    data.Series.DisplayName,
+                    Gain = secondHalfGain,
+                };
+            })
+            .Where(entry => entry.Gain > 0)
+            .ToList();
+
+        if (finishes.Count == 0)
+        {
+            return;
+        }
+
+        var maxGain = finishes.Max(entry => entry.Gain);
+        var winners = finishes
+            .Where(entry => entry.Gain == maxGain)
+            .OrderBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        facts.Add(new FinalSummaryFactDto(
+            "strongest-finish",
+            "Najmocniejszy finisz",
+            $"Punkty w drugiej polowie: +{maxGain}",
+            $"{JoinNames(winners.Select(winner => winner.DisplayName))} zdobyli najwiecej punktow w drugiej polowie turnieju.",
+            winners.Select(winner => winner.UserId).ToList(),
+            Array.Empty<Guid>()));
+    }
+
+    private static void AddScorelineMagnetFact(List<FinalSummaryFactDto> facts, IReadOnlyCollection<PredictionSummaryRow> predictionRows)
+    {
+        var scorelines = predictionRows
+            .GroupBy(row => new { row.PredictedHomeScore, row.PredictedAwayScore })
+            .Select(group => new
+            {
+                group.Key.PredictedHomeScore,
+                group.Key.PredictedAwayScore,
+                Count = group.Count(),
+                UserIds = group.Select(row => row.UserId).Distinct().ToList(),
+                MatchIds = group.Select(row => row.MatchId).Distinct().ToList(),
+            })
+            .OrderByDescending(entry => entry.Count)
+            .ThenBy(entry => entry.PredictedHomeScore)
+            .ThenBy(entry => entry.PredictedAwayScore)
+            .FirstOrDefault();
+
+        if (scorelines is null)
+        {
+            return;
+        }
+
+        facts.Add(new FinalSummaryFactDto(
+            "scoreline-magnet",
+            "Magnes na wynik",
+            $"{scorelines.PredictedHomeScore}:{scorelines.PredictedAwayScore} typowane {scorelines.Count} razy",
+            $"Najczesciej wybieranym wynikiem bylo {scorelines.PredictedHomeScore}:{scorelines.PredictedAwayScore}.",
+            scorelines.UserIds,
+            scorelines.MatchIds));
+    }
+
+    private static void AddMostConsistentFact(
+        List<FinalSummaryFactDto> facts,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyDictionary<Guid, string> activeUserDisplayNames)
+    {
+        var predictionCounts = predictionRows
+            .GroupBy(row => row.UserId)
+            .Select(group => new
+            {
+                UserId = group.Key,
+                Count = group.Count(),
+            })
+            .Where(entry => entry.Count > 0)
+            .ToList();
+
+        if (predictionCounts.Count == 0)
+        {
+            return;
+        }
+
+        var maxCount = predictionCounts.Max(entry => entry.Count);
+        var userIds = predictionCounts
+            .Where(entry => entry.Count == maxCount)
+            .Select(entry => entry.UserId)
+            .OrderBy(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : string.Empty, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        facts.Add(new FinalSummaryFactDto(
+            "most-consistent",
+            "Najbardziej regularni",
+            $"Rozliczone typy: {maxCount}",
+            $"{JoinNames(userIds.Select(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))} mieli najwiecej rozliczonych typow.",
+            userIds,
+            Array.Empty<Guid>()));
+    }
+
+    private static void AddOneGoalAwayFact(
+        List<FinalSummaryFactDto> facts,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<Match> settledMatches,
+        IReadOnlyDictionary<Guid, string> activeUserDisplayNames)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var nearMisses = predictionRows
+            .Where(row =>
+                !row.IsExactScore
+                && row.HomeScore90.HasValue
+                && row.AwayScore90.HasValue
+                && Math.Abs(row.PredictedHomeScore - row.HomeScore90.Value) + Math.Abs(row.PredictedAwayScore - row.AwayScore90.Value) == 1)
+            .GroupBy(row => row.UserId)
+            .Select(group => new
+            {
+                UserId = group.Key,
+                Count = group.Count(),
+                MatchIds = group.Select(row => row.MatchId).Where(matchById.ContainsKey).Distinct().ToList(),
+            })
+            .Where(entry => entry.Count > 0)
+            .ToList();
+
+        if (nearMisses.Count == 0)
+        {
+            return;
+        }
+
+        var maxCount = nearMisses.Max(entry => entry.Count);
+        var winners = nearMisses
+            .Where(entry => entry.Count == maxCount)
+            .OrderBy(entry => activeUserDisplayNames.TryGetValue(entry.UserId, out var displayName) ? displayName : string.Empty, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        facts.Add(new FinalSummaryFactDto(
+            "one-goal-away",
+            "O wlos od dokladnego",
+            $"Jedna bramka od wyniku: {maxCount}",
+            $"{JoinNames(winners.Select(winner => activeUserDisplayNames.TryGetValue(winner.UserId, out var displayName) ? displayName : "Gracz"))} najczesciej byli jedna bramke od dokladnego wyniku.",
+            winners.Select(winner => winner.UserId).ToList(),
+            winners.SelectMany(winner => winner.MatchIds).Distinct().OrderBy(matchId => matchById[matchId].MatchNumber).ToList()));
+    }
+
     private static string BuildMatchLabel(Match match)
     {
         var home = match.HomeTeam.ShortName.Trim();
@@ -450,6 +714,8 @@ public sealed class FinalSummaryService : IFinalSummaryService
         Guid MatchId,
         int PredictedHomeScore,
         int PredictedAwayScore,
+        int? HomeScore90,
+        int? AwayScore90,
         int Points,
         bool IsExactScore,
         bool IsCorrectOutcome);
