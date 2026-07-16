@@ -3,11 +3,13 @@ import type {
   AdminMatch,
   AuthResponse,
   CurrentUser,
+  FinalSummaryResponse,
   LeaderboardEntry,
   MatchDetails,
   MatchPredictionsResponse,
   MatchSummary,
   MyPrediction,
+  PersonalFinalSummaryResponse,
   Player,
   PredictionSummary,
   RankingProgressPoint,
@@ -130,6 +132,11 @@ export const rankingApi = {
   getMine: async () => (await apiClient.get<LeaderboardEntry>('/ranking/me')).data,
   getProgress: async () => (await apiClient.get<RankingProgressPoint[]>('/ranking/progress')).data,
   getProgressForRanking: async () => (await apiClient.get<RankingProgressSeries[]>('/ranking/progress/all')).data,
+}
+
+export const summaryApi = {
+  getFinal: async () => (await apiClient.get<FinalSummaryResponse>('/summary/final')).data,
+  getMine: async () => (await apiClient.get<PersonalFinalSummaryResponse>('/summary/final/me')).data,
 }
 
 export const notificationsApi = {

@@ -24,44 +24,62 @@ test('strona logowania ładuje się poprawnie', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Wejdź do aplikacji' })).toBeVisible()
 })
 
-test('publiczny home pokazuje landing z rankingiem przed logowaniem', async ({ page }) => {
-  test.skip(!isLocalPreview, 'Publiczny landing z mockowanym API sprawdzamy lokalnie')
+test('publiczny home pokazuje finalne podsumowanie turnieju', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Publiczny final summary z mockowanym API sprawdzamy lokalnie')
 
-  await page.route('**/api/ranking/top', async (route) =>
+  await page.route('**/api/summary/final', async (route) =>
     route.fulfill({
-      json: [
-        {
-          position: 1,
-          userId: 'user-1',
-          displayName: 'Marek',
-          totalPoints: 18,
-          exactScoreHits: 4,
-          correctOutcomeHits: 6,
-          predictionsCount: 12,
-          avatarUrl: null,
-          isCurrentUser: false,
+      json: {
+        stats: {
+          settledMatchesCount: 76,
+          activePlayersCount: 24,
+          finalLeaderUserId: 'user-1',
+          finalLeaderDisplayName: 'Marek',
         },
-        {
-          position: 2,
-          userId: 'user-2',
-          displayName: 'Kuba',
-          totalPoints: 15,
-          exactScoreHits: 3,
-          correctOutcomeHits: 6,
-          predictionsCount: 11,
-          avatarUrl: null,
-          isCurrentUser: false,
-        },
-      ],
+        positionSeries: [
+          {
+            userId: 'user-1',
+            displayName: 'Marek',
+            avatarUrl: null,
+            finalPosition: 1,
+            finalPoints: 121,
+            isCurrentUser: false,
+            points: [
+              { matchId: 'match-1', matchNumber: 1, matchLabel: 'POL-GER', snapshotAtUtc: '2026-06-11T20:00:00Z', position: 2, totalPoints: 3 },
+              { matchId: 'match-2', matchNumber: 2, matchLabel: 'FRA-ESP', snapshotAtUtc: '2026-06-12T20:00:00Z', position: 1, totalPoints: 6 },
+            ],
+          },
+          {
+            userId: 'user-2',
+            displayName: 'Tomek',
+            avatarUrl: null,
+            finalPosition: 2,
+            finalPoints: 117,
+            isCurrentUser: false,
+            points: [
+              { matchId: 'match-1', matchNumber: 1, matchLabel: 'POL-GER', snapshotAtUtc: '2026-06-11T20:00:00Z', position: 1, totalPoints: 3 },
+              { matchId: 'match-2', matchNumber: 2, matchLabel: 'FRA-ESP', snapshotAtUtc: '2026-06-12T20:00:00Z', position: 2, totalPoints: 4 },
+            ],
+          },
+        ],
+        finalTop: [
+          { userId: 'user-1', displayName: 'Marek', avatarUrl: null, finalPosition: 1, totalPoints: 121, exactScoreHits: 24, correctOutcomeHits: 73, predictionsCount: 104, isCurrentUser: false },
+          { userId: 'user-2', displayName: 'Tomek', avatarUrl: null, finalPosition: 2, totalPoints: 117, exactScoreHits: 22, correctOutcomeHits: 71, predictionsCount: 104, isCurrentUser: false },
+        ],
+        globalFacts: [
+          { id: 'biggest-climb', label: 'Najwiekszy skok', title: 'Marek: +7 miejsc', description: 'Najmocniejszy ruch tabeli.', relatedUserIds: ['user-1'], relatedMatchIds: [] },
+          { id: 'most-exact-match', label: 'Najbardziej trafiony mecz', title: 'POL-GER: 8 dokladnych', description: 'Wspolny jackpot kolejki.', relatedUserIds: [], relatedMatchIds: ['match-1'] },
+        ],
+      },
     }),
   )
 
   await page.goto('/')
 
-  await expect(page.getByRole('heading', { name: 'Typer Mistrzostw Świata' })).toBeVisible()
-  await expect(page.getByText('Publiczny ranking')).toBeVisible()
-  await expect(page.locator('#ranking').getByText('Marek')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Przejdź do logowania' })).toHaveAttribute('href', '/login')
+  await expect(page.getByRole('heading', { name: 'Cala tabela, mecz po meczu' })).toBeVisible()
+  await expect(page.getByText('Animowana pelna tabela')).toBeVisible()
+  await expect(page.getByText('Najwiekszy skok')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Zaloguj sie po swoj recap' })).toHaveAttribute('href', '/login')
 })
 
 const roles = [

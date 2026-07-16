@@ -12,8 +12,8 @@ import { LoginPage } from '../features/auth/LoginPage'
 import { MatchDetailsPage } from '../features/matches/MatchDetailsPage'
 import { MatchesPage } from '../features/matches/MatchesPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
-import { PublicHomePage } from '../features/public/PublicHomePage'
 import { RankingPage } from '../features/ranking/RankingPage'
+import { FinalSummaryPage } from '../features/summary/FinalSummaryPage'
 
 const RootRoute = () => {
   const { isAuthenticated, isInitializing, requiresPasswordChange } = useAuth()
@@ -27,7 +27,7 @@ const RootRoute = () => {
   }
 
   if (!isAuthenticated) {
-    return <PublicHomePage />
+    return <FinalSummaryPage />
   }
 
   if (requiresPasswordChange) {
