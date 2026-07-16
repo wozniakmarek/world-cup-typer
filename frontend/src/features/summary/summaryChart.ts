@@ -49,25 +49,12 @@ export const buildFinalChartRows = (series: FinalRankingPositionSeries[]) => {
     }
   }
 
-  return [...rowsByMatch.values()].sort((first, second) => {
-    if (first.matchNumber !== second.matchNumber) {
-      return first.matchNumber - second.matchNumber
-    }
-
-    return String(first.snapshotAtUtc).localeCompare(String(second.snapshotAtUtc))
-  })
+  return [...rowsByMatch.values()]
 }
 
 const getFirstAndLastPositions = (player: FinalRankingPositionSeries) => {
-  const sortedPoints = [...player.points].sort((first, second) => {
-    if (first.matchNumber !== second.matchNumber) {
-      return first.matchNumber - second.matchNumber
-    }
-
-    return first.snapshotAtUtc.localeCompare(second.snapshotAtUtc)
-  })
-  const first = sortedPoints[0]
-  const last = sortedPoints.at(-1)
+  const first = player.points[0]
+  const last = player.points.at(-1)
 
   if (!first || !last) {
     return null

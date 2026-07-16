@@ -36,13 +36,28 @@ const usePrefersReducedMotion = () => {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined
+    }
+
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches)
 
     updatePreference()
-    mediaQuery.addEventListener('change', updatePreference)
 
-    return () => mediaQuery.removeEventListener('change', updatePreference)
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updatePreference)
+
+      return () => mediaQuery.removeEventListener('change', updatePreference)
+    }
+
+    if (typeof mediaQuery.addListener !== 'function') {
+      return undefined
+    }
+
+    mediaQuery.addListener(updatePreference)
+
+    return () => mediaQuery.removeListener(updatePreference)
   }, [])
 
   return prefersReducedMotion
@@ -99,6 +114,8 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
   const selectedUserIdSet = useMemo(() => new Set(selectedUserIds), [selectedUserIds])
   const climbUserIdSet = useMemo(() => new Set(getBiggestClimbUserIds(series)), [series])
   const dropUserIdSet = useMemo(() => new Set(getBiggestDropUserIds(series)), [series])
+  const hasCurrentUserLine = playerLines.some((player) => player.isCurrentUser)
+  const hasSelectedPlayers = selectedUserIds.length > 0
 
   const matchCount = chartRows.length
   const needsScroll = matchCount > 12
@@ -120,7 +137,7 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
       return playerLines.filter((player) => player.finalPosition <= 3).map((player) => player.userId)
     }
 
-    if (filterMode === 'mine') {
+    if (filterMode === 'mine' && hasCurrentUserLine) {
       return playerLines.filter((player) => player.isCurrentUser).map((player) => player.userId)
     }
 
@@ -132,7 +149,7 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
       return [...dropUserIdSet]
     }
 
-    if (filterMode === 'selected' && selectedUserIds.length > 0) {
+    if (filterMode === 'selected' && hasSelectedPlayers) {
       return selectedUserIds
     }
 
@@ -144,12 +161,20 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
   const hasFocusedLine = focusedUserIds.length > 0
 
   const toggleSelectedPlayer = (userId: string) => {
-    setFilterMode('selected')
-    setSelectedUserIds((currentUserIds) =>
-      currentUserIds.includes(userId)
-        ? currentUserIds.filter((currentUserId) => currentUserId !== userId)
-        : [...currentUserIds, userId],
-    )
+    setSelectedUserIds((currentUserIds) => {
+      if (!currentUserIds.includes(userId)) {
+        setFilterMode('selected')
+        return [...currentUserIds, userId]
+      }
+
+      const nextUserIds = currentUserIds.filter((currentUserId) => currentUserId !== userId)
+
+      if (nextUserIds.length === 0) {
+        setFilterMode('all')
+      }
+
+      return nextUserIds
+    })
   }
 
   return (
@@ -175,6 +200,14 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
       <div className="mt-5 flex flex-wrap gap-2">
         {filterButtons.map((filter) => {
           const isActive = filterMode === filter.mode
+          const isDisabled =
+            (filter.mode === 'mine' && !hasCurrentUserLine) || (filter.mode === 'selected' && !hasSelectedPlayers)
+          const disabledTitle =
+            filter.mode === 'mine'
+              ? 'Mój przebieg jest dostępny po zalogowaniu.'
+              : filter.mode === 'selected'
+                ? 'Wybierz najpierw zawodnika z listy.'
+                : undefined
 
           return (
             <button
@@ -182,10 +215,12 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
               className={`rounded-full border px-3 py-2 text-sm font-semibold transition ${
                 isActive
                   ? 'border-emerald-300/70 bg-emerald-300/15 text-white'
-                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/25 hover:text-white'
+                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-white/10 disabled:hover:text-slate-300'
               }`}
               type="button"
-              aria-pressed={isActive}
+              aria-pressed={isActive && !isDisabled}
+              disabled={isDisabled}
+              title={isDisabled ? disabledTitle : undefined}
               onClick={() => setFilterMode(filter.mode)}
             >
               {filter.label}
@@ -253,7 +288,7 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
                     return (
                       <Line
                         key={player.userId}
-                        type="monotone"
+                        type="linear"
                         dataKey={player.userId}
                         name={player.displayName}
                         stroke={player.color}
