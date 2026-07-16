@@ -655,11 +655,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
     {
         var matchById = settledMatches.ToDictionary(match => match.Id);
         var nearMisses = predictionRows
-            .Where(row =>
-                !row.IsExactScore
-                && row.HomeScore90.HasValue
-                && row.AwayScore90.HasValue
-                && Math.Abs(row.PredictedHomeScore - row.HomeScore90.Value) + Math.Abs(row.PredictedAwayScore - row.AwayScore90.Value) == 1)
+            .Where(row => !row.IsExactScore)
             .GroupBy(row => row.UserId)
             .Select(group => new
             {

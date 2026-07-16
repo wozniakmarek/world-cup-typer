@@ -238,6 +238,35 @@ public sealed class FinalSummaryServiceTests
         });
     }
 
+    [Fact]
+    public async Task GetFinalSummaryAsync_ShouldCountAllNonExactSettledPredictionsForOneGoalAwayFact()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var tomek, out _);
+        var matchOne = AddSettledMatch(dbContext, 1, "POL", "GER", DateTime.UtcNow.AddDays(-4), homeScore: 2, awayScore: 1);
+        var matchTwo = AddSettledMatch(dbContext, 2, "FRA", "ESP", DateTime.UtcNow.AddDays(-3), homeScore: 1, awayScore: 1);
+        var matchThree = AddSettledMatch(dbContext, 3, "BRA", "ARG", DateTime.UtcNow.AddDays(-2), homeScore: 3, awayScore: 0);
+        var matchFour = AddSettledMatch(dbContext, 4, "USA", "JPN", DateTime.UtcNow.AddDays(-1), homeScore: 0, awayScore: 0);
+        foreach (var match in new[] { matchOne, matchTwo, matchThree, matchFour })
+        {
+            AddSnapshot(dbContext, match.Id, marek.Id, totalPoints: match.MatchNumber, exact: 0, outcome: match.MatchNumber, predictions: match.MatchNumber, position: 1, createdAtUtc: match.KickoffTimeUtc.AddHours(2));
+            AddSnapshot(dbContext, match.Id, tomek.Id, totalPoints: match.MatchNumber, exact: 0, outcome: match.MatchNumber, predictions: match.MatchNumber, position: 2, createdAtUtc: match.KickoffTimeUtc.AddHours(2));
+        }
+        AddPrediction(dbContext, marek.Id, matchOne.Id, 0, 4, points: 0, exact: false, outcome: false);
+        AddPrediction(dbContext, marek.Id, matchTwo.Id, 4, 0, points: 0, exact: false, outcome: false);
+        AddPrediction(dbContext, marek.Id, matchThree.Id, 0, 3, points: 0, exact: false, outcome: false);
+        AddPrediction(dbContext, tomek.Id, matchFour.Id, 0, 1, points: 0, exact: false, outcome: false);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var summary = await service.GetFinalSummaryAsync();
+
+        var oneGoalAway = summary.GlobalFacts.Single(fact => fact.Id == "one-goal-away");
+        oneGoalAway.RelatedUserIds.Should().Equal(marek.Id);
+        oneGoalAway.RelatedMatchIds.Should().Equal(matchOne.Id, matchTwo.Id, matchThree.Id);
+        oneGoalAway.Title.Should().Contain("3");
+    }
+
     private static FinalSummaryService CreateService(WorldCupTyperDbContext dbContext)
     {
         return new FinalSummaryService(dbContext);
