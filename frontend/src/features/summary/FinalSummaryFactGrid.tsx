@@ -9,7 +9,7 @@ export const FinalSummaryFactGrid = ({ facts }: FinalSummaryFactGridProps) => {
   if (facts.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-white/15 bg-slate-950/45 p-5 text-sm leading-6 text-slate-300">
-        Ciekawostki z finalu pojawia sie tutaj po przeliczeniu danych turnieju.
+        Ciekawostki z finału pojawią się tutaj po przeliczeniu danych turnieju.
       </div>
     )
   }

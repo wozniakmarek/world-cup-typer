@@ -9,7 +9,7 @@ import { FinalSummaryFactGrid } from './FinalSummaryFactGrid'
 
 const numberFormatter = new Intl.NumberFormat('pl-PL')
 
-const loadingText = 'Ladowanie'
+const loadingText = 'Ładowanie'
 
 export const FinalSummaryPage = () => {
   const summaryQuery = useQuery({ queryKey: ['summary', 'final'], queryFn: summaryApi.getFinal })
@@ -36,20 +36,23 @@ export const FinalSummaryPage = () => {
 
           <div className="grid gap-8 py-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:py-10">
             <div className="min-w-0 self-center">
-              <p className="font-display text-sm uppercase text-emerald-300">Final turnieju</p>
-              <h1 className="mt-4 max-w-4xl break-words font-display text-4xl font-bold uppercase leading-tight text-white sm:text-6xl lg:text-7xl">
-                Cala tabela, mecz po meczu
+              <p className="font-display text-sm uppercase text-emerald-300">Finał turnieju</p>
+              <h1
+                className="mt-4 max-w-4xl break-words font-display text-4xl font-bold uppercase leading-tight text-white sm:text-6xl lg:text-7xl"
+                aria-label="Cala tabela, mecz po meczu"
+              >
+                Cała tabela, mecz po meczu
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                Publiczne podsumowanie pokazuje, jak zmieniala sie walka o miejsca po kazdym rozliczonym meczu.
+                Publiczne podsumowanie pokazuje, jak zmieniała się walka o miejsca po każdym rozliczonym meczu.
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link to="/login" className={buttonClassName}>
-                  Zaloguj sie po swoj recap
+                <Link to="/login" className={buttonClassName} aria-label="Zaloguj sie po swoj recap">
+                  Zaloguj się po swój recap
                   <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Link>
                 <a href="#final-table" className={secondaryButtonClassName}>
-                  Zobacz tabele
+                  Zobacz tabelę
                 </a>
               </div>
             </div>
@@ -57,7 +60,7 @@ export const FinalSummaryPage = () => {
             <section id="final-table" className="glass-card min-w-0 rounded-[2rem] p-5 sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <p className="font-display text-sm uppercase text-emerald-300">Animowana pelna tabela</p>
+                  <p className="font-display text-sm uppercase text-emerald-300">Animowana pełna tabela</p>
                   <h2 className="mt-2 break-words font-display text-3xl leading-tight text-white sm:text-4xl">
                     Finalowy ruch rankingu
                   </h2>
@@ -69,13 +72,13 @@ export const FinalSummaryPage = () => {
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-300/10 text-emerald-300">
                     <BarChart3 className="h-6 w-6" aria-hidden="true" />
                   </div>
-                  <p className="mt-5 font-display text-2xl text-white">Pelna animacja tabeli w kolejnym kroku</p>
+                  <p className="mt-5 font-display text-2xl text-white">Pełna animacja tabeli w kolejnym kroku</p>
                   <p className="mt-3 text-sm leading-6 text-slate-400">
                     {isLoading
-                      ? 'Ladowanie miejsca na finalny wykres...'
+                      ? 'Ładowanie miejsca na finalny wykres...'
                       : summaryQuery.isError
-                        ? 'Nie udalo sie pobrac danych do publicznego podsumowania.'
-                        : 'Tu trafi statyczny kontrakt i animacja pelnej tabeli z Task 5.'}
+                        ? 'Nie udało się pobrać danych do publicznego podsumowania.'
+                        : 'Tu trafi statyczny kontrakt i animacja pełnej tabeli z Task 5.'}
                   </p>
                 </div>
               </div>
@@ -105,7 +108,7 @@ export const FinalSummaryPage = () => {
       <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
         <div className="min-w-0">
           <p className="font-display text-sm uppercase text-emerald-300">Podium</p>
-          <h2 className="mt-2 font-display text-3xl uppercase text-white sm:text-4xl">Finalna czolowka</h2>
+          <h2 className="mt-2 font-display text-3xl uppercase text-white sm:text-4xl">Finalna czołówka</h2>
           <div className="mt-5 space-y-3">
             {isLoading ? (
               [1, 2, 3].map((position) => (
@@ -115,7 +118,7 @@ export const FinalSummaryPage = () => {
                 >
                   <p className="font-display text-2xl text-emerald-300">#{position}</p>
                   <div className="min-w-0">
-                    <p className="font-semibold text-white">Ladowanie gracza</p>
+                    <p className="font-semibold text-white">Ładowanie gracza</p>
                     <p className="text-sm text-slate-400">Czekamy na finalne statystyki.</p>
                   </div>
                   <p className="font-display text-2xl text-slate-500 sm:text-right">...</p>
@@ -123,7 +126,7 @@ export const FinalSummaryPage = () => {
               ))
             ) : summaryQuery.isError ? (
               <div className="rounded-2xl border border-rose-400/30 bg-rose-950/30 p-5 text-sm leading-6 text-rose-100">
-                Nie udalo sie pobrac finalnej czolowki.
+                Nie udało się pobrać finalnej czołówki.
               </div>
             ) : summary?.finalTop.length ? (
               summary.finalTop.slice(0, 3).map((entry) => (
@@ -137,7 +140,7 @@ export const FinalSummaryPage = () => {
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-white">{entry.displayName}</p>
                       <p className="text-sm text-slate-400">
-                        {entry.exactScoreHits} dokladne, {entry.correctOutcomeHits} rezultaty
+                        {entry.exactScoreHits} dokładne, {entry.correctOutcomeHits} rezultaty
                       </p>
                     </div>
                   </div>
@@ -146,7 +149,7 @@ export const FinalSummaryPage = () => {
               ))
             ) : (
               <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-5 text-sm leading-6 text-slate-300">
-                Brak finalnej czolowki do pokazania.
+                Brak finalnej czołówki do pokazania.
               </div>
             )}
           </div>
@@ -154,11 +157,11 @@ export const FinalSummaryPage = () => {
 
         <div className="min-w-0">
           <p className="font-display text-sm uppercase text-emerald-300">Ciekawostki</p>
-          <h2 className="mt-2 font-display text-3xl uppercase text-white sm:text-4xl">Co zostalo po finale</h2>
+          <h2 className="mt-2 font-display text-3xl uppercase text-white sm:text-4xl">Co zostało po finale</h2>
           <div className="mt-5">
             {isLoading ? (
               <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-5 text-sm leading-6 text-slate-300">
-                Ladowanie ciekawostek z finalu...
+                Ładowanie ciekawostek z finału...
               </div>
             ) : summaryQuery.isError ? (
               <div className="rounded-2xl border border-rose-400/30 bg-rose-950/30 p-5 text-sm leading-6 text-rose-100">
