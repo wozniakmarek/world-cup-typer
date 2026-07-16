@@ -88,6 +88,69 @@ public sealed class FinalSummaryServiceTests
         summary.GlobalFacts.Count.Should().BeGreaterThanOrEqualTo(4);
     }
 
+    [Fact]
+    public async Task GetFinalSummaryAsync_ShouldOrderPositionPointsByKickoffThenMatchNumberBeforeSnapshotTime()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out _, out var inactive);
+        inactive.IsActive = false;
+        var kickoffTimeUtc = DateTime.UtcNow.AddDays(-1);
+        var matchOne = AddSettledMatch(dbContext, 1, "POL", "GER", kickoffTimeUtc);
+        var matchTwo = AddSettledMatch(dbContext, 2, "FRA", "ESP", kickoffTimeUtc);
+        AddSnapshot(dbContext, matchOne.Id, marek.Id, totalPoints: 3, exact: 1, outcome: 1, predictions: 1, position: 2, createdAtUtc: kickoffTimeUtc.AddHours(4));
+        AddSnapshot(dbContext, matchTwo.Id, marek.Id, totalPoints: 4, exact: 1, outcome: 2, predictions: 2, position: 1, createdAtUtc: kickoffTimeUtc.AddHours(2));
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var summary = await service.GetFinalSummaryAsync(marek.Id);
+
+        var points = summary.PositionSeries.Single(series => series.UserId == marek.Id).Points.ToList();
+        points.Select(point => point.MatchNumber).Should().Equal(1, 2);
+        points.Select(point => point.MatchId).Should().Equal(matchOne.Id, matchTwo.Id);
+        points.Select(point => point.SnapshotAtUtc).Should().Equal(kickoffTimeUtc.AddHours(4), kickoffTimeUtc.AddHours(2));
+    }
+
+    [Fact]
+    public async Task GetFinalSummaryAsync_ShouldIncludeActivePredictionLeaderWithoutSnapshots()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var tomek, out var inactive);
+        inactive.IsActive = false;
+        var ola = CreateUser("Ola");
+        dbContext.Users.Add(ola);
+        var matchOne = AddSettledMatch(dbContext, 1, "MEX", "RSA", DateTime.UtcNow.AddDays(-2), homeScore: 2, awayScore: 0);
+        var matchTwo = AddSettledMatch(dbContext, 2, "FRA", "ESP", DateTime.UtcNow.AddDays(-1), homeScore: 1, awayScore: 1);
+        AddSnapshot(dbContext, matchOne.Id, marek.Id, totalPoints: 3, exact: 1, outcome: 1, predictions: 1, position: 1, createdAtUtc: matchOne.KickoffTimeUtc.AddHours(2));
+        AddSnapshot(dbContext, matchTwo.Id, marek.Id, totalPoints: 4, exact: 1, outcome: 2, predictions: 2, position: 2, createdAtUtc: matchTwo.KickoffTimeUtc.AddHours(2));
+        AddPrediction(dbContext, marek.Id, matchOne.Id, 2, 0, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, marek.Id, matchTwo.Id, 0, 0, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, ola.Id, matchOne.Id, 2, 0, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, ola.Id, matchTwo.Id, 1, 1, points: 3, exact: true, outcome: true);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var summary = await service.GetFinalSummaryAsync(ola.Id);
+        var personal = await service.GetPersonalFinalSummaryAsync(ola.Id);
+
+        summary.PositionSeries.Select(series => series.UserId).Should().Equal(marek.Id);
+        summary.Stats.ActivePlayersCount.Should().Be(3);
+        summary.Stats.FinalLeaderUserId.Should().Be(ola.Id);
+        summary.Stats.FinalLeaderDisplayName.Should().Be("Ola");
+        summary.FinalTop.Select(entry => entry.UserId).Should().Equal(ola.Id, marek.Id, tomek.Id);
+        var olaFinalTop = summary.FinalTop.Single(entry => entry.UserId == ola.Id);
+        olaFinalTop.FinalPosition.Should().Be(1);
+        olaFinalTop.TotalPoints.Should().Be(6);
+        olaFinalTop.ExactScoreHits.Should().Be(2);
+        olaFinalTop.CorrectOutcomeHits.Should().Be(2);
+        olaFinalTop.PredictionsCount.Should().Be(2);
+        olaFinalTop.IsCurrentUser.Should().BeTrue();
+        personal.FinalPosition.Should().Be(1);
+        personal.TotalPoints.Should().Be(6);
+        personal.ExactScoreHits.Should().Be(2);
+        personal.CorrectOutcomeHits.Should().Be(2);
+        personal.PredictionsCount.Should().Be(2);
+    }
+
     private static FinalSummaryService CreateService(WorldCupTyperDbContext dbContext)
     {
         return new FinalSummaryService(dbContext);

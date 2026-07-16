@@ -40,7 +40,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
         var predictionStatsByUser = BuildPredictionStatsByUser(predictionRows);
         var seriesData = BuildPositionSeries(snapshots, currentUserId);
         var positionSeries = seriesData.Select(data => data.Series).ToList();
-        var finalTop = BuildFinalTop(seriesData, predictionStatsByUser, currentUserId);
+        var finalTop = BuildFinalTop(activeUsers, predictionStatsByUser, currentUserId);
         var finalLeader = finalTop.FirstOrDefault();
 
         return new FinalSummaryResponseDto(
@@ -177,8 +177,8 @@ public sealed class FinalSummaryService : IFinalSummaryService
             {
                 var orderedSnapshots = group
                     .OrderBy(snapshot => snapshot.Match.KickoffTimeUtc)
-                    .ThenBy(snapshot => snapshot.CreatedAtUtc)
                     .ThenBy(snapshot => snapshot.Match.MatchNumber)
+                    .ThenBy(snapshot => snapshot.CreatedAtUtc)
                     .ToList();
                 var finalSnapshot = orderedSnapshots.Last();
                 var user = finalSnapshot.User;
@@ -208,35 +208,40 @@ public sealed class FinalSummaryService : IFinalSummaryService
     }
 
     private static List<FinalRankingEntryDto> BuildFinalTop(
-        IReadOnlyCollection<FinalPositionSeriesData> seriesData,
+        IReadOnlyCollection<ApplicationUser> activeUsers,
         IReadOnlyDictionary<Guid, PlayerStats> predictionStatsByUser,
         Guid? currentUserId)
     {
-        return seriesData
-            .Select(data =>
+        return activeUsers
+            .Select(user =>
             {
-                var snapshot = data.FinalSnapshot;
-                var stats = predictionStatsByUser.TryGetValue(snapshot.UserId, out var predictionStats)
+                var stats = predictionStatsByUser.TryGetValue(user.Id, out var predictionStats)
                     ? predictionStats
-                    : new PlayerStats(
-                        snapshot.TotalPoints,
-                        snapshot.ExactScoreHits,
-                        snapshot.CorrectOutcomeHits,
-                        snapshot.PredictionsCount);
+                    : new PlayerStats(0, 0, 0, 0);
 
-                return new FinalRankingEntryDto(
-                    snapshot.UserId,
-                    data.Series.DisplayName,
-                    data.Series.AvatarUrl,
-                    data.Series.FinalPosition,
-                    stats.TotalPoints,
-                    stats.ExactScoreHits,
-                    stats.CorrectOutcomeHits,
-                    stats.PredictionsCount,
-                    currentUserId.HasValue && currentUserId.Value == snapshot.UserId);
+                return new
+                {
+                    user.Id,
+                    user.DisplayName,
+                    user.AvatarUrl,
+                    Stats = stats,
+                };
             })
-            .OrderBy(entry => entry.FinalPosition)
+            .OrderByDescending(entry => entry.Stats.TotalPoints)
+            .ThenByDescending(entry => entry.Stats.ExactScoreHits)
+            .ThenByDescending(entry => entry.Stats.CorrectOutcomeHits)
+            .ThenByDescending(entry => entry.Stats.PredictionsCount)
             .ThenBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select((entry, index) => new FinalRankingEntryDto(
+                entry.Id,
+                entry.DisplayName,
+                entry.AvatarUrl,
+                index + 1,
+                entry.Stats.TotalPoints,
+                entry.Stats.ExactScoreHits,
+                entry.Stats.CorrectOutcomeHits,
+                entry.Stats.PredictionsCount,
+                currentUserId.HasValue && currentUserId.Value == entry.Id))
             .ToList();
     }
 
