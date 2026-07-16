@@ -265,6 +265,34 @@ public sealed class FinalSummaryServiceTests
         oneGoalAway.RelatedUserIds.Should().Equal(marek.Id);
         oneGoalAway.RelatedMatchIds.Should().Equal(matchOne.Id, matchTwo.Id, matchThree.Id);
         oneGoalAway.Title.Should().Contain("3");
+        $"{oneGoalAway.Label} {oneGoalAway.Title} {oneGoalAway.Description}".Should().NotContain("Jedna bramka").And.NotContain("jedna bramke");
+    }
+
+    [Fact]
+    public async Task GetPersonalFinalSummaryAsync_ShouldReturnMovementAndPredictionFactsForPlayerWhoDrops()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var tomek, out _);
+        var matchOne = AddSettledMatch(dbContext, 1, "POL", "GER", DateTime.UtcNow.AddDays(-3), homeScore: 2, awayScore: 1);
+        var matchTwo = AddSettledMatch(dbContext, 2, "FRA", "ESP", DateTime.UtcNow.AddDays(-2), homeScore: 1, awayScore: 1);
+        var matchThree = AddSettledMatch(dbContext, 3, "BRA", "ARG", DateTime.UtcNow.AddDays(-1), homeScore: 3, awayScore: 0);
+        AddSnapshot(dbContext, matchOne.Id, marek.Id, totalPoints: 3, exact: 1, outcome: 1, predictions: 1, position: 1, createdAtUtc: matchOne.KickoffTimeUtc.AddHours(2));
+        AddSnapshot(dbContext, matchTwo.Id, marek.Id, totalPoints: 3, exact: 1, outcome: 1, predictions: 2, position: 3, createdAtUtc: matchTwo.KickoffTimeUtc.AddHours(2));
+        AddSnapshot(dbContext, matchThree.Id, marek.Id, totalPoints: 3, exact: 1, outcome: 1, predictions: 3, position: 4, createdAtUtc: matchThree.KickoffTimeUtc.AddHours(2));
+        AddSnapshot(dbContext, matchThree.Id, tomek.Id, totalPoints: 9, exact: 3, outcome: 3, predictions: 3, position: 1, createdAtUtc: matchThree.KickoffTimeUtc.AddHours(2));
+        AddPrediction(dbContext, marek.Id, matchOne.Id, 2, 1, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, marek.Id, matchTwo.Id, 4, 0, points: 0, exact: false, outcome: false);
+        AddPrediction(dbContext, marek.Id, matchThree.Id, 0, 3, points: 0, exact: false, outcome: false);
+        AddPrediction(dbContext, tomek.Id, matchThree.Id, 3, 0, points: 3, exact: true, outcome: true);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var recap = await service.GetPersonalFinalSummaryAsync(marek.Id);
+
+        recap.DisplayName.Should().Be("Marek");
+        recap.PersonalFacts.Count.Should().BeGreaterThanOrEqualTo(3);
+        recap.PersonalFacts.Should().Contain(fact => fact.Id == "personal-biggest-drop");
+        recap.PersonalFacts.Should().Contain(fact => fact.Id == "personal-non-exact-count");
     }
 
     private static FinalSummaryService CreateService(WorldCupTyperDbContext dbContext)

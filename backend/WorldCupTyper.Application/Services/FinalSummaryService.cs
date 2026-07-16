@@ -158,8 +158,6 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 prediction.MatchId,
                 prediction.PredictedHomeScore,
                 prediction.PredictedAwayScore,
-                prediction.Match.HomeScore90,
-                prediction.Match.AwayScore90,
                 prediction.Result!.Points,
                 prediction.Result.IsExactScore,
                 prediction.Result.IsCorrectOutcome,
@@ -172,8 +170,6 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 row.MatchId,
                 row.PredictedHomeScore,
                 row.PredictedAwayScore,
-                row.HomeScore90,
-                row.AwayScore90,
                 row.Points,
                 row.IsExactScore,
                 row.IsCorrectOutcome))
@@ -319,6 +315,18 @@ public sealed class FinalSummaryService : IFinalSummaryService
                     new[] { finalEntry.UserId },
                     positionSeries.Points.Select(point => point.MatchId).TakeLast(1).ToList()));
             }
+
+            var drop = positionSeries.FinalPosition - firstPosition;
+            if (drop > 0)
+            {
+                facts.Add(new FinalSummaryFactDto(
+                    "personal-biggest-drop",
+                    "Zmiana pozycji",
+                    $"Spadek o {drop} miejsc",
+                    $"{finalEntry.DisplayName} zaczynal na miejscu {firstPosition}, a zakonczyl na {positionSeries.FinalPosition}.",
+                    new[] { finalEntry.UserId },
+                    positionSeries.Points.Select(point => point.MatchId).TakeLast(1).ToList()));
+            }
         }
 
         var bestPoints = predictionRows.Count == 0
@@ -365,6 +373,23 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 $"{finalEntry.DisplayName} najczesciej wybieral wynik {favoriteScoreline.PredictedHomeScore}:{favoriteScoreline.PredictedAwayScore}.",
                 new[] { finalEntry.UserId },
                 favoriteScoreline.MatchIds));
+        }
+
+        var nonExactRows = predictionRows.Where(row => !row.IsExactScore).ToList();
+        if (nonExactRows.Count > 0)
+        {
+            facts.Add(new FinalSummaryFactDto(
+                "personal-non-exact-count",
+                "Typy blisko celu",
+                $"Niedokladne typy: {nonExactRows.Count}",
+                $"{finalEntry.DisplayName} mial {nonExactRows.Count} rozliczonych typow bez dokladnego wyniku.",
+                new[] { finalEntry.UserId },
+                nonExactRows
+                    .Select(row => row.MatchId)
+                    .Where(matchById.ContainsKey)
+                    .Distinct()
+                    .OrderBy(matchId => matchById[matchId].MatchNumber)
+                    .ToList()));
         }
 
         return facts
@@ -679,9 +704,9 @@ public sealed class FinalSummaryService : IFinalSummaryService
 
         facts.Add(new FinalSummaryFactDto(
             "one-goal-away",
-            "O wlos od dokladnego",
-            $"Jedna bramka od wyniku: {maxCount}",
-            $"{JoinNames(winners.Select(winner => activeUserDisplayNames.TryGetValue(winner.UserId, out var displayName) ? displayName : "Gracz"))} najczesciej byli jedna bramke od dokladnego wyniku.",
+            "Najwiecej niedokladnych typow",
+            $"Niedokladne typy: {maxCount}",
+            $"{JoinNames(winners.Select(winner => activeUserDisplayNames.TryGetValue(winner.UserId, out var displayName) ? displayName : "Gracz"))} mieli najwiecej rozliczonych typow bez dokladnego wyniku.",
             winners.Select(winner => winner.UserId).ToList(),
             winners.SelectMany(winner => winner.MatchIds).Distinct().OrderBy(matchId => matchById[matchId].MatchNumber).ToList()));
     }
@@ -710,8 +735,6 @@ public sealed class FinalSummaryService : IFinalSummaryService
         Guid MatchId,
         int PredictedHomeScore,
         int PredictedAwayScore,
-        int? HomeScore90,
-        int? AwayScore90,
         int Points,
         bool IsExactScore,
         bool IsCorrectOutcome);
