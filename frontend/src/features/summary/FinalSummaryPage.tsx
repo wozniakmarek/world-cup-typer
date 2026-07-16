@@ -9,10 +9,17 @@ import { FinalSummaryFactGrid } from './FinalSummaryFactGrid'
 
 const numberFormatter = new Intl.NumberFormat('pl-PL')
 
+const loadingText = 'Ladowanie'
+
 export const FinalSummaryPage = () => {
   const summaryQuery = useQuery({ queryKey: ['summary', 'final'], queryFn: summaryApi.getFinal })
   const summary = summaryQuery.data
   const leader = summary?.finalTop[0]
+  const isLoading = summaryQuery.isLoading
+
+  const settledMatchesText = summary ? numberFormatter.format(summary.stats.settledMatchesCount) : loadingText
+  const activePlayersText = summary ? numberFormatter.format(summary.stats.activePlayersCount) : loadingText
+  const leaderText = summary ? (summary.stats.finalLeaderDisplayName ?? leader?.displayName ?? '-') : loadingText
 
   return (
     <main className="min-h-screen overflow-hidden bg-pitch-950 text-slate-100">
@@ -57,14 +64,14 @@ export const FinalSummaryPage = () => {
                 </div>
                 <BarChart3 className="h-8 w-8 shrink-0 text-emerald-300" aria-hidden="true" />
               </div>
-              <div className="mt-6 flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-white/15 bg-slate-950/55 p-5">
+              <div className="mt-6 flex min-h-64 items-center justify-center px-2 py-8">
                 <div className="max-w-md text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-300/10 text-emerald-300">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-300/10 text-emerald-300">
                     <BarChart3 className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <p className="mt-5 font-display text-2xl text-white">Pelna animacja tabeli w kolejnym kroku</p>
                   <p className="mt-3 text-sm leading-6 text-slate-400">
-                    {summaryQuery.isLoading
+                    {isLoading
                       ? 'Ladowanie miejsca na finalny wykres...'
                       : summaryQuery.isError
                         ? 'Nie udalo sie pobrac danych do publicznego podsumowania.'
@@ -81,17 +88,17 @@ export const FinalSummaryPage = () => {
         <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
           <Medal className="h-5 w-5 text-emerald-300" aria-hidden="true" />
           <p className="mt-3 text-sm text-slate-400">Rozliczone mecze</p>
-          <p className="font-display text-3xl text-white">{numberFormatter.format(summary?.stats.settledMatchesCount ?? 0)}</p>
+          <p className="font-display text-3xl text-white">{settledMatchesText}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
           <Users className="h-5 w-5 text-emerald-300" aria-hidden="true" />
           <p className="mt-3 text-sm text-slate-400">Aktywni gracze</p>
-          <p className="font-display text-3xl text-white">{numberFormatter.format(summary?.stats.activePlayersCount ?? 0)}</p>
+          <p className="font-display text-3xl text-white">{activePlayersText}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
           <Trophy className="h-5 w-5 text-emerald-300" aria-hidden="true" />
           <p className="mt-3 text-sm text-slate-400">Finalny lider</p>
-          <p className="truncate font-display text-3xl text-white">{summary?.stats.finalLeaderDisplayName ?? leader?.displayName ?? '-'}</p>
+          <p className="truncate font-display text-3xl text-white">{leaderText}</p>
         </div>
       </section>
 
@@ -100,24 +107,48 @@ export const FinalSummaryPage = () => {
           <p className="font-display text-sm uppercase text-emerald-300">Podium</p>
           <h2 className="mt-2 font-display text-3xl uppercase text-white sm:text-4xl">Finalna czolowka</h2>
           <div className="mt-5 space-y-3">
-            {(summary?.finalTop ?? []).slice(0, 3).map((entry) => (
-              <article
-                key={entry.userId}
-                className="grid min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-4 sm:grid-cols-[3rem_1fr_auto]"
-              >
-                <p className="font-display text-2xl text-emerald-300">#{entry.finalPosition}</p>
-                <div className="flex min-w-0 items-center gap-3">
-                  <UserAvatar displayName={entry.displayName} avatarUrl={entry.avatarUrl} size="sm" />
+            {isLoading ? (
+              [1, 2, 3].map((position) => (
+                <article
+                  key={position}
+                  className="grid min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-4 sm:grid-cols-[3rem_1fr_auto]"
+                >
+                  <p className="font-display text-2xl text-emerald-300">#{position}</p>
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-white">{entry.displayName}</p>
-                    <p className="text-sm text-slate-400">
-                      {entry.exactScoreHits} dokladne, {entry.correctOutcomeHits} rezultaty
-                    </p>
+                    <p className="font-semibold text-white">Ladowanie gracza</p>
+                    <p className="text-sm text-slate-400">Czekamy na finalne statystyki.</p>
                   </div>
-                </div>
-                <p className="font-display text-3xl text-white sm:text-right">{entry.totalPoints}</p>
-              </article>
-            ))}
+                  <p className="font-display text-2xl text-slate-500 sm:text-right">...</p>
+                </article>
+              ))
+            ) : summaryQuery.isError ? (
+              <div className="rounded-2xl border border-rose-400/30 bg-rose-950/30 p-5 text-sm leading-6 text-rose-100">
+                Nie udalo sie pobrac finalnej czolowki.
+              </div>
+            ) : summary?.finalTop.length ? (
+              summary.finalTop.slice(0, 3).map((entry) => (
+                <article
+                  key={entry.userId}
+                  className="grid min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-4 sm:grid-cols-[3rem_1fr_auto]"
+                >
+                  <p className="font-display text-2xl text-emerald-300">#{entry.finalPosition}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <UserAvatar displayName={entry.displayName} avatarUrl={entry.avatarUrl} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-white">{entry.displayName}</p>
+                      <p className="text-sm text-slate-400">
+                        {entry.exactScoreHits} dokladne, {entry.correctOutcomeHits} rezultaty
+                      </p>
+                    </div>
+                  </div>
+                  <p className="font-display text-3xl text-white sm:text-right">{entry.totalPoints}</p>
+                </article>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-5 text-sm leading-6 text-slate-300">
+                Brak finalnej czolowki do pokazania.
+              </div>
+            )}
           </div>
         </div>
 
@@ -125,7 +156,11 @@ export const FinalSummaryPage = () => {
           <p className="font-display text-sm uppercase text-emerald-300">Ciekawostki</p>
           <h2 className="mt-2 font-display text-3xl uppercase text-white sm:text-4xl">Co zostalo po finale</h2>
           <div className="mt-5">
-            {summaryQuery.isError ? (
+            {isLoading ? (
+              <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-5 text-sm leading-6 text-slate-300">
+                Ladowanie ciekawostek z finalu...
+              </div>
+            ) : summaryQuery.isError ? (
               <div className="rounded-2xl border border-rose-400/30 bg-rose-950/30 p-5 text-sm leading-6 text-rose-100">
                 {getErrorMessage(summaryQuery.error)}
               </div>

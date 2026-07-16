@@ -78,7 +78,11 @@ test('publiczny home pokazuje finalne podsumowanie turnieju', async ({ page }) =
 
   await expect(page.getByRole('heading', { name: 'Cala tabela, mecz po meczu' })).toBeVisible()
   await expect(page.getByText('Animowana pelna tabela')).toBeVisible()
+  await expect(page.locator('#final-table .border-dashed')).toHaveCount(0)
   await expect(page.locator('#final-table').getByText('Marek')).not.toBeVisible()
+  await expect(page.getByText('76', { exact: true })).toBeVisible()
+  await expect(page.getByText('24', { exact: true })).toBeVisible()
+  await expect(page.getByText('121', { exact: true })).toBeVisible()
   await expect(page.getByText('Najwiekszy skok')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Zaloguj sie po swoj recap' })).toHaveAttribute('href', '/login')
 })
