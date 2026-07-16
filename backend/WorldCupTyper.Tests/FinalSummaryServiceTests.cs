@@ -16,12 +16,16 @@ public sealed class FinalSummaryServiceTests
         SeedUsers(dbContext, out var marek, out var tomek, out var inactive);
         inactive.IsActive = false;
         var matchOne = AddSettledMatch(dbContext, 1, "POL", "GER", DateTime.UtcNow.AddDays(-2));
-        var matchTwo = AddSettledMatch(dbContext, 2, "FRA", "ESP", DateTime.UtcNow.AddDays(-1));
+        var matchTwo = AddSettledMatch(dbContext, 2, string.Empty, "ESP", DateTime.UtcNow.AddDays(-1));
         AddSnapshot(dbContext, matchOne.Id, marek.Id, totalPoints: 3, exact: 1, outcome: 1, predictions: 1, position: 2, createdAtUtc: matchOne.KickoffTimeUtc.AddHours(2));
         AddSnapshot(dbContext, matchTwo.Id, marek.Id, totalPoints: 9, exact: 3, outcome: 3, predictions: 2, position: 1, createdAtUtc: matchTwo.KickoffTimeUtc.AddHours(2));
         AddSnapshot(dbContext, matchOne.Id, tomek.Id, totalPoints: 6, exact: 2, outcome: 2, predictions: 1, position: 1, createdAtUtc: matchOne.KickoffTimeUtc.AddHours(2));
         AddSnapshot(dbContext, matchTwo.Id, tomek.Id, totalPoints: 7, exact: 2, outcome: 3, predictions: 2, position: 2, createdAtUtc: matchTwo.KickoffTimeUtc.AddHours(2));
         AddSnapshot(dbContext, matchTwo.Id, inactive.Id, totalPoints: 99, exact: 33, outcome: 33, predictions: 2, position: 1, createdAtUtc: matchTwo.KickoffTimeUtc.AddHours(2));
+        AddPrediction(dbContext, marek.Id, matchOne.Id, 1, 0, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, marek.Id, matchTwo.Id, 0, 0, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, tomek.Id, matchOne.Id, 0, 1, points: 0, exact: false, outcome: false);
+        AddPrediction(dbContext, tomek.Id, matchTwo.Id, 1, 0, points: 3, exact: true, outcome: true);
         await dbContext.SaveChangesAsync();
 
         var service = CreateService(dbContext);
@@ -30,10 +34,29 @@ public sealed class FinalSummaryServiceTests
         summary.Stats.SettledMatchesCount.Should().Be(2);
         summary.Stats.ActivePlayersCount.Should().Be(2);
         summary.Stats.FinalLeaderUserId.Should().Be(marek.Id);
+        summary.Stats.FinalLeaderDisplayName.Should().Be("Marek");
         summary.PositionSeries.Select(series => series.DisplayName).Should().Equal("Marek", "Tomek");
         summary.PositionSeries.Single(series => series.UserId == marek.Id).IsCurrentUser.Should().BeTrue();
-        summary.PositionSeries.Single(series => series.UserId == marek.Id).Points.Select(point => point.Position).Should().Equal(2, 1);
+        var marekPoints = summary.PositionSeries.Single(series => series.UserId == marek.Id).Points.ToList();
+        marekPoints.Select(point => point.Position).Should().Equal(2, 1);
+        marekPoints.Select(point => point.MatchId).Should().Equal(matchOne.Id, matchTwo.Id);
+        marekPoints.Select(point => point.MatchNumber).Should().Equal(1, 2);
+        marekPoints.Select(point => point.MatchLabel).Should().Equal("POL-GER", "M2");
+        marekPoints.Select(point => point.SnapshotAtUtc).Should().Equal(matchOne.KickoffTimeUtc.AddHours(2), matchTwo.KickoffTimeUtc.AddHours(2));
+        marekPoints.Select(point => point.TotalPoints).Should().Equal(3, 9);
         summary.FinalTop.Select(entry => entry.DisplayName).Should().Equal("Marek", "Tomek");
+        var marekFinalTop = summary.FinalTop.Single(entry => entry.UserId == marek.Id);
+        marekFinalTop.TotalPoints.Should().Be(4);
+        marekFinalTop.ExactScoreHits.Should().Be(1);
+        marekFinalTop.CorrectOutcomeHits.Should().Be(2);
+        marekFinalTop.PredictionsCount.Should().Be(2);
+        marekFinalTop.IsCurrentUser.Should().BeTrue();
+        var tomekFinalTop = summary.FinalTop.Single(entry => entry.UserId == tomek.Id);
+        tomekFinalTop.TotalPoints.Should().Be(3);
+        tomekFinalTop.ExactScoreHits.Should().Be(1);
+        tomekFinalTop.CorrectOutcomeHits.Should().Be(1);
+        tomekFinalTop.PredictionsCount.Should().Be(2);
+        tomekFinalTop.IsCurrentUser.Should().BeFalse();
     }
 
     [Fact]
@@ -59,7 +82,9 @@ public sealed class FinalSummaryServiceTests
         summary.GlobalFacts.Should().Contain(fact => fact.Id == "biggest-climb" && fact.RelatedUserIds.Contains(marek.Id));
         summary.GlobalFacts.Should().Contain(fact => fact.Id == "biggest-drop" && fact.RelatedUserIds.Contains(tomek.Id));
         summary.GlobalFacts.Should().Contain(fact => fact.Id == "most-exact-match" && fact.RelatedMatchIds.Contains(matchOne.Id));
-        summary.GlobalFacts.Should().Contain(fact => fact.Id == "draw-specialist");
+        var drawSpecialist = summary.GlobalFacts.Single(fact => fact.Id == "draw-specialist");
+        drawSpecialist.RelatedUserIds.Should().Equal(marek.Id, tomek.Id);
+        drawSpecialist.RelatedMatchIds.Should().Equal(matchTwo.Id);
         summary.GlobalFacts.Count.Should().BeGreaterThanOrEqualTo(4);
     }
 
