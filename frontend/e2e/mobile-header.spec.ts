@@ -226,7 +226,7 @@ test('player mobile navigation keeps primary destinations in a fixed thumb bar',
   const navigationBox = await getVisibleBoundingBox(bottomNavigation, 'Could not read mobile bottom nav position.')
   expect(navigationBox.y + navigationBox.height).toBeGreaterThanOrEqual((viewport?.height ?? 0) - 24)
 
-  for (const label of ['Dashboard', 'Mecze', 'Ranking', 'Profil']) {
+  for (const label of ['Dashboard', 'Mój recap', 'Mecze', 'Ranking', 'Profil']) {
     await expect(bottomNavigation.getByRole('link', { name: label, exact: true })).toBeVisible()
   }
 
@@ -239,7 +239,7 @@ test('admin mobile navigation keeps player destinations and exposes admin shortc
   const bottomNavigation = page.getByRole('navigation', { name: 'Nawigacja mobilna gracza' })
   await expect(bottomNavigation).toBeVisible()
 
-  for (const label of ['Dashboard', 'Mecze', 'Ranking', 'Profil']) {
+  for (const label of ['Dashboard', 'Mój recap', 'Mecze', 'Ranking', 'Profil']) {
     await expect(bottomNavigation.getByRole('link', { name: label, exact: true })).toBeVisible()
   }
 

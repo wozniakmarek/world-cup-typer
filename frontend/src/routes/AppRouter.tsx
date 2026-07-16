@@ -14,6 +14,7 @@ import { MatchesPage } from '../features/matches/MatchesPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
 import { RankingPage } from '../features/ranking/RankingPage'
 import { FinalSummaryPage } from '../features/summary/FinalSummaryPage'
+import { PersonalFinalSummaryPage } from '../features/summary/PersonalFinalSummaryPage'
 
 const RootRoute = () => {
   const { isAuthenticated, isInitializing, requiresPasswordChange } = useAuth()
@@ -63,6 +64,7 @@ export const AppRouter = () => {
           <Route path="/matches" element={<MatchesPage />} />
           <Route path="/matches/:matchId" element={<MatchDetailsPage />} />
           <Route path="/ranking" element={<RankingPage />} />
+          <Route path="/summary/final/me" element={<PersonalFinalSummaryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
         <Route

@@ -11,6 +11,7 @@ import { FinalSummaryFactGrid } from './FinalSummaryFactGrid'
 const numberFormatter = new Intl.NumberFormat('pl-PL')
 
 const loadingText = 'Ładowanie'
+const personalRecapLoginPath = '/login?returnTo=%2Fsummary%2Ffinal%2Fme'
 
 export const FinalSummaryPage = () => {
   const summaryQuery = useQuery({ queryKey: ['summary', 'final'], queryFn: summaryApi.getFinal })
@@ -48,7 +49,7 @@ export const FinalSummaryPage = () => {
                 Publiczne podsumowanie pokazuje, jak zmieniała się walka o miejsca po każdym rozliczonym meczu.
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link to="/login" className={buttonClassName} aria-label="Zaloguj sie po swoj recap">
+                <Link to={personalRecapLoginPath} className={buttonClassName} aria-label="Zaloguj sie po swoj recap">
                   Zaloguj się po swój recap
                   <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Link>

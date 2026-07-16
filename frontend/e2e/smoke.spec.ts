@@ -7,6 +7,16 @@ const isStagingSmoke = smokeMode === 'staging'
 const isLocalPreview = runsAgainstLocalPreview()
 const runRoleLoginSmoke = shouldRunRoleLoginSmoke({ smokeMode, isLocalPreview })
 
+const localPlayer = {
+  id: 'user-7',
+  email: 'ania@example.com',
+  displayName: 'Ania Kowalska',
+  role: 'Player',
+  isActive: true,
+  requiresPasswordChange: false,
+  avatarUrl: null,
+}
+
 async function login(page: Page, email: string, password: string) {
   await page.goto('/login')
   await page.getByLabel('Login').fill(email)
@@ -89,7 +99,76 @@ test('publiczny home pokazuje finalne podsumowanie turnieju', async ({ page }) =
   await expect(page.getByText('24', { exact: true })).toBeVisible()
   await expect(page.getByText('121', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Marek: +7 miejsc' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Zaloguj sie po swoj recap' })).toHaveAttribute('href', '/login')
+  await expect(page.getByRole('link', { name: 'Zaloguj sie po swoj recap' })).toHaveAttribute(
+    'href',
+    '/login?returnTo=%2Fsummary%2Ffinal%2Fme',
+  )
+})
+
+test('zalogowany gracz widzi swój finałowy recap', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Personal final summary z mockowanym API sprawdzamy lokalnie')
+
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('typer.auth.token', 'test-token')
+    window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
+  }, localPlayer)
+
+  await page.route('**/api/auth/me', async (route) => route.fulfill({ json: localPlayer }))
+  await page.route('**/api/summary/final/me', async (route) =>
+    route.fulfill({
+      json: {
+        userId: localPlayer.id,
+        displayName: localPlayer.displayName,
+        avatarUrl: null,
+        finalPosition: 7,
+        totalPoints: 88,
+        exactScoreHits: 18,
+        correctOutcomeHits: 51,
+        predictionsCount: 76,
+        personalFacts: [
+          {
+            id: 'late-surge',
+            label: 'Twój finisz',
+            title: 'Awans o 5 miejsc w fazie pucharowej',
+            description: 'Najwięcej punktów dorzuciłaś wtedy, gdy tabela była już ciasna.',
+            relatedUserIds: [localPlayer.id],
+            relatedMatchIds: ['match-42'],
+          },
+          {
+            id: 'exact-specialist',
+            label: 'Twój podpis',
+            title: '18 dokładnych wyników',
+            description: 'To były mecze, w których wynik siadł co do bramki.',
+            relatedUserIds: [localPlayer.id],
+            relatedMatchIds: [],
+          },
+        ],
+        highlightedMatchIds: ['match-42'],
+      },
+    }),
+  )
+
+  await page.goto('/summary/final/me')
+
+  await expect(page.getByRole('heading', { name: 'Twój finałowy recap' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: localPlayer.displayName })).toBeVisible()
+  await expect(page.getByText('#7', { exact: true })).toBeVisible()
+  await expect(page.getByText('88', { exact: true })).toBeVisible()
+  await expect(page.getByText('18', { exact: true })).toBeVisible()
+  await expect(page.getByText('51', { exact: true })).toBeVisible()
+  await expect(page.getByText('76', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Awans o 5 miejsc w fazie pucharowej' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '18 dokładnych wyników' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Mój recap', exact: true }).first()).toBeVisible()
+})
+
+test('anonimowy gracz wraca po loginie do chronionego recap', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Return target dla chronionego recap sprawdzamy lokalnie')
+
+  await page.goto('/summary/final/me')
+
+  await expect(page).toHaveURL(/\/login\?returnTo=%2Fsummary%2Ffinal%2Fme$/)
+  await expect(page.getByText('Logowanie')).toBeVisible()
 })
 
 const roles = [

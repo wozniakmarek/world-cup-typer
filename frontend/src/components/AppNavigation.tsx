@@ -1,11 +1,12 @@
 import clsx from 'clsx'
-import { CalendarDays, LayoutDashboard, LogOut, Shield, Trophy, UserCircle2, UsersRound } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, LogOut, Shield, Sparkles, Trophy, UserCircle2, UsersRound } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
 import { UserAvatar } from './UserAvatar'
 
 const commonLinks = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/summary/final/me', label: 'Mój recap', icon: Sparkles },
   { to: '/matches', label: 'Mecze', icon: CalendarDays },
   { to: '/ranking', label: 'Ranking', icon: Trophy },
   { to: '/profile', label: 'Profil', icon: UserCircle2 },
