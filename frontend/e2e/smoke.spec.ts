@@ -78,6 +78,7 @@ test('publiczny home pokazuje finalne podsumowanie turnieju', async ({ page }) =
 
   await expect(page.getByRole('heading', { name: 'Cala tabela, mecz po meczu' })).toBeVisible()
   await expect(page.getByText('Animowana pelna tabela')).toBeVisible()
+  await expect(page.locator('#final-table').getByText('Marek')).not.toBeVisible()
   await expect(page.getByText('Najwiekszy skok')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Zaloguj sie po swoj recap' })).toHaveAttribute('href', '/login')
 })

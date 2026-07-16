@@ -57,29 +57,19 @@ export const FinalSummaryPage = () => {
                 </div>
                 <BarChart3 className="h-8 w-8 shrink-0 text-emerald-300" aria-hidden="true" />
               </div>
-              <div className="mt-6 min-h-64 rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                <div className="grid h-full min-h-56 content-end gap-3">
-                  {(summary?.positionSeries ?? []).slice(0, 5).map((series, index) => (
-                    <div key={series.userId} className="min-w-0">
-                      <div className="mb-1 flex items-center justify-between gap-3 text-xs text-slate-400">
-                        <span className="truncate">{series.displayName}</span>
-                        <span className="shrink-0">#{series.finalPosition}</span>
-                      </div>
-                      <div className="h-3 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-emerald-300"
-                          style={{ width: `${Math.max(16, 92 - index * 12)}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  {!summary?.positionSeries.length && (
-                    <p className="self-center text-sm leading-6 text-slate-400">
-                      {summaryQuery.isLoading
-                        ? 'Ladowanie finalnej tabeli...'
-                        : 'Miejsce na animowany wykres z pelna tabela.'}
-                    </p>
-                  )}
+              <div className="mt-6 flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-white/15 bg-slate-950/55 p-5">
+                <div className="max-w-md text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-300/10 text-emerald-300">
+                    <BarChart3 className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <p className="mt-5 font-display text-2xl text-white">Pelna animacja tabeli w kolejnym kroku</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">
+                    {summaryQuery.isLoading
+                      ? 'Ladowanie miejsca na finalny wykres...'
+                      : summaryQuery.isError
+                        ? 'Nie udalo sie pobrac danych do publicznego podsumowania.'
+                        : 'Tu trafi statyczny kontrakt i animacja pelnej tabeli z Task 5.'}
+                  </p>
                 </div>
               </div>
             </section>
