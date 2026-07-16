@@ -67,8 +67,8 @@ test('publiczny home pokazuje finalne podsumowanie turnieju', async ({ page }) =
           { userId: 'user-2', displayName: 'Tomek', avatarUrl: null, finalPosition: 2, totalPoints: 117, exactScoreHits: 22, correctOutcomeHits: 71, predictionsCount: 104, isCurrentUser: false },
         ],
         globalFacts: [
-          { id: 'biggest-climb', label: 'Najwiekszy skok', title: 'Marek: +7 miejsc', description: 'Najmocniejszy ruch tabeli.', relatedUserIds: ['user-1'], relatedMatchIds: [] },
-          { id: 'most-exact-match', label: 'Najbardziej trafiony mecz', title: 'POL-GER: 8 dokladnych', description: 'Wspolny jackpot kolejki.', relatedUserIds: [], relatedMatchIds: ['match-1'] },
+          { id: 'biggest-climb', label: 'Największy skok', title: 'Marek: +7 miejsc', description: 'Najmocniejszy ruch tabeli.', relatedUserIds: ['user-1'], relatedMatchIds: [] },
+          { id: 'most-exact-match', label: 'Najbardziej trafiony mecz', title: 'POL-GER: 8 dokładnych', description: 'Wspólny jackpot kolejki.', relatedUserIds: [], relatedMatchIds: ['match-1'] },
         ],
       },
     }),
@@ -83,7 +83,7 @@ test('publiczny home pokazuje finalne podsumowanie turnieju', async ({ page }) =
   await expect(page.getByText('76', { exact: true })).toBeVisible()
   await expect(page.getByText('24', { exact: true })).toBeVisible()
   await expect(page.getByText('121', { exact: true })).toBeVisible()
-  await expect(page.getByText('Najwiekszy skok')).toBeVisible()
+  await expect(page.getByText('Największy skok')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Zaloguj sie po swoj recap' })).toHaveAttribute('href', '/login')
 })
 

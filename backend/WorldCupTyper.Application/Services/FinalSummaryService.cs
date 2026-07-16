@@ -297,7 +297,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
             "personal-final-rank",
             "Finalne miejsce",
             $"Miejsce #{finalEntry.FinalPosition}",
-            $"{finalEntry.DisplayName} konczy z {finalEntry.TotalPoints} pkt, {finalEntry.ExactScoreHits} dokladnymi wynikami i {finalEntry.CorrectOutcomeHits} trafionymi rozstrzygnieciami.",
+            $"{finalEntry.DisplayName} kończy z {finalEntry.TotalPoints} pkt, {finalEntry.ExactScoreHits} dokładnymi wynikami i {finalEntry.CorrectOutcomeHits} trafionymi rozstrzygnięciami.",
             new[] { finalEntry.UserId },
             Array.Empty<Guid>()));
 
@@ -309,9 +309,9 @@ public sealed class FinalSummaryService : IFinalSummaryService
             {
                 facts.Add(new FinalSummaryFactDto(
                     "personal-biggest-climb",
-                    "Najwiekszy awans",
+                    "Największy awans",
                     $"Awans o {climb} miejsc",
-                    $"{finalEntry.DisplayName} przesunal sie z miejsca {firstPosition} na {positionSeries.FinalPosition}.",
+                    $"{finalEntry.DisplayName} przesunął się z miejsca {firstPosition} na {positionSeries.FinalPosition}.",
                     new[] { finalEntry.UserId },
                     positionSeries.Points.Select(point => point.MatchId).TakeLast(1).ToList()));
             }
@@ -323,7 +323,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
                     "personal-biggest-drop",
                     "Zmiana pozycji",
                     $"Spadek o {drop} miejsc",
-                    $"{finalEntry.DisplayName} zaczynal na miejscu {firstPosition}, a zakonczyl na {positionSeries.FinalPosition}.",
+                    $"{finalEntry.DisplayName} zaczynał na miejscu {firstPosition}, a zakończył na {positionSeries.FinalPosition}.",
                     new[] { finalEntry.UserId },
                     positionSeries.Points.Select(point => point.MatchId).TakeLast(1).ToList()));
             }
@@ -345,7 +345,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 "personal-best-match",
                 "Najlepszy mecz",
                 $"Najlepszy typ: {bestPoints} pkt",
-                $"{JoinNames(bestMatchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))} dal najwiecej punktow w pojedynczym typie.",
+                $"{JoinNames(bestMatchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))} dał najwięcej punktów w pojedynczym typie.",
                 new[] { finalEntry.UserId },
                 bestMatchIds));
         }
@@ -370,7 +370,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 "personal-favorite-scoreline",
                 "Ulubiony wynik",
                 $"{favoriteScoreline.PredictedHomeScore}:{favoriteScoreline.PredictedAwayScore} typowane {favoriteScoreline.Count} razy",
-                $"{finalEntry.DisplayName} najczesciej wybieral wynik {favoriteScoreline.PredictedHomeScore}:{favoriteScoreline.PredictedAwayScore}.",
+                $"{finalEntry.DisplayName} najczęściej wybierał wynik {favoriteScoreline.PredictedHomeScore}:{favoriteScoreline.PredictedAwayScore}.",
                 new[] { finalEntry.UserId },
                 favoriteScoreline.MatchIds));
         }
@@ -381,8 +381,8 @@ public sealed class FinalSummaryService : IFinalSummaryService
             facts.Add(new FinalSummaryFactDto(
                 "personal-non-exact-count",
                 "Typy blisko celu",
-                $"Niedokladne typy: {nonExactRows.Count}",
-                $"{finalEntry.DisplayName} mial {nonExactRows.Count} rozliczonych typow bez dokladnego wyniku.",
+                $"Niedokładne typy: {nonExactRows.Count}",
+                $"{finalEntry.DisplayName} miał {nonExactRows.Count} rozliczonych typów bez dokładnego wyniku.",
                 new[] { finalEntry.UserId },
                 nonExactRows
                     .Select(row => row.MatchId)
@@ -425,9 +425,9 @@ public sealed class FinalSummaryService : IFinalSummaryService
 
         facts.Add(new FinalSummaryFactDto(
             "biggest-climb",
-            "Najwiekszy awans",
+            "Największy awans",
             $"Awans o {biggestClimb} miejsc",
-            $"{JoinNames(winners.Select(winner => winner.DisplayName))} najmocniej poprawili pozycje od pierwszego do finalnego snapshotu.",
+            $"{JoinNames(winners.Select(winner => winner.DisplayName))}: najmocniejsza poprawa pozycji od pierwszego do finałowego pomiaru.",
             winners.Select(winner => winner.UserId).ToList(),
             Array.Empty<Guid>()));
     }
@@ -458,9 +458,9 @@ public sealed class FinalSummaryService : IFinalSummaryService
 
         facts.Add(new FinalSummaryFactDto(
             "biggest-drop",
-            "Najwiekszy spadek",
+            "Największy spadek",
             $"Spadek o {biggestDrop} miejsc",
-            $"{JoinNames(players.Select(player => player.DisplayName))} stracili najwiecej miejsc od pierwszego do finalnego snapshotu.",
+            $"{JoinNames(players.Select(player => player.DisplayName))}: największa strata miejsc od pierwszego do finałowego pomiaru.",
             players.Select(player => player.UserId).ToList(),
             Array.Empty<Guid>()));
     }
@@ -497,9 +497,9 @@ public sealed class FinalSummaryService : IFinalSummaryService
 
         facts.Add(new FinalSummaryFactDto(
             "most-exact-match",
-            "Najwiecej dokladnych wynikow",
-            $"Najlatwiejszy dokladny wynik: {maxExactHits}",
-            $"{JoinNames(matchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))} mial najwiecej dokladnych typow.",
+            "Najwięcej dokładnych wyników",
+            $"Najłatwiejszy dokładny wynik: {maxExactHits}",
+            $"{JoinNames(matchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))} miał najwięcej dokładnych typów.",
             Array.Empty<Guid>(),
             matchIds));
     }
@@ -558,7 +558,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
 
         facts.Add(new FinalSummaryFactDto(
             "draw-specialist",
-            "Specjalista od remisow",
+            "Specjalista od remisów",
             $"Trafione remisy: {maxHits}",
             $"{JoinNames(userIds.Select(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))} najlepiej czytali remisy.",
             userIds,
@@ -599,8 +599,8 @@ public sealed class FinalSummaryService : IFinalSummaryService
         facts.Add(new FinalSummaryFactDto(
             "strongest-finish",
             "Najmocniejszy finisz",
-            $"Punkty w drugiej polowie: +{maxGain}",
-            $"{JoinNames(winners.Select(winner => winner.DisplayName))} zdobyli najwiecej punktow w drugiej polowie turnieju.",
+            $"Punkty w drugiej połowie: +{maxGain}",
+            $"{JoinNames(winners.Select(winner => winner.DisplayName))}: najwięcej punktów w drugiej połowie turnieju.",
             winners.Select(winner => winner.UserId).ToList(),
             Array.Empty<Guid>()));
     }
@@ -631,7 +631,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
             "scoreline-magnet",
             "Magnes na wynik",
             $"{scorelines.PredictedHomeScore}:{scorelines.PredictedAwayScore} typowane {scorelines.Count} razy",
-            $"Najczesciej wybieranym wynikiem bylo {scorelines.PredictedHomeScore}:{scorelines.PredictedAwayScore}.",
+            $"Najczęściej wybieranym wynikiem było {scorelines.PredictedHomeScore}:{scorelines.PredictedAwayScore}.",
             scorelines.UserIds,
             scorelines.MatchIds));
     }
@@ -667,7 +667,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
             "most-consistent",
             "Najbardziej regularni",
             $"Rozliczone typy: {maxCount}",
-            $"{JoinNames(userIds.Select(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))} mieli najwiecej rozliczonych typow.",
+            $"{JoinNames(userIds.Select(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))}: najwięcej rozliczonych typów.",
             userIds,
             Array.Empty<Guid>()));
     }
@@ -704,9 +704,9 @@ public sealed class FinalSummaryService : IFinalSummaryService
 
         facts.Add(new FinalSummaryFactDto(
             "one-goal-away",
-            "Najwiecej niedokladnych typow",
-            $"Niedokladne typy: {maxCount}",
-            $"{JoinNames(winners.Select(winner => activeUserDisplayNames.TryGetValue(winner.UserId, out var displayName) ? displayName : "Gracz"))} mieli najwiecej rozliczonych typow bez dokladnego wyniku.",
+            "Najwięcej niedokładnych typów",
+            $"Niedokładne typy: {maxCount}",
+            $"{JoinNames(winners.Select(winner => activeUserDisplayNames.TryGetValue(winner.UserId, out var displayName) ? displayName : "Gracz"))}: najwięcej rozliczonych typów bez dokładnego wyniku.",
             winners.Select(winner => winner.UserId).ToList(),
             winners.SelectMany(winner => winner.MatchIds).Distinct().OrderBy(matchId => matchById[matchId].MatchNumber).ToList()));
     }

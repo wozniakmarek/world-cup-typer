@@ -82,6 +82,9 @@ public sealed class FinalSummaryServiceTests
         summary.GlobalFacts.Should().Contain(fact => fact.Id == "biggest-climb" && fact.RelatedUserIds.Contains(marek.Id));
         summary.GlobalFacts.Should().Contain(fact => fact.Id == "biggest-drop" && fact.RelatedUserIds.Contains(tomek.Id));
         summary.GlobalFacts.Should().Contain(fact => fact.Id == "most-exact-match" && fact.RelatedMatchIds.Contains(matchOne.Id));
+        summary.GlobalFacts.Single(fact => fact.Id == "biggest-climb").Label.Should().Be("Największy awans");
+        summary.GlobalFacts.Single(fact => fact.Id == "most-exact-match").Label.Should().Be("Najwięcej dokładnych wyników");
+        summary.GlobalFacts.Single(fact => fact.Id == "most-exact-match").Description.Should().Contain("miał najwięcej dokładnych typów");
         var drawSpecialist = summary.GlobalFacts.Single(fact => fact.Id == "draw-specialist");
         drawSpecialist.RelatedUserIds.Should().Equal(marek.Id, tomek.Id);
         drawSpecialist.RelatedMatchIds.Should().Equal(matchTwo.Id);
@@ -200,6 +203,8 @@ public sealed class FinalSummaryServiceTests
         recap.PersonalFacts.Count.Should().BeGreaterThanOrEqualTo(3);
         recap.PersonalFacts.Should().Contain(fact => fact.Id == "personal-best-match");
         recap.PersonalFacts.Should().Contain(fact => fact.Id == "personal-biggest-climb");
+        recap.PersonalFacts.Single(fact => fact.Id == "personal-final-rank").Description.Should().Contain("kończy").And.Contain("dokładnymi");
+        recap.PersonalFacts.Single(fact => fact.Id == "personal-biggest-climb").Description.Should().Contain("przesunął się");
         recap.HighlightedMatchIds.Should().Contain(matchThree.Id);
     }
 
@@ -266,6 +271,7 @@ public sealed class FinalSummaryServiceTests
         oneGoalAway.RelatedMatchIds.Should().Equal(matchOne.Id, matchTwo.Id, matchThree.Id);
         oneGoalAway.Title.Should().Contain("3");
         $"{oneGoalAway.Label} {oneGoalAway.Title} {oneGoalAway.Description}".Should().NotContain("Jedna bramka").And.NotContain("jedna bramke");
+        $"{oneGoalAway.Label} {oneGoalAway.Title} {oneGoalAway.Description}".Should().Contain("Najwięcej").And.Contain("niedokładnych typów").And.Contain("dokładnego wyniku");
     }
 
     [Fact]
