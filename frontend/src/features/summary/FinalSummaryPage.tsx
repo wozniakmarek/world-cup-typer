@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../api/client'
 import { summaryApi } from '../../api/services'
 import { UserAvatar } from '../../components/UserAvatar'
 import { buttonClassName, secondaryButtonClassName } from '../../styles/ui'
+import { FinalRankingStoryChart } from './FinalRankingStoryChart'
 import { FinalSummaryFactGrid } from './FinalSummaryFactGrid'
 
 const numberFormatter = new Intl.NumberFormat('pl-PL')
@@ -57,32 +58,36 @@ export const FinalSummaryPage = () => {
               </div>
             </div>
 
-            <section id="final-table" className="glass-card min-w-0 rounded-[2rem] p-5 sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <p className="font-display text-sm uppercase text-emerald-300">Animowana pełna tabela</p>
-                  <h2 className="mt-2 break-words font-display text-3xl leading-tight text-white sm:text-4xl">
-                    Finalowy ruch rankingu
-                  </h2>
-                </div>
-                <BarChart3 className="h-8 w-8 shrink-0 text-emerald-300" aria-hidden="true" />
-              </div>
-              <div className="mt-6 flex min-h-64 items-center justify-center px-2 py-8">
-                <div className="max-w-md text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-300/10 text-emerald-300">
-                    <BarChart3 className="h-6 w-6" aria-hidden="true" />
+            {summary ? (
+              <FinalRankingStoryChart series={summary.positionSeries} />
+            ) : (
+              <section id="final-table" className="glass-card min-w-0 rounded-[2rem] p-5 sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-display text-sm uppercase text-emerald-300">Animowana pełna tabela</p>
+                    <h2 className="mt-2 break-words font-display text-3xl leading-tight text-white sm:text-4xl">
+                      Finalowy ruch rankingu
+                    </h2>
                   </div>
-                  <p className="mt-5 font-display text-2xl text-white">Pełna animacja tabeli w kolejnym kroku</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-400">
-                    {isLoading
-                      ? 'Ładowanie miejsca na finalny wykres...'
-                      : summaryQuery.isError
-                        ? 'Nie udało się pobrać danych do publicznego podsumowania.'
-                        : 'Tu trafi statyczny kontrakt i animacja pełnej tabeli z Task 5.'}
-                  </p>
+                  <BarChart3 className="h-8 w-8 shrink-0 text-emerald-300" aria-hidden="true" />
                 </div>
-              </div>
-            </section>
+                <div className="mt-6 flex min-h-64 items-center justify-center px-2 py-8">
+                  <div className="max-w-md text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-300/10 text-emerald-300">
+                      <BarChart3 className="h-6 w-6" aria-hidden="true" />
+                    </div>
+                    <p className="mt-5 font-display text-2xl text-white">
+                      {isLoading ? 'Ładowanie przebiegu tabeli' : 'Nie udało się załadować wykresu'}
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-slate-400">
+                      {summaryQuery.isError
+                        ? 'Spróbuj odświeżyć stronę, żeby ponownie pobrać finalne podsumowanie.'
+                        : 'Za chwilę pokażemy, jak zmieniały się miejsca po każdym meczu.'}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         </div>
       </section>
