@@ -17,11 +17,68 @@ const localPlayer = {
   avatarUrl: null,
 }
 
-async function login(page: Page, email: string, password: string) {
-  await page.goto('/login')
+const localPersonalFinalSummary = {
+  userId: localPlayer.id,
+  displayName: localPlayer.displayName,
+  avatarUrl: null,
+  finalPosition: 7,
+  totalPoints: 88,
+  exactScoreHits: 18,
+  correctOutcomeHits: 51,
+  predictionsCount: 76,
+  personalFacts: [
+    {
+      id: 'late-surge',
+      label: 'Twój finisz',
+      title: 'Awans o 5 miejsc w fazie pucharowej',
+      description: 'Najwięcej punktów dorzuciłaś wtedy, gdy tabela była już ciasna.',
+      relatedUserIds: [localPlayer.id],
+      relatedMatchIds: ['match-42'],
+    },
+    {
+      id: 'exact-specialist',
+      label: 'Twój podpis',
+      title: '18 dokładnych wyników',
+      description: 'To były mecze, w których wynik siadł co do bramki.',
+      relatedUserIds: [localPlayer.id],
+      relatedMatchIds: [],
+    },
+  ],
+  highlightedMatchIds: ['match-42'],
+}
+
+async function mockLocalAuth(page: Page) {
+  await page.route('**/api/auth/me', async (route) => route.fulfill({ json: localPlayer }))
+}
+
+async function mockLocalLogin(page: Page) {
+  await page.route('**/api/auth/login', async (route) =>
+    route.fulfill({
+      json: {
+        token: 'test-token',
+        user: localPlayer,
+      },
+    }),
+  )
+}
+
+async function mockLocalPersonalFinalSummary(page: Page) {
+  await page.route('**/api/summary/final/me', async (route) =>
+    route.fulfill({
+      json: localPersonalFinalSummary,
+    }),
+  )
+}
+
+async function submitLoginForm(page: Page, email: string, password: string) {
   await page.getByLabel('Login').fill(email)
   await page.getByLabel('Hasło').fill(password)
   await page.getByRole('button', { name: 'Wejdź do aplikacji' }).click()
+}
+
+async function login(page: Page, email: string, password: string) {
+  await page.goto('/login')
+  await submitLoginForm(page, email, password)
   await expect(page.getByRole('button', { name: 'Wyloguj' })).toBeVisible({ timeout: 15_000 })
 }
 
@@ -113,40 +170,8 @@ test('zalogowany gracz widzi swój finałowy recap', async ({ page }) => {
     window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
   }, localPlayer)
 
-  await page.route('**/api/auth/me', async (route) => route.fulfill({ json: localPlayer }))
-  await page.route('**/api/summary/final/me', async (route) =>
-    route.fulfill({
-      json: {
-        userId: localPlayer.id,
-        displayName: localPlayer.displayName,
-        avatarUrl: null,
-        finalPosition: 7,
-        totalPoints: 88,
-        exactScoreHits: 18,
-        correctOutcomeHits: 51,
-        predictionsCount: 76,
-        personalFacts: [
-          {
-            id: 'late-surge',
-            label: 'Twój finisz',
-            title: 'Awans o 5 miejsc w fazie pucharowej',
-            description: 'Najwięcej punktów dorzuciłaś wtedy, gdy tabela była już ciasna.',
-            relatedUserIds: [localPlayer.id],
-            relatedMatchIds: ['match-42'],
-          },
-          {
-            id: 'exact-specialist',
-            label: 'Twój podpis',
-            title: '18 dokładnych wyników',
-            description: 'To były mecze, w których wynik siadł co do bramki.',
-            relatedUserIds: [localPlayer.id],
-            relatedMatchIds: [],
-          },
-        ],
-        highlightedMatchIds: ['match-42'],
-      },
-    }),
-  )
+  await mockLocalAuth(page)
+  await mockLocalPersonalFinalSummary(page)
 
   await page.goto('/summary/final/me')
 
@@ -165,10 +190,35 @@ test('zalogowany gracz widzi swój finałowy recap', async ({ page }) => {
 test('anonimowy gracz wraca po loginie do chronionego recap', async ({ page }) => {
   test.skip(!isLocalPreview, 'Return target dla chronionego recap sprawdzamy lokalnie')
 
+  await mockLocalLogin(page)
+  await mockLocalAuth(page)
+  await mockLocalPersonalFinalSummary(page)
+
   await page.goto('/summary/final/me')
 
   await expect(page).toHaveURL(/\/login\?returnTo=%2Fsummary%2Ffinal%2Fme$/)
   await expect(page.getByText('Logowanie')).toBeVisible()
+  await submitLoginForm(page, localPlayer.email, 'test-password')
+
+  await expect(page).toHaveURL(/\/summary\/final\/me$/)
+  await expect(page.getByRole('heading', { name: 'Twój finałowy recap' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: localPlayer.displayName })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Awans o 5 miejsc w fazie pucharowej' })).toBeVisible()
+})
+
+test('login ignoruje zewnętrzny returnTo przy aktywnej sesji', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Bezpieczny returnTo sprawdzamy lokalnie')
+
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('typer.auth.token', 'test-token')
+    window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
+  }, localPlayer)
+  await mockLocalAuth(page)
+
+  await page.goto('/login?returnTo=https%3A%2F%2Fevil.example')
+
+  await expect(page).toHaveURL(/\/$/)
+  expect(new URL(page.url()).origin).not.toBe('https://evil.example')
 })
 
 const roles = [
