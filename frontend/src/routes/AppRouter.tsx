@@ -12,6 +12,7 @@ import { LoginPage } from '../features/auth/LoginPage'
 import { MatchDetailsPage } from '../features/matches/MatchDetailsPage'
 import { MatchesPage } from '../features/matches/MatchesPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
+import { PublicHomePage } from '../features/public/PublicHomePage'
 import { RankingPage } from '../features/ranking/RankingPage'
 import { FinalSummaryPage } from '../features/summary/FinalSummaryPage'
 import { PersonalFinalSummaryPage } from '../features/summary/PersonalFinalSummaryPage'
@@ -28,7 +29,7 @@ const RootRoute = () => {
   }
 
   if (!isAuthenticated) {
-    return <FinalSummaryPage />
+    return <PublicHomePage />
   }
 
   if (requiresPasswordChange) {
@@ -43,6 +44,7 @@ export const AppRouter = () => {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/summary/final" element={<FinalSummaryPage />} />
         <Route path="/" element={<RootRoute />}>
           <Route index element={<DashboardPage />} />
         </Route>

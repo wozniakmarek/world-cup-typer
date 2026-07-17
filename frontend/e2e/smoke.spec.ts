@@ -204,63 +204,60 @@ test('strona logowania ładuje się poprawnie', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Wejdź do aplikacji' })).toBeVisible()
 })
 
-test('publiczny home pokazuje finalne podsumowanie turnieju', async ({ page }) => {
-  test.skip(!isLocalPreview, 'Publiczny final summary z mockowanym API sprawdzamy lokalnie')
+test('publiczny home pokazuje landing z rankingiem przed logowaniem', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Publiczny landing z mockowanym API sprawdzamy lokalnie')
 
-  await page.route('**/api/summary/final', async (route) =>
+  await page.route('**/api/ranking/top', async (route) =>
     route.fulfill({
-      json: {
-        stats: {
-          settledMatchesCount: 76,
-          activePlayersCount: 24,
-          finalLeaderUserId: 'user-1',
-          finalLeaderDisplayName: 'Marek',
+      json: [
+        {
+          position: 1,
+          userId: 'user-1',
+          displayName: 'Marek',
+          totalPoints: 18,
+          exactScoreHits: 4,
+          correctOutcomeHits: 6,
+          predictionsCount: 12,
+          avatarUrl: null,
+          isCurrentUser: false,
         },
-        positionSeries: [
-          {
-            userId: 'user-1',
-            displayName: 'Marek',
-            avatarUrl: null,
-            finalPosition: 1,
-            finalPoints: 121,
-            isCurrentUser: false,
-            points: [
-              { matchId: 'match-1', matchNumber: 1, matchLabel: 'POL-GER', snapshotAtUtc: '2026-06-11T20:00:00Z', position: 2, totalPoints: 3 },
-              { matchId: 'match-2', matchNumber: 2, matchLabel: 'FRA-ESP', snapshotAtUtc: '2026-06-12T20:00:00Z', position: 1, totalPoints: 6 },
-            ],
-          },
-          {
-            userId: 'user-2',
-            displayName: 'Tomek',
-            avatarUrl: null,
-            finalPosition: 2,
-            finalPoints: 117,
-            isCurrentUser: false,
-            points: [
-              { matchId: 'match-1', matchNumber: 1, matchLabel: 'POL-GER', snapshotAtUtc: '2026-06-11T20:00:00Z', position: 1, totalPoints: 3 },
-              { matchId: 'match-2', matchNumber: 2, matchLabel: 'FRA-ESP', snapshotAtUtc: '2026-06-12T20:00:00Z', position: 2, totalPoints: 4 },
-            ],
-          },
-        ],
-        finalTop: [
-          { userId: 'user-1', displayName: 'Marek', avatarUrl: null, finalPosition: 1, totalPoints: 121, exactScoreHits: 24, correctOutcomeHits: 73, predictionsCount: 104, isCurrentUser: false },
-          { userId: 'user-2', displayName: 'Tomek', avatarUrl: null, finalPosition: 2, totalPoints: 117, exactScoreHits: 22, correctOutcomeHits: 71, predictionsCount: 104, isCurrentUser: false },
-        ],
-        globalFacts: [
-          { id: 'biggest-climb', label: 'Największy skok', title: 'Marek: +7 miejsc', description: 'Najmocniejszy ruch tabeli.', relatedUserIds: ['user-1'], relatedMatchIds: [] },
-          { id: 'most-exact-match', label: 'Najbardziej trafiony mecz', title: 'POL-GER: 8 dokładnych', description: 'Wspólny jackpot kolejki.', relatedUserIds: [], relatedMatchIds: ['match-1'] },
-        ],
-      },
+        {
+          position: 2,
+          userId: 'user-2',
+          displayName: 'Kuba',
+          totalPoints: 15,
+          exactScoreHits: 3,
+          correctOutcomeHits: 6,
+          predictionsCount: 11,
+          avatarUrl: null,
+          isCurrentUser: false,
+        },
+      ],
     }),
   )
 
   await page.goto('/')
 
+  await expect(page.getByRole('heading', { name: 'Typer Mistrzostw Świata' })).toBeVisible()
+  await expect(page.getByText('Publiczny ranking')).toBeVisible()
+  await expect(page.locator('#ranking').getByText('Marek')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Przejdź do logowania' })).toHaveAttribute('href', '/login')
+  await expect(page.locator('[data-testid="final-ranking-story-chart"]')).toHaveCount(0)
+})
+
+test('publiczne finalne podsumowanie jest na dedykowanej stronie', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Publiczny final summary z mockowanym API sprawdzamy lokalnie')
+
+  await mockLocalFinalSummary(page)
+
+  await page.goto('/summary/final')
+
+  await expect(page).toHaveURL(/\/summary\/final$/)
   await expect(page.getByRole('heading', { name: 'Cala tabela, mecz po meczu' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Podium' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Wybrani zawodnicy' })).toBeVisible()
-  await page.getByRole('button', { name: 'Tomek' }).click()
-  await expect(page.getByRole('button', { name: 'Tomek' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Ania Kowalska' }).click()
+  await expect(page.getByRole('button', { name: 'Ania Kowalska' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('[data-testid="final-ranking-story-chart"]')).toBeVisible()
   await expect(page.locator('[data-testid="static-final-ranking-table"]')).toHaveCount(0)
   await expect(page.getByText('Animowana pełna tabela')).toBeVisible()
@@ -268,7 +265,7 @@ test('publiczny home pokazuje finalne podsumowanie turnieju', async ({ page }) =
   await expect(page.getByText('76', { exact: true })).toBeVisible()
   await expect(page.getByText('24', { exact: true })).toBeVisible()
   await expect(page.getByText('121', { exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Marek: +7 miejsc' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Największy skok turnieju: +7 miejsc' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Zaloguj sie po swoj recap' })).toHaveAttribute(
     'href',
     '/login?returnTo=%2Fsummary%2Ffinal%2Fme',
