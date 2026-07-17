@@ -167,6 +167,15 @@ export interface FinalSummaryStats {
   finalLeaderDisplayName?: string | null
 }
 
+export interface FinalSummaryAvailability {
+  isReady: boolean
+  reason: string
+  settledMatchesCount: number
+  requiredSettledMatchesCount: number
+  totalMatchesCount: number
+  finalMatchLabel?: string | null
+}
+
 export interface FinalRankingPositionPoint {
   matchId: string
   matchNumber: number

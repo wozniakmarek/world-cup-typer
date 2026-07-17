@@ -17,6 +17,24 @@ const localPlayer = {
   avatarUrl: null,
 }
 
+const localFinalSummaryAvailabilityReady = {
+  isReady: true,
+  reason: 'ready',
+  settledMatchesCount: 104,
+  requiredSettledMatchesCount: 104,
+  totalMatchesCount: 104,
+  finalMatchLabel: 'ARG-ESP',
+}
+
+const localFinalSummaryAvailabilityLocked = {
+  isReady: false,
+  reason: 'matches-still-open',
+  settledMatchesCount: 102,
+  requiredSettledMatchesCount: 104,
+  totalMatchesCount: 104,
+  finalMatchLabel: 'ARG-ESP',
+}
+
 const localPersonalFinalSummary = {
   userId: localPlayer.id,
   displayName: localPlayer.displayName,
@@ -175,7 +193,16 @@ async function mockLocalPersonalFinalSummary(page: Page) {
   )
 }
 
+async function mockLocalFinalSummaryAvailability(page: Page, availability = localFinalSummaryAvailabilityReady) {
+  await page.route('**/api/summary/final/availability', async (route) =>
+    route.fulfill({
+      json: availability,
+    }),
+  )
+}
+
 async function mockLocalFinalSummary(page: Page) {
+  await mockLocalFinalSummaryAvailability(page)
   await page.route('**/api/summary/final', async (route) =>
     route.fulfill({
       json: localFinalSummary,
@@ -245,6 +272,31 @@ test('publiczny home pokazuje landing z rankingiem przed logowaniem', async ({ p
   await expect(page.locator('[data-testid="final-ranking-story-chart"]')).toHaveCount(0)
 })
 
+test('publiczny finalny recap jest jeszcze zablokowany przed rozliczeniem finalu', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Zablokowany final summary z mockowanym API sprawdzamy lokalnie')
+
+  let finalSummaryCalled = false
+  await mockLocalFinalSummaryAvailability(page, localFinalSummaryAvailabilityLocked)
+  await page.route('**/api/summary/final', async (route) => {
+    finalSummaryCalled = true
+    await route.fulfill({
+      status: 409,
+      json: {
+        message: 'Finalny recap będzie dostępny po rozliczeniu finału.',
+        availability: localFinalSummaryAvailabilityLocked,
+      },
+    })
+  })
+
+  await page.goto('/summary/final')
+
+  await expect(page.getByRole('heading', { name: 'Recap odblokuje się po finale ARG-ESP' })).toBeVisible()
+  await expect(page.getByText('102 z 104 meczów rozliczonych')).toBeVisible()
+  await expect(page.getByText('Do pokazania finalnego podsumowania brakuje jeszcze rozliczenia wszystkich meczów.')).toBeVisible()
+  await expect(page.locator('[data-testid="final-ranking-story-chart"]')).toHaveCount(0)
+  expect(finalSummaryCalled).toBe(false)
+})
+
 test('publiczne finalne podsumowanie jest na dedykowanej stronie', async ({ page }) => {
   test.skip(!isLocalPreview, 'Publiczny final summary z mockowanym API sprawdzamy lokalnie')
 
@@ -308,6 +360,36 @@ test('zalogowany gracz widzi swój finałowy recap', async ({ page }) => {
   expect(globalFactBox, 'global tournament fact should have a rendered position').not.toBeNull()
   expect(globalFactBox!.y).toBeGreaterThan(personalFactBox!.y)
   await expect(page.getByRole('link', { name: 'Mój recap', exact: true }).first()).toBeVisible()
+})
+
+test('personalny finalny recap jest jeszcze zablokowany przed rozliczeniem finalu', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Zablokowany personal final summary z mockowanym API sprawdzamy lokalnie')
+
+  let personalSummaryCalled = false
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('typer.auth.token', 'test-token')
+    window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
+  }, localPlayer)
+
+  await mockLocalAuth(page)
+  await mockLocalFinalSummaryAvailability(page, localFinalSummaryAvailabilityLocked)
+  await page.route('**/api/summary/final/me', async (route) => {
+    personalSummaryCalled = true
+    await route.fulfill({
+      status: 409,
+      json: {
+        message: 'Finalny recap będzie dostępny po rozliczeniu finału.',
+        availability: localFinalSummaryAvailabilityLocked,
+      },
+    })
+  })
+
+  await page.goto('/summary/final/me')
+
+  await expect(page.getByRole('heading', { name: 'Recap odblokuje się po finale ARG-ESP' })).toBeVisible()
+  await expect(page.getByText('102 z 104 meczów rozliczonych')).toBeVisible()
+  await expect(page.locator('[data-testid="final-ranking-story-chart"]')).toHaveCount(0)
+  expect(personalSummaryCalled).toBe(false)
 })
 
 test('anonimowy gracz wraca po loginie do chronionego recap', async ({ page }) => {

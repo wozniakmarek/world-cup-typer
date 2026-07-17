@@ -3,6 +3,7 @@ import type {
   AdminMatch,
   AuthResponse,
   CurrentUser,
+  FinalSummaryAvailability,
   FinalSummaryResponse,
   LeaderboardEntry,
   MatchDetails,
@@ -135,6 +136,8 @@ export const rankingApi = {
 }
 
 export const summaryApi = {
+  getFinalAvailability: async () =>
+    (await apiClient.get<FinalSummaryAvailability>('/summary/final/availability')).data,
   getFinal: async () => (await apiClient.get<FinalSummaryResponse>('/summary/final')).data,
   getMine: async () => (await apiClient.get<PersonalFinalSummaryResponse>('/summary/final/me')).data,
 }

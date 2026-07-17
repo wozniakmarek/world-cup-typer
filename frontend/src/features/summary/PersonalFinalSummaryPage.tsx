@@ -11,16 +11,28 @@ import { UserAvatar } from '../../components/UserAvatar'
 import { secondaryButtonClassName } from '../../styles/ui'
 import { FinalRankingStoryChart } from './FinalRankingStoryChart'
 import { FinalSummaryFactGrid } from './FinalSummaryFactGrid'
+import { FinalSummaryLockedState } from './FinalSummaryLockedState'
 
 const numberFormatter = new Intl.NumberFormat('pl-PL')
 
 const formatNumber = (value: number) => numberFormatter.format(value)
 
 export const PersonalFinalSummaryPage = () => {
-  const summaryQuery = useQuery({ queryKey: ['summary', 'final', 'me'], queryFn: summaryApi.getMine })
+  const availabilityQuery = useQuery({
+    queryKey: ['summary', 'final', 'availability'],
+    queryFn: summaryApi.getFinalAvailability,
+  })
+  const availability = availabilityQuery.data
+  const isReady = availability?.isReady === true
+  const summaryQuery = useQuery({
+    queryKey: ['summary', 'final', 'me'],
+    queryFn: summaryApi.getMine,
+    enabled: isReady,
+  })
   const finalSummaryQuery = useQuery({
     queryKey: ['summary', 'final', 'authenticated'],
     queryFn: summaryApi.getFinal,
+    enabled: isReady,
   })
   const summary = summaryQuery.data
   const finalSummary = finalSummaryQuery.data
@@ -34,16 +46,18 @@ export const PersonalFinalSummaryPage = () => {
       />
 
       <QueryState
-        isLoading={summaryQuery.isLoading}
-        isError={summaryQuery.isError}
-        errorMessage={getErrorMessage(summaryQuery.error)}
-        isEmpty={!summary}
+        isLoading={availabilityQuery.isLoading || (isReady && summaryQuery.isLoading)}
+        isError={availabilityQuery.isError || summaryQuery.isError}
+        errorMessage={getErrorMessage(availabilityQuery.error ?? summaryQuery.error)}
+        isEmpty={isReady && !summary}
         emptyTitle="Brak personalnego recap"
         emptyDescription="Gdy finalne dane zostaną przeliczone dla Twojego konta, pojawią się tutaj."
         loadingTitle="Ładowanie Twojego recap"
         loadingDescription="Pobieram finałowe statystyki i ciekawostki gracza."
       >
-        {summary ? (
+        {availability && !availability.isReady ? (
+          <FinalSummaryLockedState availability={availability} />
+        ) : summary ? (
           <>
             <Panel className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_28rem)] p-5 sm:p-6">
               <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

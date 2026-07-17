@@ -7,6 +7,7 @@ import { UserAvatar } from '../../components/UserAvatar'
 import { buttonClassName, secondaryButtonClassName } from '../../styles/ui'
 import { FinalRankingStoryChart } from './FinalRankingStoryChart'
 import { FinalSummaryFactGrid } from './FinalSummaryFactGrid'
+import { FinalSummaryLockedState } from './FinalSummaryLockedState'
 
 const numberFormatter = new Intl.NumberFormat('pl-PL')
 
@@ -14,10 +15,20 @@ const loadingText = 'Ładowanie'
 const personalRecapLoginPath = '/login?returnTo=%2Fsummary%2Ffinal%2Fme'
 
 export const FinalSummaryPage = () => {
-  const summaryQuery = useQuery({ queryKey: ['summary', 'final'], queryFn: summaryApi.getFinal })
+  const availabilityQuery = useQuery({
+    queryKey: ['summary', 'final', 'availability'],
+    queryFn: summaryApi.getFinalAvailability,
+  })
+  const availability = availabilityQuery.data
+  const isReady = availability?.isReady === true
+  const summaryQuery = useQuery({
+    queryKey: ['summary', 'final'],
+    queryFn: summaryApi.getFinal,
+    enabled: isReady,
+  })
   const summary = summaryQuery.data
   const leader = summary?.finalTop[0]
-  const isLoading = summaryQuery.isLoading
+  const isLoading = availabilityQuery.isLoading || (isReady && summaryQuery.isLoading)
 
   const settledMatchesText = summary ? numberFormatter.format(summary.stats.settledMatchesCount) : loadingText
   const activePlayersText = summary ? numberFormatter.format(summary.stats.activePlayersCount) : loadingText
@@ -59,7 +70,11 @@ export const FinalSummaryPage = () => {
               </div>
             </div>
 
-            {summary ? (
+            {availability && !availability.isReady ? (
+              <div className="self-center">
+                <FinalSummaryLockedState availability={availability} showLoginLink />
+              </div>
+            ) : summary ? (
               <FinalRankingStoryChart series={summary.positionSeries} />
             ) : (
               <section id="final-table" className="glass-card min-w-0 rounded-[2rem] p-5 sm:p-6">
@@ -93,6 +108,8 @@ export const FinalSummaryPage = () => {
         </div>
       </section>
 
+      {availability && !availability.isReady ? null : (
+        <>
       <section className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:grid-cols-3 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
           <Medal className="h-5 w-5 text-emerald-300" aria-hidden="true" />
@@ -179,6 +196,8 @@ export const FinalSummaryPage = () => {
           </div>
         </div>
       </section>
+        </>
+      )}
     </main>
   )
 }
