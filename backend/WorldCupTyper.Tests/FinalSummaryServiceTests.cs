@@ -178,6 +178,74 @@ public sealed class FinalSummaryServiceTests
     }
 
     [Fact]
+    public async Task GetFinalSummaryAvailabilityAsync_ShouldStayLockedUntilArgentinaSpainFinalIsSettled()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var settledMatch = AddSettledMatch(dbContext, 103, "FRA", "BRA", DateTime.UtcNow.AddDays(-2), homeScore: 1, awayScore: 0);
+        var finalMatch = AddSettledMatch(dbContext, 104, "ARG", "ESP", DateTime.UtcNow.AddDays(-1), homeScore: 2, awayScore: 1);
+        finalMatch.Status = MatchStatus.Finished;
+        finalMatch.IsSettled = false;
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var availability = await service.GetFinalSummaryAvailabilityAsync();
+
+        availability.IsReady.Should().BeFalse();
+        availability.Reason.Should().Be("final-match-not-settled");
+        availability.SettledMatchesCount.Should().Be(1);
+        availability.RequiredSettledMatchesCount.Should().Be(2);
+        availability.TotalMatchesCount.Should().Be(2);
+        availability.FinalMatchLabel.Should().Be("ARG-ESP");
+        settledMatch.IsSettled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetFinalSummaryAvailabilityAsync_ShouldWaitForEveryMatchAfterFinalIsSettled()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var thirdPlaceMatch = AddSettledMatch(dbContext, 103, "FRA", "BRA", DateTime.UtcNow.AddDays(-2), homeScore: 1, awayScore: 0);
+        thirdPlaceMatch.Status = MatchStatus.Finished;
+        thirdPlaceMatch.IsSettled = false;
+        var finalMatch = AddSettledMatch(dbContext, 104, "ARG", "ESP", DateTime.UtcNow.AddDays(-1), homeScore: 2, awayScore: 1);
+        AddSnapshot(dbContext, finalMatch.Id, Guid.NewGuid(), totalPoints: 9, exact: 3, outcome: 3, predictions: 3, position: 1, createdAtUtc: finalMatch.KickoffTimeUtc.AddHours(2));
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var availability = await service.GetFinalSummaryAvailabilityAsync();
+
+        availability.IsReady.Should().BeFalse();
+        availability.Reason.Should().Be("matches-still-open");
+        availability.SettledMatchesCount.Should().Be(1);
+        availability.RequiredSettledMatchesCount.Should().Be(2);
+        availability.FinalMatchLabel.Should().Be("ARG-ESP");
+    }
+
+    [Fact]
+    public async Task GetFinalSummaryAvailabilityAsync_ShouldBeReadyAfterFinalResultsAndSnapshots()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var tomek, out _);
+        var thirdPlaceMatch = AddSettledMatch(dbContext, 103, "FRA", "BRA", DateTime.UtcNow.AddDays(-2), homeScore: 1, awayScore: 0);
+        var finalMatch = AddSettledMatch(dbContext, 104, "ARG", "ESP", DateTime.UtcNow.AddDays(-1), homeScore: 2, awayScore: 1);
+        AddPrediction(dbContext, marek.Id, finalMatch.Id, 2, 1, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, tomek.Id, finalMatch.Id, 1, 0, points: 1, exact: false, outcome: true);
+        AddSnapshot(dbContext, finalMatch.Id, marek.Id, totalPoints: 9, exact: 3, outcome: 3, predictions: 3, position: 1, createdAtUtc: finalMatch.KickoffTimeUtc.AddHours(2));
+        AddSnapshot(dbContext, finalMatch.Id, tomek.Id, totalPoints: 6, exact: 1, outcome: 4, predictions: 3, position: 2, createdAtUtc: finalMatch.KickoffTimeUtc.AddHours(2));
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var availability = await service.GetFinalSummaryAvailabilityAsync();
+
+        availability.IsReady.Should().BeTrue();
+        availability.Reason.Should().Be("ready");
+        availability.SettledMatchesCount.Should().Be(2);
+        availability.RequiredSettledMatchesCount.Should().Be(2);
+        availability.TotalMatchesCount.Should().Be(2);
+        availability.FinalMatchLabel.Should().Be("ARG-ESP");
+        thirdPlaceMatch.IsSettled.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task GetPersonalFinalSummaryAsync_ShouldReturnAtLeastThreeFactsForPlayerWithData()
     {
         using var dbContext = TestDbContextFactory.Create();

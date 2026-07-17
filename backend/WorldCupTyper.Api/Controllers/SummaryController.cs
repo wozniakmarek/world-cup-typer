@@ -11,6 +11,7 @@ namespace WorldCupTyper.Api.Controllers;
 [Route("api/summary")]
 public sealed class SummaryController : ControllerBase
 {
+    private const string FinalSummaryLockedMessage = "Finalny recap będzie dostępny po rozliczeniu finału.";
     private readonly IFinalSummaryService _finalSummaryService;
 
     public SummaryController(IFinalSummaryService finalSummaryService)
@@ -18,10 +19,27 @@ public sealed class SummaryController : ControllerBase
         _finalSummaryService = finalSummaryService;
     }
 
+    [HttpGet("final/availability")]
+    [AllowAnonymous]
+    public async Task<ActionResult<FinalSummaryAvailabilityDto>> GetFinalSummaryAvailability(CancellationToken cancellationToken)
+    {
+        return Ok(await _finalSummaryService.GetFinalSummaryAvailabilityAsync(cancellationToken));
+    }
+
     [HttpGet("final")]
     [AllowAnonymous]
     public async Task<ActionResult<FinalSummaryResponseDto>> GetFinalSummary(CancellationToken cancellationToken)
     {
+        var availability = await _finalSummaryService.GetFinalSummaryAvailabilityAsync(cancellationToken);
+        if (!availability.IsReady)
+        {
+            return Conflict(new
+            {
+                message = FinalSummaryLockedMessage,
+                availability,
+            });
+        }
+
         Guid? currentUserId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : null;
         return Ok(await _finalSummaryService.GetFinalSummaryAsync(currentUserId, cancellationToken));
     }
@@ -29,6 +47,16 @@ public sealed class SummaryController : ControllerBase
     [HttpGet("final/me")]
     public async Task<ActionResult<PersonalFinalSummaryResponseDto>> GetMyFinalSummary(CancellationToken cancellationToken)
     {
+        var availability = await _finalSummaryService.GetFinalSummaryAvailabilityAsync(cancellationToken);
+        if (!availability.IsReady)
+        {
+            return Conflict(new
+            {
+                message = FinalSummaryLockedMessage,
+                availability,
+            });
+        }
+
         return Ok(await _finalSummaryService.GetPersonalFinalSummaryAsync(User.GetUserId(), cancellationToken));
     }
 }

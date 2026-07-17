@@ -6,6 +6,14 @@ public sealed record FinalSummaryStatsDto(
     Guid? FinalLeaderUserId,
     string? FinalLeaderDisplayName);
 
+public sealed record FinalSummaryAvailabilityDto(
+    bool IsReady,
+    string Reason,
+    int SettledMatchesCount,
+    int RequiredSettledMatchesCount,
+    int TotalMatchesCount,
+    string? FinalMatchLabel);
+
 public sealed record FinalSummaryResponseDto(
     FinalSummaryStatsDto Stats,
     IReadOnlyCollection<FinalRankingPositionSeriesDto> PositionSeries,

@@ -9,11 +9,87 @@ namespace WorldCupTyper.Application.Services;
 
 public sealed class FinalSummaryService : IFinalSummaryService
 {
+    private const string FinalHomeTeamCode = "ARG";
+    private const string FinalAwayTeamCode = "ESP";
+    private const string ExpectedFinalMatchLabel = "ARG-ESP";
+
     private readonly IAppDbContext _dbContext;
 
     public FinalSummaryService(IAppDbContext dbContext)
     {
         _dbContext = dbContext;
+    }
+
+    public async Task<FinalSummaryAvailabilityDto> GetFinalSummaryAvailabilityAsync(CancellationToken cancellationToken = default)
+    {
+        var matches = await _dbContext.Matches
+            .AsNoTracking()
+            .Include(match => match.HomeTeam)
+            .Include(match => match.AwayTeam)
+            .OrderBy(match => match.KickoffTimeUtc)
+            .ThenBy(match => match.MatchNumber)
+            .ToListAsync(cancellationToken);
+
+        var totalMatchesCount = matches.Count;
+        var settledMatchesCount = matches.Count(match => match.IsSettled);
+        var requiredSettledMatchesCount = totalMatchesCount;
+        var finalMatch = matches
+            .Where(IsExpectedFinalMatch)
+            .OrderByDescending(match => match.MatchNumber)
+            .FirstOrDefault();
+        var finalMatchLabel = finalMatch is null ? ExpectedFinalMatchLabel : BuildMatchLabel(finalMatch);
+
+        if (finalMatch is null)
+        {
+            return BuildAvailability(false, "final-match-missing");
+        }
+
+        if (!finalMatch.IsSettled)
+        {
+            return BuildAvailability(false, "final-match-not-settled");
+        }
+
+        if (settledMatchesCount < requiredSettledMatchesCount)
+        {
+            return BuildAvailability(false, "matches-still-open");
+        }
+
+        var finalPredictions = await _dbContext.Predictions
+            .AsNoTracking()
+            .Where(prediction => prediction.MatchId == finalMatch.Id)
+            .Select(prediction => new
+            {
+                HasResult = prediction.Result != null,
+            })
+            .ToListAsync(cancellationToken);
+        var finalResultsCalculated = finalPredictions.All(prediction => prediction.HasResult);
+
+        if (!finalResultsCalculated)
+        {
+            return BuildAvailability(false, "final-results-not-calculated");
+        }
+
+        var finalRankingSnapshotted = await _dbContext.LeaderboardSnapshots
+            .AsNoTracking()
+            .AnyAsync(snapshot => snapshot.MatchId == finalMatch.Id, cancellationToken);
+
+        if (!finalRankingSnapshotted)
+        {
+            return BuildAvailability(false, "final-ranking-not-snapshotted");
+        }
+
+        return BuildAvailability(true, "ready");
+
+        FinalSummaryAvailabilityDto BuildAvailability(bool isReady, string reason)
+        {
+            return new FinalSummaryAvailabilityDto(
+                isReady,
+                reason,
+                settledMatchesCount,
+                requiredSettledMatchesCount,
+                totalMatchesCount,
+                finalMatchLabel);
+        }
     }
 
     public async Task<FinalSummaryResponseDto> GetFinalSummaryAsync(Guid? currentUserId = null, CancellationToken cancellationToken = default)
@@ -1001,6 +1077,22 @@ public sealed class FinalSummaryService : IFinalSummaryService
         return string.IsNullOrWhiteSpace(home) || string.IsNullOrWhiteSpace(away)
             ? $"M{match.MatchNumber}"
             : $"{home}-{away}";
+    }
+
+    private static bool IsExpectedFinalMatch(Match match)
+    {
+        return HasTeamCode(match, FinalHomeTeamCode) && HasTeamCode(match, FinalAwayTeamCode);
+    }
+
+    private static bool HasTeamCode(Match match, string teamCode)
+    {
+        return IsTeamCode(match.HomeTeam, teamCode) || IsTeamCode(match.AwayTeam, teamCode);
+    }
+
+    private static bool IsTeamCode(Team team, string teamCode)
+    {
+        return string.Equals(team.ShortName, teamCode, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(team.CountryCode, teamCode, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string BuildScoreLabel(Match match)
