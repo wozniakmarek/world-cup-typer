@@ -84,7 +84,7 @@ public sealed class FinalSummaryServiceTests
         summary.GlobalFacts.Should().Contain(fact => fact.Id == "most-exact-match" && fact.RelatedMatchIds.Contains(matchOne.Id));
         summary.GlobalFacts.Single(fact => fact.Id == "biggest-climb").Label.Should().Be("Największy awans");
         summary.GlobalFacts.Single(fact => fact.Id == "most-exact-match").Label.Should().Be("Najwięcej dokładnych wyników");
-        summary.GlobalFacts.Single(fact => fact.Id == "most-exact-match").Description.Should().Contain("miał najwięcej dokładnych typów");
+        summary.GlobalFacts.Single(fact => fact.Id == "most-exact-match").Description.Should().Contain("dokładnych typów");
         var drawSpecialist = summary.GlobalFacts.Single(fact => fact.Id == "draw-specialist");
         drawSpecialist.RelatedUserIds.Should().Equal(marek.Id, tomek.Id);
         drawSpecialist.RelatedMatchIds.Should().Equal(matchTwo.Id);
@@ -244,6 +244,61 @@ public sealed class FinalSummaryServiceTests
     }
 
     [Fact]
+    public async Task GetFinalSummaryAsync_ShouldSurfaceTriviaPatternsFromPredictions()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var tomek, out _);
+        var ola = CreateUser("Ola");
+        dbContext.Users.Add(ola);
+
+        var trapMatch = AddSettledMatch(dbContext, 1, "ESP", "CPV", DateTime.UtcNow.AddDays(-5), homeScore: 0, awayScore: 0);
+        var everyoneKnewMatch = AddSettledMatch(dbContext, 2, "GER", "CUW", DateTime.UtcNow.AddDays(-4), homeScore: 7, awayScore: 1);
+        var soloOne = AddSettledMatch(dbContext, 3, "KOR", "CZE", DateTime.UtcNow.AddDays(-3), homeScore: 2, awayScore: 1);
+        var soloTwo = AddSettledMatch(dbContext, 4, "GHA", "PAN", DateTime.UtcNow.AddDays(-2), homeScore: 1, awayScore: 0);
+
+        AddPrediction(dbContext, marek.Id, trapMatch.Id, 2, 1, points: 0, exact: false, outcome: false);
+        AddPrediction(dbContext, tomek.Id, trapMatch.Id, 1, 0, points: 0, exact: false, outcome: false);
+        AddPrediction(dbContext, ola.Id, trapMatch.Id, 0, 2, points: 0, exact: false, outcome: false);
+
+        AddPrediction(dbContext, marek.Id, everyoneKnewMatch.Id, 3, 0, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, tomek.Id, everyoneKnewMatch.Id, 4, 1, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, ola.Id, everyoneKnewMatch.Id, 2, 0, points: 1, exact: false, outcome: true);
+
+        AddPrediction(dbContext, marek.Id, soloOne.Id, 2, 1, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, tomek.Id, soloOne.Id, 1, 0, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, ola.Id, soloOne.Id, 0, 1, points: 0, exact: false, outcome: false);
+
+        AddPrediction(dbContext, marek.Id, soloTwo.Id, 1, 0, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, tomek.Id, soloTwo.Id, 2, 0, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, ola.Id, soloTwo.Id, 0, 1, points: 0, exact: false, outcome: false);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var summary = await service.GetFinalSummaryAsync();
+
+        var trap = summary.GlobalFacts.Single(fact => fact.Id == "biggest-trap");
+        trap.Title.Should().Contain("ESP-CPV").And.Contain("3");
+        trap.Description.Should().Contain("wszyscy").And.Contain("złą stronę");
+        trap.RelatedMatchIds.Should().Equal(trapMatch.Id);
+
+        var noExact = summary.GlobalFacts.Single(fact => fact.Id == "no-exact-perfect-direction");
+        noExact.Title.Should().Contain("GER-CUW").And.Contain("3").And.Contain("0 dokładnych");
+        noExact.Description.Should().Contain("kierunek").And.Contain("rozmiaru");
+        noExact.RelatedMatchIds.Should().Equal(everyoneKnewMatch.Id);
+
+        var soloKing = summary.GlobalFacts.Single(fact => fact.Id == "solo-exact-king");
+        soloKing.Title.Should().Contain("Marek").And.Contain("2");
+        soloKing.Description.Should().Contain("samotnie").And.Contain("KOR-CZE").And.Contain("GHA-PAN");
+        soloKing.RelatedUserIds.Should().Equal(marek.Id);
+        soloKing.RelatedMatchIds.Should().Equal(soloOne.Id, soloTwo.Id);
+
+        var streak = summary.GlobalFacts.Single(fact => fact.Id == "longest-exact-streak");
+        streak.Title.Should().Contain("Marek").And.Contain("2");
+        streak.Description.Should().Contain("dokładne").And.Contain("z rzędu");
+        streak.RelatedMatchIds.Should().Equal(soloOne.Id, soloTwo.Id);
+    }
+
+    [Fact]
     public async Task GetFinalSummaryAsync_ShouldCountAllNonExactSettledPredictionsForOneGoalAwayFact()
     {
         using var dbContext = TestDbContextFactory.Create();
@@ -299,6 +354,42 @@ public sealed class FinalSummaryServiceTests
         recap.PersonalFacts.Count.Should().BeGreaterThanOrEqualTo(3);
         recap.PersonalFacts.Should().Contain(fact => fact.Id == "personal-biggest-drop");
         recap.PersonalFacts.Should().Contain(fact => fact.Id == "personal-non-exact-count");
+    }
+
+    [Fact]
+    public async Task GetPersonalFinalSummaryAsync_ShouldIncludeSoloExactAndExactStreakFacts()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        SeedUsers(dbContext, out var marek, out var tomek, out _);
+        var ola = CreateUser("Ola");
+        dbContext.Users.Add(ola);
+        var matchOne = AddSettledMatch(dbContext, 1, "KOR", "CZE", DateTime.UtcNow.AddDays(-3), homeScore: 2, awayScore: 1);
+        var matchTwo = AddSettledMatch(dbContext, 2, "GHA", "PAN", DateTime.UtcNow.AddDays(-2), homeScore: 1, awayScore: 0);
+        var matchThree = AddSettledMatch(dbContext, 3, "ESP", "CPV", DateTime.UtcNow.AddDays(-1), homeScore: 0, awayScore: 0);
+
+        AddPrediction(dbContext, marek.Id, matchOne.Id, 2, 1, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, tomek.Id, matchOne.Id, 1, 0, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, ola.Id, matchOne.Id, 0, 1, points: 0, exact: false, outcome: false);
+
+        AddPrediction(dbContext, marek.Id, matchTwo.Id, 1, 0, points: 3, exact: true, outcome: true);
+        AddPrediction(dbContext, tomek.Id, matchTwo.Id, 2, 0, points: 1, exact: false, outcome: true);
+        AddPrediction(dbContext, ola.Id, matchTwo.Id, 0, 1, points: 0, exact: false, outcome: false);
+
+        AddPrediction(dbContext, marek.Id, matchThree.Id, 2, 1, points: 0, exact: false, outcome: false);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var recap = await service.GetPersonalFinalSummaryAsync(marek.Id);
+
+        var solo = recap.PersonalFacts.Single(fact => fact.Id == "personal-solo-exacts");
+        solo.Title.Should().Contain("2");
+        solo.Description.Should().Contain("tylko Marek").And.Contain("KOR-CZE").And.Contain("GHA-PAN");
+        solo.RelatedMatchIds.Should().Equal(matchOne.Id, matchTwo.Id);
+
+        var streak = recap.PersonalFacts.Single(fact => fact.Id == "personal-exact-streak");
+        streak.Title.Should().Contain("2");
+        streak.Description.Should().Contain("dokładne").And.Contain("z rzędu");
+        streak.RelatedMatchIds.Should().Equal(matchOne.Id, matchTwo.Id);
     }
 
     private static FinalSummaryService CreateService(WorldCupTyperDbContext dbContext)

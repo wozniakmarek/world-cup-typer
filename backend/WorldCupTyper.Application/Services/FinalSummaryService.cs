@@ -70,10 +70,13 @@ public sealed class FinalSummaryService : IFinalSummaryService
                 .ToListAsync(cancellationToken);
             var settledMatchIds = settledMatches.Select(match => match.Id).ToList();
             var predictionRows = await LoadPredictionRowsAsync(new[] { userId }, settledMatchIds, cancellationToken);
+            var activeUserIds = summary.FinalTop.Select(entry => entry.UserId).ToList();
+            var allPredictionRows = await LoadPredictionRowsAsync(activeUserIds, settledMatchIds, cancellationToken);
             var personalFacts = BuildPersonalFacts(
                 finalEntry,
                 summary.PositionSeries.FirstOrDefault(series => series.UserId == userId),
                 predictionRows,
+                allPredictionRows,
                 settledMatches);
             var highlightedMatchIds = personalFacts
                 .SelectMany(fact => fact.RelatedMatchIds)
@@ -273,6 +276,10 @@ public sealed class FinalSummaryService : IFinalSummaryService
     {
         var activeUserDisplayNames = activeUsers.ToDictionary(user => user.Id, user => user.DisplayName);
         var facts = new List<FinalSummaryFactDto>();
+        AddBiggestTrapFact(facts, predictionRows, settledMatches);
+        AddNoExactPerfectDirectionFact(facts, predictionRows, settledMatches);
+        AddSoloExactKingFact(facts, predictionRows, settledMatches, activeUserDisplayNames);
+        AddLongestExactStreakFact(facts, predictionRows, settledMatches, activeUserDisplayNames);
         AddBiggestClimbFact(facts, seriesData);
         AddBiggestDropFact(facts, seriesData);
         AddMostExactMatchFact(facts, predictionRows, settledMatches);
@@ -288,6 +295,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
         FinalRankingEntryDto finalEntry,
         FinalRankingPositionSeriesDto? positionSeries,
         IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<PredictionSummaryRow> allPredictionRows,
         IReadOnlyCollection<Match> settledMatches)
     {
         var matchById = settledMatches.ToDictionary(match => match.Id);
@@ -300,6 +308,9 @@ public sealed class FinalSummaryService : IFinalSummaryService
             $"{finalEntry.DisplayName} kończy z {finalEntry.TotalPoints} pkt, {finalEntry.ExactScoreHits} dokładnymi wynikami i {finalEntry.CorrectOutcomeHits} trafionymi rozstrzygnięciami.",
             new[] { finalEntry.UserId },
             Array.Empty<Guid>()));
+
+        AddPersonalSoloExactFact(facts, finalEntry, predictionRows, allPredictionRows, settledMatches);
+        AddPersonalExactStreakFact(facts, finalEntry, predictionRows, settledMatches);
 
         if (positionSeries is not null && positionSeries.Points.Count > 1)
         {
@@ -344,8 +355,10 @@ public sealed class FinalSummaryService : IFinalSummaryService
             facts.Add(new FinalSummaryFactDto(
                 "personal-best-match",
                 "Najlepszy mecz",
-                $"Najlepszy typ: {bestPoints} pkt",
-                $"{JoinNames(bestMatchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))} dał najwięcej punktów w pojedynczym typie.",
+                bestPoints == 3 ? $"Dokładne trafienia: {bestMatchIds.Count}" : $"Najlepszy typ: {bestPoints} pkt",
+                bestPoints == 3
+                    ? $"Typy za 3 pkt w meczach: {BuildMatchList(bestMatchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))}."
+                    : $"Najlepszy typ w meczach: {BuildMatchList(bestMatchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))}.",
                 new[] { finalEntry.UserId },
                 bestMatchIds));
         }
@@ -395,8 +408,229 @@ public sealed class FinalSummaryService : IFinalSummaryService
         return facts
             .GroupBy(fact => fact.Id)
             .Select(group => group.First())
-            .Take(5)
+            .Take(6)
             .ToList();
+    }
+
+    private static void AddPersonalSoloExactFact(
+        List<FinalSummaryFactDto> facts,
+        FinalRankingEntryDto finalEntry,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<PredictionSummaryRow> allPredictionRows,
+        IReadOnlyCollection<Match> settledMatches)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var exactCountsByMatch = allPredictionRows
+            .GroupBy(row => row.MatchId)
+            .ToDictionary(group => group.Key, group => group.Count(row => row.IsExactScore));
+        var soloMatchIds = predictionRows
+            .Where(row => row.IsExactScore && exactCountsByMatch.TryGetValue(row.MatchId, out var exactCount) && exactCount == 1)
+            .Select(row => row.MatchId)
+            .Where(matchById.ContainsKey)
+            .Distinct()
+            .OrderBy(matchId => matchById[matchId].MatchNumber)
+            .ToList();
+
+        if (soloMatchIds.Count == 0)
+        {
+            return;
+        }
+
+        facts.Add(new FinalSummaryFactDto(
+            "personal-solo-exacts",
+            "Samotne trafienia",
+            $"Samotne trafienia: {soloMatchIds.Count}",
+            $"W tych meczach tylko {finalEntry.DisplayName} trafił dokładnie: {JoinNames(soloMatchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))}.",
+            new[] { finalEntry.UserId },
+            soloMatchIds));
+    }
+
+    private static void AddPersonalExactStreakFact(
+        List<FinalSummaryFactDto> facts,
+        FinalRankingEntryDto finalEntry,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<Match> settledMatches)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var bestStreak = BuildExactStreaks(predictionRows, settledMatches)
+            .Where(streak => streak.UserId == finalEntry.UserId)
+            .OrderByDescending(streak => streak.Length)
+            .ThenBy(streak => matchById[streak.MatchIds.First()].MatchNumber)
+            .FirstOrDefault();
+
+        if (bestStreak is null)
+        {
+            return;
+        }
+
+        facts.Add(new FinalSummaryFactDto(
+            "personal-exact-streak",
+            "Seria dokładnych",
+            $"Seria dokładnych: {bestStreak.Length}",
+            $"{finalEntry.DisplayName}: dokładne wyniki z rzędu w meczach {JoinNames(bestStreak.MatchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))}.",
+            new[] { finalEntry.UserId },
+            bestStreak.MatchIds));
+    }
+
+    private static void AddBiggestTrapFact(
+        List<FinalSummaryFactDto> facts,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<Match> settledMatches)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var traps = predictionRows
+            .GroupBy(row => row.MatchId)
+            .Select(group => new
+            {
+                MatchId = group.Key,
+                Predictions = group.Count(),
+                WrongOutcomes = group.Count(row => !row.IsCorrectOutcome),
+                OutcomeHits = group.Count(row => row.IsCorrectOutcome),
+            })
+            .Where(entry => entry.WrongOutcomes > 0 && matchById.ContainsKey(entry.MatchId))
+            .OrderByDescending(entry => entry.OutcomeHits == 0)
+            .ThenByDescending(entry => entry.WrongOutcomes)
+            .ThenByDescending(entry => entry.Predictions)
+            .ThenBy(entry => matchById[entry.MatchId].MatchNumber)
+            .FirstOrDefault();
+
+        if (traps is null)
+        {
+            return;
+        }
+
+        var match = matchById[traps.MatchId];
+        facts.Add(new FinalSummaryFactDto(
+            "biggest-trap",
+            "Mecz-pułapka",
+            $"{BuildMatchLabel(match)} {BuildScoreLabel(match)}: {traps.WrongOutcomes} nietrafionych kierunków",
+            traps.OutcomeHits == 0
+                ? "Tu wszyscy poszli w złą stronę. Ani jeden typ nie złapał rozstrzygnięcia."
+                : $"Tu {traps.WrongOutcomes} typów poszło w złą stronę, mimo że {traps.OutcomeHits} złapało rozstrzygnięcie.",
+            Array.Empty<Guid>(),
+            new[] { traps.MatchId }));
+    }
+
+    private static void AddNoExactPerfectDirectionFact(
+        List<FinalSummaryFactDto> facts,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<Match> settledMatches)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var candidate = predictionRows
+            .GroupBy(row => row.MatchId)
+            .Select(group => new
+            {
+                MatchId = group.Key,
+                Predictions = group.Count(),
+                ExactHits = group.Count(row => row.IsExactScore),
+                OutcomeHits = group.Count(row => row.IsCorrectOutcome),
+            })
+            .Where(entry => entry.ExactHits == 0 && entry.OutcomeHits > 0 && matchById.ContainsKey(entry.MatchId))
+            .OrderByDescending(entry => entry.OutcomeHits == entry.Predictions)
+            .ThenByDescending(entry => entry.OutcomeHits)
+            .ThenByDescending(entry => entry.Predictions)
+            .ThenBy(entry => matchById[entry.MatchId].MatchNumber)
+            .FirstOrDefault();
+
+        if (candidate is null)
+        {
+            return;
+        }
+
+        var match = matchById[candidate.MatchId];
+        facts.Add(new FinalSummaryFactDto(
+            "no-exact-perfect-direction",
+            "Kierunek tak, wynik nie",
+            $"{BuildMatchLabel(match)} {BuildScoreLabel(match)}: {candidate.OutcomeHits} kierunków, 0 dokładnych",
+            "Grupa dobrze przeczuła kierunek meczu, ale nikt nie przewidział rozmiaru wyniku.",
+            Array.Empty<Guid>(),
+            new[] { candidate.MatchId }));
+    }
+
+    private static void AddSoloExactKingFact(
+        List<FinalSummaryFactDto> facts,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<Match> settledMatches,
+        IReadOnlyDictionary<Guid, string> activeUserDisplayNames)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var exactCountsByMatch = predictionRows
+            .GroupBy(row => row.MatchId)
+            .ToDictionary(group => group.Key, group => group.Count(row => row.IsExactScore));
+        var soloRows = predictionRows
+            .Where(row => row.IsExactScore && exactCountsByMatch.TryGetValue(row.MatchId, out var exactCount) && exactCount == 1)
+            .Where(row => matchById.ContainsKey(row.MatchId))
+            .ToList();
+
+        var leaders = soloRows
+            .GroupBy(row => row.UserId)
+            .Select(group => new
+            {
+                UserId = group.Key,
+                Count = group.Count(),
+                MatchIds = group.Select(row => row.MatchId).Distinct().OrderBy(matchId => matchById[matchId].MatchNumber).ToList(),
+            })
+            .Where(entry => entry.Count > 0)
+            .OrderByDescending(entry => entry.Count)
+            .ThenBy(entry => activeUserDisplayNames.TryGetValue(entry.UserId, out var displayName) ? displayName : string.Empty, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (leaders.Count == 0)
+        {
+            return;
+        }
+
+        var maxCount = leaders.First().Count;
+        var winners = leaders.Where(entry => entry.Count == maxCount).ToList();
+        var matchIds = winners
+            .SelectMany(winner => winner.MatchIds)
+            .Distinct()
+            .OrderBy(matchId => matchById[matchId].MatchNumber)
+            .ToList();
+
+        facts.Add(new FinalSummaryFactDto(
+            "solo-exact-king",
+            "Samotne trafienia",
+            $"{JoinNames(winners.Select(winner => activeUserDisplayNames.TryGetValue(winner.UserId, out var displayName) ? displayName : "Gracz"))}: {maxCount} solo",
+            $"{JoinNames(winners.Select(winner => activeUserDisplayNames.TryGetValue(winner.UserId, out var displayName) ? displayName : "Gracz"))}: samotnie trafione dokładne wyniki w meczach {BuildMatchList(matchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))}.",
+            winners.Select(winner => winner.UserId).ToList(),
+            matchIds));
+    }
+
+    private static void AddLongestExactStreakFact(
+        List<FinalSummaryFactDto> facts,
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<Match> settledMatches,
+        IReadOnlyDictionary<Guid, string> activeUserDisplayNames)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var streaks = BuildExactStreaks(predictionRows, settledMatches)
+            .OrderByDescending(streak => streak.Length)
+            .ThenBy(streak => matchById[streak.MatchIds.First()].MatchNumber)
+            .ThenBy(streak => activeUserDisplayNames.TryGetValue(streak.UserId, out var displayName) ? displayName : string.Empty, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (streaks.Count == 0)
+        {
+            return;
+        }
+
+        var bestLength = streaks.First().Length;
+        var winners = streaks.Where(streak => streak.Length == bestLength).ToList();
+        var matchIds = winners
+            .SelectMany(winner => winner.MatchIds)
+            .Distinct()
+            .OrderBy(matchId => matchById[matchId].MatchNumber)
+            .ToList();
+
+        facts.Add(new FinalSummaryFactDto(
+            "longest-exact-streak",
+            "Seria dokładnych",
+            $"{JoinNames(winners.Select(winner => activeUserDisplayNames.TryGetValue(winner.UserId, out var displayName) ? displayName : "Gracz"))}: {bestLength} z rzędu",
+            $"Najdłuższa seria: dokładne wyniki z rzędu w meczach {JoinNames(matchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))}.",
+            winners.Select(winner => winner.UserId).ToList(),
+            matchIds));
     }
 
     private static void AddBiggestClimbFact(List<FinalSummaryFactDto> facts, IReadOnlyCollection<FinalPositionSeriesData> seriesData)
@@ -498,8 +732,10 @@ public sealed class FinalSummaryService : IFinalSummaryService
         facts.Add(new FinalSummaryFactDto(
             "most-exact-match",
             "Najwięcej dokładnych wyników",
-            $"Najłatwiejszy dokładny wynik: {maxExactHits}",
-            $"{JoinNames(matchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))} miał najwięcej dokładnych typów.",
+            $"Najwięcej idealnych typów: {maxExactHits}",
+            matchIds.Count == 1
+                ? $"{BuildMatchLabel(matchById[matchIds[0]])}: {maxExactHits} dokładnych typów."
+                : $"{BuildMatchList(matchIds.Select(matchId => BuildMatchLabel(matchById[matchId])))}: po {maxExactHits} dokładnych typów.",
             Array.Empty<Guid>(),
             matchIds));
     }
@@ -560,7 +796,9 @@ public sealed class FinalSummaryService : IFinalSummaryService
             "draw-specialist",
             "Specjalista od remisów",
             $"Trafione remisy: {maxHits}",
-            $"{JoinNames(userIds.Select(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))} najlepiej czytali remisy.",
+            userIds.Count == 1
+                ? $"{JoinNames(userIds.Select(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))} najlepiej czytał remisy."
+                : $"{JoinNames(userIds.Select(userId => activeUserDisplayNames.TryGetValue(userId, out var displayName) ? displayName : "Gracz"))} najlepiej czytali remisy.",
             userIds,
             relatedMatchIds));
     }
@@ -711,6 +949,50 @@ public sealed class FinalSummaryService : IFinalSummaryService
             winners.SelectMany(winner => winner.MatchIds).Distinct().OrderBy(matchId => matchById[matchId].MatchNumber).ToList()));
     }
 
+    private static List<ExactStreak> BuildExactStreaks(
+        IReadOnlyCollection<PredictionSummaryRow> predictionRows,
+        IReadOnlyCollection<Match> settledMatches)
+    {
+        var matchById = settledMatches.ToDictionary(match => match.Id);
+        var streaks = new List<ExactStreak>();
+
+        foreach (var userRows in predictionRows.GroupBy(row => row.UserId))
+        {
+            var currentMatchIds = new List<Guid>();
+            var orderedRows = userRows
+                .Where(row => matchById.ContainsKey(row.MatchId))
+                .OrderBy(row => matchById[row.MatchId].KickoffTimeUtc)
+                .ThenBy(row => matchById[row.MatchId].MatchNumber)
+                .ToList();
+
+            foreach (var row in orderedRows)
+            {
+                if (row.IsExactScore)
+                {
+                    currentMatchIds.Add(row.MatchId);
+                    continue;
+                }
+
+                AddStreakIfLongEnough(streaks, userRows.Key, currentMatchIds);
+                currentMatchIds = new List<Guid>();
+            }
+
+            AddStreakIfLongEnough(streaks, userRows.Key, currentMatchIds);
+        }
+
+        return streaks;
+    }
+
+    private static void AddStreakIfLongEnough(List<ExactStreak> streaks, Guid userId, IReadOnlyList<Guid> matchIds)
+    {
+        if (matchIds.Count < 2)
+        {
+            return;
+        }
+
+        streaks.Add(new ExactStreak(userId, matchIds.ToList()));
+    }
+
     private static string BuildMatchLabel(Match match)
     {
         var home = match.HomeTeam.ShortName.Trim();
@@ -721,14 +1003,37 @@ public sealed class FinalSummaryService : IFinalSummaryService
             : $"{home}-{away}";
     }
 
+    private static string BuildScoreLabel(Match match)
+    {
+        return match.HomeScore90.HasValue && match.AwayScore90.HasValue
+            ? $"{match.HomeScore90.Value}:{match.AwayScore90.Value}"
+            : "?:?";
+    }
+
     private static string JoinNames(IEnumerable<string> names)
     {
         return string.Join(", ", names);
     }
 
+    private static string BuildMatchList(IEnumerable<string> labels, int visibleCount = 5)
+    {
+        var matchLabels = labels.ToList();
+        if (matchLabels.Count <= visibleCount)
+        {
+            return JoinNames(matchLabels);
+        }
+
+        return $"{JoinNames(matchLabels.Take(visibleCount))} i jeszcze {matchLabels.Count - visibleCount}";
+    }
+
     private sealed record FinalPositionSeriesData(FinalRankingPositionSeriesDto Series, LeaderboardSnapshot FinalSnapshot);
 
     private sealed record PlayerStats(int TotalPoints, int ExactScoreHits, int CorrectOutcomeHits, int PredictionsCount);
+
+    private sealed record ExactStreak(Guid UserId, IReadOnlyList<Guid> MatchIds)
+    {
+        public int Length => MatchIds.Count;
+    }
 
     private sealed record PredictionSummaryRow(
         Guid UserId,
