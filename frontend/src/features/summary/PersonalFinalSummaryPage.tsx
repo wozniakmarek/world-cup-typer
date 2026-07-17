@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Medal, Sparkles, Target, Trophy } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, BarChart3, Medal, Sparkles, Target, Trophy } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
 import { summaryApi } from '../../api/services'
@@ -9,6 +9,7 @@ import { SectionHeading } from '../../components/SectionHeading'
 import { StatCard } from '../../components/StatCard'
 import { UserAvatar } from '../../components/UserAvatar'
 import { secondaryButtonClassName } from '../../styles/ui'
+import { FinalRankingStoryChart } from './FinalRankingStoryChart'
 import { FinalSummaryFactGrid } from './FinalSummaryFactGrid'
 
 const numberFormatter = new Intl.NumberFormat('pl-PL')
@@ -17,7 +18,12 @@ const formatNumber = (value: number) => numberFormatter.format(value)
 
 export const PersonalFinalSummaryPage = () => {
   const summaryQuery = useQuery({ queryKey: ['summary', 'final', 'me'], queryFn: summaryApi.getMine })
+  const finalSummaryQuery = useQuery({
+    queryKey: ['summary', 'final', 'authenticated'],
+    queryFn: summaryApi.getFinal,
+  })
   const summary = summaryQuery.data
+  const finalSummary = finalSummaryQuery.data
 
   return (
     <div className="space-y-6">
@@ -103,6 +109,73 @@ export const PersonalFinalSummaryPage = () => {
 
               <FinalSummaryFactGrid facts={summary.personalFacts} />
             </section>
+
+            {finalSummaryQuery.isLoading ? (
+              <Panel className="flex items-start gap-3 border-white/10 bg-slate-950/45">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-400/12 text-emerald-300">
+                  <BarChart3 className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-display text-lg uppercase text-white">Ładowanie danych turnieju</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">
+                    Pobieram ogólne ciekawostki i przebieg tabeli dla zalogowanego gracza.
+                  </p>
+                </div>
+              </Panel>
+            ) : finalSummaryQuery.isError ? (
+              <div role="alert">
+                <Panel className="flex items-start gap-3 border-rose-400/30 bg-rose-950/30">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-400/12 text-rose-200">
+                    <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-display text-lg uppercase text-white">Nie udało się pobrać danych turnieju</p>
+                    <p className="mt-1 text-sm leading-6 text-rose-100/85">
+                      Personalny recap zostaje dostępny. Dodatkowe ciekawostki i wykres można spróbować wczytać
+                      ponownie po odświeżeniu strony.
+                    </p>
+                    <p className="mt-2 break-words text-xs leading-5 text-rose-100/70">
+                      {getErrorMessage(finalSummaryQuery.error)}
+                    </p>
+                  </div>
+                </Panel>
+              </div>
+            ) : finalSummary ? (
+              <>
+                <section className="space-y-4">
+                  <div className="min-w-0">
+                    <p className="font-display text-sm uppercase tracking-[0.28em] text-emerald-300/80">
+                      Ogólne ciekawostki
+                    </p>
+                    <h2 className="mt-2 break-words font-display text-2xl font-bold uppercase leading-tight text-white sm:text-3xl">
+                      Co wyróżniło cały turniej
+                    </h2>
+                  </div>
+
+                  <FinalSummaryFactGrid facts={finalSummary.globalFacts} />
+                </section>
+
+                <FinalRankingStoryChart
+                  series={finalSummary.positionSeries}
+                  eyebrow="Twój przebieg w tabeli"
+                  title="Jak zmieniało się Twoje miejsce"
+                  description="Linie pokazują finalny ruch rankingu po kolejnych meczach. Filtr Mój przebieg podświetla Twoją linię bez tracenia kontekstu całej stawki."
+                  initialFilterMode="mine"
+                />
+              </>
+            ) : (
+              <Panel className="flex items-start gap-3 border-white/10 bg-slate-950/45">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-400/12 text-emerald-300">
+                  <BarChart3 className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-display text-lg uppercase text-white">Brak ogólnego podsumowania</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">
+                    Gdy finalne dane turnieju będą dostępne, pojawią się tutaj ogólne ciekawostki i przebieg tabeli.
+                  </p>
+                </div>
+              </Panel>
+            )}
 
             <Panel className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-3">

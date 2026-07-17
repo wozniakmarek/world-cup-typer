@@ -47,6 +47,111 @@ const localPersonalFinalSummary = {
   highlightedMatchIds: ['match-42'],
 }
 
+const localFinalSummary = {
+  stats: {
+    settledMatchesCount: 76,
+    activePlayersCount: 24,
+    finalLeaderUserId: 'user-1',
+    finalLeaderDisplayName: 'Marek',
+  },
+  positionSeries: [
+    {
+      userId: 'user-1',
+      displayName: 'Marek',
+      avatarUrl: null,
+      finalPosition: 1,
+      finalPoints: 121,
+      isCurrentUser: false,
+      points: [
+        {
+          matchId: 'match-1',
+          matchNumber: 1,
+          matchLabel: 'POL-GER',
+          snapshotAtUtc: '2026-06-11T20:00:00Z',
+          position: 2,
+          totalPoints: 3,
+        },
+        {
+          matchId: 'match-2',
+          matchNumber: 2,
+          matchLabel: 'FRA-ESP',
+          snapshotAtUtc: '2026-06-12T20:00:00Z',
+          position: 1,
+          totalPoints: 6,
+        },
+      ],
+    },
+    {
+      userId: localPlayer.id,
+      displayName: localPlayer.displayName,
+      avatarUrl: null,
+      finalPosition: 7,
+      finalPoints: 88,
+      isCurrentUser: true,
+      points: [
+        {
+          matchId: 'match-1',
+          matchNumber: 1,
+          matchLabel: 'POL-GER',
+          snapshotAtUtc: '2026-06-11T20:00:00Z',
+          position: 10,
+          totalPoints: 1,
+        },
+        {
+          matchId: 'match-2',
+          matchNumber: 2,
+          matchLabel: 'FRA-ESP',
+          snapshotAtUtc: '2026-06-12T20:00:00Z',
+          position: 7,
+          totalPoints: 4,
+        },
+      ],
+    },
+  ],
+  finalTop: [
+    {
+      userId: 'user-1',
+      displayName: 'Marek',
+      avatarUrl: null,
+      finalPosition: 1,
+      totalPoints: 121,
+      exactScoreHits: 24,
+      correctOutcomeHits: 73,
+      predictionsCount: 104,
+      isCurrentUser: false,
+    },
+    {
+      userId: localPlayer.id,
+      displayName: localPlayer.displayName,
+      avatarUrl: null,
+      finalPosition: 7,
+      totalPoints: 88,
+      exactScoreHits: 18,
+      correctOutcomeHits: 51,
+      predictionsCount: 76,
+      isCurrentUser: true,
+    },
+  ],
+  globalFacts: [
+    {
+      id: 'tournament-surge',
+      label: 'Ciekawostka turniejowa',
+      title: 'Największy skok turnieju: +7 miejsc',
+      description: 'Najmocniejszy ruch w tabeli wydarzył się po drugim meczu finałowej serii.',
+      relatedUserIds: ['user-1'],
+      relatedMatchIds: ['match-2'],
+    },
+    {
+      id: 'most-exact-match',
+      label: 'Najbardziej trafiony mecz',
+      title: 'POL-GER: 8 dokładnych typów',
+      description: 'To spotkanie zebrało najwięcej idealnych wyników w całym turnieju.',
+      relatedUserIds: [],
+      relatedMatchIds: ['match-1'],
+    },
+  ],
+}
+
 async function mockLocalAuth(page: Page) {
   await page.route('**/api/auth/me', async (route) => route.fulfill({ json: localPlayer }))
 }
@@ -66,6 +171,14 @@ async function mockLocalPersonalFinalSummary(page: Page) {
   await page.route('**/api/summary/final/me', async (route) =>
     route.fulfill({
       json: localPersonalFinalSummary,
+    }),
+  )
+}
+
+async function mockLocalFinalSummary(page: Page) {
+  await page.route('**/api/summary/final', async (route) =>
+    route.fulfill({
+      json: localFinalSummary,
     }),
   )
 }
@@ -172,18 +285,31 @@ test('zalogowany gracz widzi swój finałowy recap', async ({ page }) => {
 
   await mockLocalAuth(page)
   await mockLocalPersonalFinalSummary(page)
+  await mockLocalFinalSummary(page)
 
   await page.goto('/summary/final/me')
 
   await expect(page.getByRole('heading', { name: 'Twój finałowy recap' })).toBeVisible()
   await expect(page.getByRole('heading', { name: localPlayer.displayName })).toBeVisible()
-  await expect(page.getByText('#7', { exact: true })).toBeVisible()
+  await expect(page.getByText('#7', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('88', { exact: true })).toBeVisible()
   await expect(page.getByText('18', { exact: true })).toBeVisible()
   await expect(page.getByText('51', { exact: true })).toBeVisible()
   await expect(page.getByText('76', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Awans o 5 miejsc w fazie pucharowej' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '18 dokładnych wyników' })).toBeVisible()
+  await expect(page.locator('[data-testid="final-ranking-story-chart"]')).toBeVisible()
+  const myRunFilter = page.getByRole('button', { name: 'Mój przebieg' })
+  await expect(myRunFilter).toBeVisible()
+  await expect(myRunFilter).toBeEnabled()
+  const personalFact = page.getByRole('heading', { name: '18 dokładnych wyników' })
+  const globalFact = page.getByRole('heading', { name: 'Największy skok turnieju: +7 miejsc' })
+  await expect(globalFact).toBeVisible()
+  const personalFactBox = await personalFact.boundingBox()
+  const globalFactBox = await globalFact.boundingBox()
+  expect(personalFactBox, 'personal fact should have a rendered position').not.toBeNull()
+  expect(globalFactBox, 'global tournament fact should have a rendered position').not.toBeNull()
+  expect(globalFactBox!.y).toBeGreaterThan(personalFactBox!.y)
   await expect(page.getByRole('link', { name: 'Mój recap', exact: true }).first()).toBeVisible()
 })
 
@@ -193,6 +319,7 @@ test('anonimowy gracz wraca po loginie do chronionego recap', async ({ page }) =
   await mockLocalLogin(page)
   await mockLocalAuth(page)
   await mockLocalPersonalFinalSummary(page)
+  await mockLocalFinalSummary(page)
 
   await page.goto('/summary/final/me')
 
@@ -204,6 +331,8 @@ test('anonimowy gracz wraca po loginie do chronionego recap', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Twój finałowy recap' })).toBeVisible()
   await expect(page.getByRole('heading', { name: localPlayer.displayName })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Awans o 5 miejsc w fazie pucharowej' })).toBeVisible()
+  await expect(page.locator('[data-testid="final-ranking-story-chart"]')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Największy skok turnieju: +7 miejsc' })).toBeVisible()
 })
 
 test('login ignoruje zewnętrzny returnTo przy aktywnej sesji', async ({ page }) => {

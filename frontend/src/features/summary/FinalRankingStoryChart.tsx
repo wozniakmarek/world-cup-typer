@@ -23,6 +23,14 @@ type FilterMode = 'all' | 'podium' | 'mine' | 'climb' | 'drop' | 'selected'
 type TooltipValue = number | string | Array<number | string>
 type TooltipName = number | string
 
+interface FinalRankingStoryChartProps {
+  series: FinalRankingPositionSeries[]
+  eyebrow?: string
+  title?: string
+  description?: string
+  initialFilterMode?: FilterMode
+}
+
 const filterButtons: Array<{ mode: FilterMode; label: string }> = [
   { mode: 'all', label: 'Wszyscy' },
   { mode: 'podium', label: 'Podium' },
@@ -96,10 +104,16 @@ const CustomTooltip = ({
   )
 }
 
-export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositionSeries[] }) => {
+export const FinalRankingStoryChart = ({
+  series,
+  eyebrow = 'Animowana pełna tabela',
+  title = 'Finalowy ruch rankingu',
+  description = 'Linie pokazują pozycję każdego gracza po kolejnym rozliczonym meczu. Filtry podświetlają historię bez wycinania reszty stawki z kontekstu.',
+  initialFilterMode = 'all',
+}: FinalRankingStoryChartProps) => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = usePrefersReducedMotion()
-  const [filterMode, setFilterMode] = useState<FilterMode>('all')
+  const [requestedFilterMode, setRequestedFilterMode] = useState<FilterMode>(initialFilterMode)
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
 
   const chartRows = useMemo(() => buildFinalChartRows(series), [series])
@@ -116,6 +130,12 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
   const dropUserIdSet = useMemo(() => new Set(getBiggestDropUserIds(series)), [series])
   const hasCurrentUserLine = playerLines.some((player) => player.isCurrentUser)
   const hasSelectedPlayers = selectedUserIds.length > 0
+  const filterMode =
+    requestedFilterMode === 'mine' && !hasCurrentUserLine
+      ? 'all'
+      : requestedFilterMode === 'selected' && !hasSelectedPlayers
+        ? 'all'
+        : requestedFilterMode
 
   const matchCount = chartRows.length
   const needsScroll = matchCount > 12
@@ -163,14 +183,14 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
   const toggleSelectedPlayer = (userId: string) => {
     setSelectedUserIds((currentUserIds) => {
       if (!currentUserIds.includes(userId)) {
-        setFilterMode('selected')
+        setRequestedFilterMode('selected')
         return [...currentUserIds, userId]
       }
 
       const nextUserIds = currentUserIds.filter((currentUserId) => currentUserId !== userId)
 
       if (nextUserIds.length === 0) {
-        setFilterMode('all')
+        setRequestedFilterMode('all')
       }
 
       return nextUserIds
@@ -185,13 +205,12 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="font-display text-sm uppercase text-emerald-300">Animowana pełna tabela</p>
+          <p className="font-display text-sm uppercase text-emerald-300">{eyebrow}</p>
           <h2 className="mt-2 break-words font-display text-3xl leading-tight text-white sm:text-4xl">
-            Finalowy ruch rankingu
+            {title}
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-            Linie pokazują pozycję każdego gracza po kolejnym rozliczonym meczu. Filtry podświetlają historię bez
-            wycinania reszty stawki z kontekstu.
+            {description}
           </p>
         </div>
         <BarChart3 className="h-8 w-8 shrink-0 text-emerald-300" aria-hidden="true" />
@@ -221,7 +240,7 @@ export const FinalRankingStoryChart = ({ series }: { series: FinalRankingPositio
               aria-pressed={isActive && !isDisabled}
               disabled={isDisabled}
               title={isDisabled ? disabledTitle : undefined}
-              onClick={() => setFilterMode(filter.mode)}
+              onClick={() => setRequestedFilterMode(filter.mode)}
             >
               {filter.label}
             </button>
