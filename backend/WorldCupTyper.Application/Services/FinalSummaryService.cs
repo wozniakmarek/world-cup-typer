@@ -37,7 +37,7 @@ public sealed class FinalSummaryService : IFinalSummaryService
             .Where(IsExpectedFinalMatch)
             .OrderByDescending(match => match.MatchNumber)
             .FirstOrDefault();
-        var finalMatchLabel = finalMatch is null ? ExpectedFinalMatchLabel : BuildMatchLabel(finalMatch);
+        var finalMatchLabel = ExpectedFinalMatchLabel;
 
         if (finalMatch is null)
         {

@@ -200,6 +200,23 @@ public sealed class FinalSummaryServiceTests
     }
 
     [Fact]
+    public async Task GetFinalSummaryAvailabilityAsync_ShouldUseConfiguredFinalLabelWhenTeamsAreReversed()
+    {
+        using var dbContext = TestDbContextFactory.Create();
+        var finalMatch = AddSettledMatch(dbContext, 104, "ESP", "ARG", DateTime.UtcNow.AddDays(-1), homeScore: 1, awayScore: 2);
+        finalMatch.Status = MatchStatus.Finished;
+        finalMatch.IsSettled = false;
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+        var availability = await service.GetFinalSummaryAvailabilityAsync();
+
+        availability.IsReady.Should().BeFalse();
+        availability.Reason.Should().Be("final-match-not-settled");
+        availability.FinalMatchLabel.Should().Be("ARG-ESP");
+    }
+
+    [Fact]
     public async Task GetFinalSummaryAvailabilityAsync_ShouldWaitForEveryMatchAfterFinalIsSettled()
     {
         using var dbContext = TestDbContextFactory.Create();
