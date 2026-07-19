@@ -60,6 +60,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationSubscriptionService, NotificationSubscriptionService>();
         services.AddScoped<IScoringService, ScoringService>();
         services.AddScoped<IRankingService, RankingService>();
+        services.AddScoped<IFinalSummaryService, FinalSummaryService>();
         services.AddScoped<IMatchSettlementService, MatchSettlementService>();
 
         services.AddScoped<DevelopmentDataSeeder>();

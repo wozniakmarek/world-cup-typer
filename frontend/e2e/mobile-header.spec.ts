@@ -230,6 +230,7 @@ test('player mobile navigation keeps primary destinations in a fixed thumb bar',
     await expect(bottomNavigation.getByRole('link', { name: label, exact: true })).toBeVisible()
   }
 
+  await expect(bottomNavigation.getByRole('link', { name: 'Mój recap', exact: true })).toHaveCount(0)
   await expect(bottomNavigation.getByRole('link', { name: 'Admin', exact: true })).toHaveCount(0)
 })
 
@@ -242,6 +243,8 @@ test('admin mobile navigation keeps player destinations and exposes admin shortc
   for (const label of ['Dashboard', 'Mecze', 'Ranking', 'Profil']) {
     await expect(bottomNavigation.getByRole('link', { name: label, exact: true })).toBeVisible()
   }
+
+  await expect(bottomNavigation.getByRole('link', { name: 'Mój recap', exact: true })).toHaveCount(0)
 
   for (const label of ['Admin', 'Gracze', 'Drużyny', 'Mecze Admin']) {
     await expect(bottomNavigation.getByRole('link', { name: label, exact: true })).toBeVisible()

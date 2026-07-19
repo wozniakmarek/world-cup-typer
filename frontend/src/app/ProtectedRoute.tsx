@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
 
 export const ProtectedRoute = ({
@@ -11,6 +11,7 @@ export const ProtectedRoute = ({
   allowPasswordChange?: boolean
 }) => {
   const { isAuthenticated, isAdmin, isInitializing, requiresPasswordChange } = useAuth()
+  const location = useLocation()
 
   if (isInitializing) {
     return (
@@ -21,7 +22,10 @@ export const ProtectedRoute = ({
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    const returnTo = `${location.pathname}${location.search}${location.hash}`
+    const loginPath = returnTo === '/' ? '/login' : `/login?returnTo=${encodeURIComponent(returnTo)}`
+
+    return <Navigate to={loginPath} replace />
   }
 
   if (requiresPasswordChange && !allowPasswordChange) {

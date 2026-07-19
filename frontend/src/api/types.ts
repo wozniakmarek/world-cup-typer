@@ -160,6 +160,82 @@ export interface RankingProgressSeries {
   points: RankingProgressPoint[]
 }
 
+export interface FinalSummaryStats {
+  settledMatchesCount: number
+  activePlayersCount: number
+  finalLeaderUserId?: string | null
+  finalLeaderDisplayName?: string | null
+}
+
+export interface FinalSummaryAvailability {
+  isReady: boolean
+  reason: string
+  settledMatchesCount: number
+  requiredSettledMatchesCount: number
+  totalMatchesCount: number
+  finalMatchLabel?: string | null
+}
+
+export interface FinalRankingPositionPoint {
+  matchId: string
+  matchNumber: number
+  matchLabel: string
+  snapshotAtUtc: string
+  position: number
+  totalPoints: number
+}
+
+export interface FinalRankingPositionSeries {
+  userId: string
+  displayName: string
+  avatarUrl?: string | null
+  finalPosition: number
+  finalPoints: number
+  isCurrentUser: boolean
+  points: FinalRankingPositionPoint[]
+}
+
+export interface FinalRankingEntry {
+  userId: string
+  displayName: string
+  avatarUrl?: string | null
+  finalPosition: number
+  totalPoints: number
+  exactScoreHits: number
+  correctOutcomeHits: number
+  predictionsCount: number
+  isCurrentUser: boolean
+}
+
+export interface FinalSummaryFact {
+  id: string
+  label: string
+  title: string
+  description: string
+  relatedUserIds: string[]
+  relatedMatchIds: string[]
+}
+
+export interface FinalSummaryResponse {
+  stats: FinalSummaryStats
+  positionSeries: FinalRankingPositionSeries[]
+  finalTop: FinalRankingEntry[]
+  globalFacts: FinalSummaryFact[]
+}
+
+export interface PersonalFinalSummaryResponse {
+  userId: string
+  displayName: string
+  avatarUrl?: string | null
+  finalPosition: number
+  totalPoints: number
+  exactScoreHits: number
+  correctOutcomeHits: number
+  predictionsCount: number
+  personalFacts: FinalSummaryFact[]
+  highlightedMatchIds: string[]
+}
+
 export interface NotificationSettings {
   morningDigestEnabled: boolean
   missingPrediction2hEnabled: boolean

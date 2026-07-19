@@ -1,19 +1,39 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
 import { useAuth } from './useAuth'
 import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
 
+const getSafeReturnTo = (returnTo: string | null) => {
+  if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//') || returnTo.includes('\\')) {
+    return null
+  }
+
+  try {
+    const candidate = new URL(returnTo, window.location.origin)
+
+    if (candidate.origin !== window.location.origin || candidate.pathname === '/login') {
+      return null
+    }
+
+    return `${candidate.pathname}${candidate.search}${candidate.hash}`
+  } catch {
+    return null
+  }
+}
+
 export const LoginPage = () => {
   const { isAuthenticated, login, requiresPasswordChange } = useAuth()
+  const [searchParams] = useSearchParams()
   const [loginValue, setLoginValue] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const safeReturnTo = getSafeReturnTo(searchParams.get('returnTo'))
 
   if (isAuthenticated) {
-    return <Navigate to={requiresPasswordChange ? '/change-password' : '/'} replace />
+    return <Navigate to={requiresPasswordChange ? '/change-password' : (safeReturnTo ?? '/')} replace />
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

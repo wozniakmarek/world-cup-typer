@@ -14,6 +14,8 @@ import { MatchesPage } from '../features/matches/MatchesPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
 import { PublicHomePage } from '../features/public/PublicHomePage'
 import { RankingPage } from '../features/ranking/RankingPage'
+import { FinalSummaryPage } from '../features/summary/FinalSummaryPage'
+import { PersonalFinalSummaryPage } from '../features/summary/PersonalFinalSummaryPage'
 
 const RootRoute = () => {
   const { isAuthenticated, isInitializing, requiresPasswordChange } = useAuth()
@@ -42,6 +44,7 @@ export const AppRouter = () => {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/summary/final" element={<FinalSummaryPage />} />
         <Route path="/" element={<RootRoute />}>
           <Route index element={<DashboardPage />} />
         </Route>
@@ -63,6 +66,7 @@ export const AppRouter = () => {
           <Route path="/matches" element={<MatchesPage />} />
           <Route path="/matches/:matchId" element={<MatchDetailsPage />} />
           <Route path="/ranking" element={<RankingPage />} />
+          <Route path="/summary/final/me" element={<PersonalFinalSummaryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
         <Route

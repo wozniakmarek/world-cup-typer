@@ -1,15 +1,18 @@
 import clsx from 'clsx'
-import { CalendarDays, LayoutDashboard, LogOut, Shield, Trophy, UserCircle2, UsersRound } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, LogOut, Shield, Sparkles, Trophy, UserCircle2, UsersRound } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
+import { useFinalRecapCtaVisibility } from '../features/summary/finalRecapCtaVisibility'
 import { UserAvatar } from './UserAvatar'
 
-const commonLinks = [
+const playerLinks = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/matches', label: 'Mecze', icon: CalendarDays },
   { to: '/ranking', label: 'Ranking', icon: Trophy },
   { to: '/profile', label: 'Profil', icon: UserCircle2 },
 ]
+
+const finalRecapLink = { to: '/summary/final/me', label: 'Mój recap', icon: Sparkles }
 
 const adminLinks = [
   { to: '/admin', label: 'Admin', icon: Shield },
@@ -34,7 +37,9 @@ const navigationLinkClasses = (isActive: boolean, variant: 'desktop' | 'mobile' 
 
 export const AppNavigation = () => {
   const { isAdmin, user, logout } = useAuth()
-  const links = [...commonLinks, ...(isAdmin ? adminLinks : [])]
+  const showFinalRecapCta = useFinalRecapCtaVisibility()
+  const visiblePlayerLinks = showFinalRecapCta ? [playerLinks[0], finalRecapLink, ...playerLinks.slice(1)] : playerLinks
+  const links = [...visiblePlayerLinks, ...(isAdmin ? adminLinks : [])]
 
   return (
     <>
@@ -106,7 +111,7 @@ export const AppNavigation = () => {
           </div>
         ) : null}
         <div className="flex gap-1.5">
-          {commonLinks.map(({ to, label, icon: Icon }) => (
+          {visiblePlayerLinks.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
