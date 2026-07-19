@@ -35,6 +35,88 @@ const localFinalSummaryAvailabilityLocked = {
   finalMatchLabel: 'ARG-ESP',
 }
 
+const localTeam = (shortName: string) => ({
+  id: `team-${shortName}`,
+  name: shortName,
+  shortName,
+  countryCode: shortName,
+  flagEmoji: null,
+  groupName: null,
+})
+
+const localMatch = ({
+  id,
+  matchNumber,
+  phase,
+  home,
+  away,
+  kickoffTimeUtc,
+  isSettled = false,
+}: {
+  id: string
+  matchNumber: number
+  phase: 'ThirdPlace' | 'Final'
+  home: string
+  away: string
+  kickoffTimeUtc: string
+  isSettled?: boolean
+}) => ({
+  id,
+  matchNumber,
+  phase,
+  groupName: null,
+  kickoffTimeUtc,
+  venue: null,
+  status: isSettled ? 'Settled' : 'Scheduled',
+  isSettled,
+  homeScore90: isSettled ? 1 : null,
+  awayScore90: isSettled ? 0 : null,
+  homeTeam: localTeam(home),
+  awayTeam: localTeam(away),
+  myPrediction: null,
+  myPoints: null,
+  canEditPrediction: !isSettled,
+})
+
+const localMatchesBeforeFinalWindow = [
+  localMatch({
+    id: 'match-103',
+    matchNumber: 103,
+    phase: 'ThirdPlace',
+    home: 'FRA',
+    away: 'BRA',
+    kickoffTimeUtc: '2026-07-17T18:00:00Z',
+  }),
+  localMatch({
+    id: 'match-104',
+    matchNumber: 104,
+    phase: 'Final',
+    home: 'ESP',
+    away: 'ARG',
+    kickoffTimeUtc: '2026-07-18T18:00:00Z',
+  }),
+]
+
+const localMatchesFinalNext = [
+  localMatch({
+    id: 'match-103',
+    matchNumber: 103,
+    phase: 'ThirdPlace',
+    home: 'FRA',
+    away: 'BRA',
+    kickoffTimeUtc: '2026-07-17T18:00:00Z',
+    isSettled: true,
+  }),
+  localMatch({
+    id: 'match-104',
+    matchNumber: 104,
+    phase: 'Final',
+    home: 'ESP',
+    away: 'ARG',
+    kickoffTimeUtc: '2026-07-18T18:00:00Z',
+  }),
+]
+
 const localPersonalFinalSummary = {
   userId: localPlayer.id,
   displayName: localPlayer.displayName,
@@ -210,6 +292,36 @@ async function mockLocalFinalSummary(page: Page) {
   )
 }
 
+async function mockLocalDashboard(page: Page, matches = localMatchesBeforeFinalWindow) {
+  await mockLocalAuth(page)
+  await mockLocalFinalSummaryAvailability(page, localFinalSummaryAvailabilityLocked)
+  await page.route('**/api/matches/upcoming', async (route) =>
+    route.fulfill({
+      json: matches.filter((match) => !match.isSettled),
+    }),
+  )
+  await page.route('**/api/matches', async (route) =>
+    route.fulfill({
+      json: matches,
+    }),
+  )
+  await page.route('**/api/ranking/top', async (route) =>
+    route.fulfill({
+      json: localFinalSummary.finalTop.map((entry) => ({
+        position: entry.finalPosition,
+        userId: entry.userId,
+        displayName: entry.displayName,
+        totalPoints: entry.totalPoints,
+        exactScoreHits: entry.exactScoreHits,
+        correctOutcomeHits: entry.correctOutcomeHits,
+        predictionsCount: entry.predictionsCount,
+        avatarUrl: entry.avatarUrl,
+        isCurrentUser: entry.isCurrentUser,
+      })),
+    }),
+  )
+}
+
 async function submitLoginForm(page: Page, email: string, password: string) {
   await page.getByLabel('Login').fill(email)
   await page.getByLabel('Hasło').fill(password)
@@ -270,6 +382,38 @@ test('publiczny home pokazuje landing z rankingiem przed logowaniem', async ({ p
   await expect(page.locator('#ranking').getByText('Marek')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Przejdź do logowania' })).toHaveAttribute('href', '/login')
   await expect(page.locator('[data-testid="final-ranking-story-chart"]')).toHaveCount(0)
+})
+
+test('kafelek recapu jest ukryty zanim final ARG-ESP jest nastepnym meczem', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Widocznosc kafelka recapu sprawdzamy lokalnie')
+
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('typer.auth.token', 'test-token')
+    window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
+  }, localPlayer)
+  await mockLocalDashboard(page, localMatchesBeforeFinalWindow)
+
+  await page.goto('/')
+
+  await expect(page.getByRole('link', { name: 'Mój recap', exact: true })).toHaveCount(0)
+  await expect(page.getByText('Mój finałowy recap', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Zobacz mój recap' })).toHaveCount(0)
+})
+
+test('kafelek recapu pojawia sie gdy final ARG-ESP jest nastepnym meczem', async ({ page }) => {
+  test.skip(!isLocalPreview, 'Widocznosc kafelka recapu sprawdzamy lokalnie')
+
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('typer.auth.token', 'test-token')
+    window.localStorage.setItem('typer.auth.user', JSON.stringify(user))
+  }, localPlayer)
+  await mockLocalDashboard(page, localMatchesFinalNext)
+
+  await page.goto('/')
+
+  await expect(page.getByRole('link', { name: 'Mój recap', exact: true })).toBeVisible()
+  await expect(page.getByText('Mój finałowy recap', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Zobacz mój recap' })).toHaveAttribute('href', '/summary/final/me')
 })
 
 test('publiczny finalny recap jest jeszcze zablokowany przed rozliczeniem finalu', async ({ page }) => {

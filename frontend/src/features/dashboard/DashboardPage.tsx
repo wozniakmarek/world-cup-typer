@@ -11,12 +11,14 @@ import { StatCard } from '../../components/StatCard'
 import { UserAvatar } from '../../components/UserAvatar'
 import { secondaryButtonClassName } from '../../styles/ui'
 import { useAuth } from '../auth/useAuth'
+import { useFinalRecapCtaVisibility } from '../summary/finalRecapCtaVisibility'
 
 export const DashboardPage = () => {
   const { user } = useAuth()
   const matchesQuery = useQuery({ queryKey: ['matches'], queryFn: matchesApi.getAll })
   const upcomingQuery = useQuery({ queryKey: ['matches', 'upcoming'], queryFn: matchesApi.getUpcoming })
   const topQuery = useQuery({ queryKey: ['ranking', 'top'], queryFn: rankingApi.getTop })
+  const showFinalRecapCta = useFinalRecapCtaVisibility()
 
   const matches = matchesQuery.data ?? []
   const upcomingMatches = upcomingQuery.data ?? []
@@ -91,23 +93,25 @@ export const DashboardPage = () => {
         </Panel>
 
         <div className="min-w-0 space-y-6">
-          <Panel className="space-y-4">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-400/12 text-emerald-300">
-                <Sparkles className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-display text-2xl uppercase text-white">Mój finałowy recap</p>
-                <p className="mt-1 text-sm leading-6 text-slate-400">
-                  Osobiste miejsce, punkty, trafienia i ciekawostki z całego turnieju.
-                </p>
+          {showFinalRecapCta ? (
+            <Panel className="space-y-4">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-400/12 text-emerald-300">
+                  <Sparkles className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-display text-2xl uppercase text-white">Mój finałowy recap</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">
+                    Osobiste miejsce, punkty, trafienia i ciekawostki z całego turnieju.
+                  </p>
+                </div>
               </div>
-            </div>
-            <Link to="/summary/final/me" className={`${secondaryButtonClassName} w-full sm:w-auto`}>
-              Zobacz mój recap
-              <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-            </Link>
-          </Panel>
+              <Link to="/summary/final/me" className={`${secondaryButtonClassName} w-full sm:w-auto`}>
+                Zobacz mój recap
+                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Panel>
+          ) : null}
 
           <Panel className="space-y-4">
             <p className="font-display text-2xl uppercase text-white">TOP 5 rankingu</p>
