@@ -4,6 +4,7 @@ import { getErrorMessage, isAuthenticationFailure } from '../../api/client'
 import type { CurrentUser } from '../../api/types'
 import { AuthContext } from './authContextCore'
 import type { AuthContextValue } from './authContextCore'
+import { queryClient } from '../../app/queryClient'
 
 const TOKEN_KEY = 'typer.auth.token'
 const USER_KEY = 'typer.auth.user'
@@ -50,6 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isInitializing,
       login: async (loginValue, password) => {
         const response = await authApi.login({ login: loginValue, password })
+        if (import.meta.env.VITE_ARCHIVE_MODE === 'true') queryClient.clear()
         setToken(response.token)
         setUser(response.user)
         localStorage.setItem(TOKEN_KEY, response.token)
@@ -77,6 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } finally {
           localStorage.removeItem(TOKEN_KEY)
           localStorage.removeItem(USER_KEY)
+          if (import.meta.env.VITE_ARCHIVE_MODE === 'true') queryClient.clear()
           setToken(null)
           setUser(null)
         }

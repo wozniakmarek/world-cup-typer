@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { createArchiveAdapter } from '../features/archive/archiveAdapter'
 
 const normalizeBaseUrl = (value?: string) => {
   const raw = value?.trim() || 'http://localhost:5000'
@@ -16,6 +17,7 @@ type RetriableConfig = {
 
 export const apiClient = axios.create({
   baseURL: primaryBaseUrl,
+  ...(import.meta.env.VITE_ARCHIVE_MODE === 'true' ? { adapter: createArchiveAdapter() } : {}),
 })
 
 apiClient.interceptors.request.use((config) => {

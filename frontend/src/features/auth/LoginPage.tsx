@@ -4,6 +4,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { getErrorMessage } from '../../api/client'
 import { useAuth } from './useAuth'
 import { buttonClassName, inputClassName, secondaryButtonClassName } from '../../styles/ui'
+import { ArchiveNotice } from '../archive/ArchiveNotice'
 
 const getSafeReturnTo = (returnTo: string | null) => {
   if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//') || returnTo.includes('\\')) {
@@ -89,6 +90,7 @@ export const LoginPage = () => {
             <p className="mt-2 text-sm text-slate-400">{'Zaloguj si\u0119 mailem albo nazw\u0105 gracza.'}</p>
           </div>
 
+          <ArchiveNotice />
           <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
             <label className="block space-y-2">
               <span className="text-sm text-slate-300">Login</span>

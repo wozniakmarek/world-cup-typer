@@ -6,6 +6,7 @@ const normalizedBaseUrl = normalizeBaseUrl(rawBaseUrl)
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: '**/archive-readonly.spec.ts',
   fullyParallel: true,
   retries: 1,
   reporter: [['list'], ['html', { open: 'never' }]],

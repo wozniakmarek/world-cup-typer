@@ -4,6 +4,7 @@ import { AppNavigation } from '../components/AppNavigation'
 import { PageShell } from '../components/PageShell'
 import { useAuth } from '../features/auth/useAuth'
 import { PwaInstallPrompt } from '../features/pwa/PwaInstallPrompt'
+import { ArchiveNotice } from '../features/archive/ArchiveNotice'
 
 export const AppShell = () => {
   const { isAdmin } = useAuth()
@@ -13,6 +14,7 @@ export const AppShell = () => {
       <AppNavigation />
       <PwaInstallPrompt />
       <PageShell>
+        <ArchiveNotice />
         <Outlet />
       </PageShell>
     </div>
