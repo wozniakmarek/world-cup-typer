@@ -87,6 +87,9 @@ jobs:
           E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
         run: npm run test:e2e:smoke
 
+      - name: Test static archive with synthetic accounts
+        run: npx playwright test -c playwright.archive.config.ts
+
       - name: Upload Playwright artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4

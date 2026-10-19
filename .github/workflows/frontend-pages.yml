@@ -44,9 +44,20 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Download encrypted tournament archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release download tournament-archive-2026-10-20 --pattern archive-data.zip --dir "$RUNNER_TEMP"
+          mkdir -p public/archive
+          unzip -q "$RUNNER_TEMP/archive-data.zip" -d public/archive
+          test -f public/archive/manifest.json
+
       - name: Build frontend for Pages
         run: npm run build:pages
         env:
+          VITE_ARCHIVE_MODE: 'true'
           VITE_API_BASE_URL: https://api-typer.marekwozniak.me
           VITE_API_FALLBACK_BASE_URL: https://world-cup-typer-api-oznlp.ondigitalocean.app
 
